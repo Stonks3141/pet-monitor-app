@@ -1,0 +1,12 @@
+.navbutton {
+  color: #3ca5de;
+  background-color: white;
+  border: none;
+  border-radius: 0;
+  font-size: 1.5rem;
+  padding: 10px;
+  width: 100%;
+}
+.navbutton:hover {
+  background-color: lightgray;
+}
