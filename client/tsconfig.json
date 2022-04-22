@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-      "lib": ["es5", "dom"],
-      "module": "es6",
-      "target": "es5",
+      "lib": ["es6", "dom"],
+      "module": "esnext",
+      "target": "es6",
       "moduleResolution": "node",
       "noImplicitAny": true,
       "removeComments": true,
@@ -13,9 +13,9 @@
       "isolatedModules": true,
       "baseUrl": ".",
       "paths": {
-        "/*": ["./*"]
+        "components": ["./src/components"],
+        "hooks": ["./src/hooks"]
       }
   },
-  "include": ["src/*", "src/client"],
-  "exclude": ["node_modules/*"]
+  "exclude": ["node_modules/*", "dist/*"]
 }

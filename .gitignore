@@ -26,7 +26,5 @@ node_modules/
 .cache
 .parcel-cache
 
-.vscode
-
 # build directory
 dist

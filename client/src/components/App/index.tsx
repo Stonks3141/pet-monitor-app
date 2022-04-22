@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import './style.css';
-import { Navbar, NavButton, LoginMenu, LiveCam, RecentActivity } from '/src/client/components';
+import { Navbar, NavButton, LoginMenu, LiveCam, RecentActivity } from 'components';
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
