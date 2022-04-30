@@ -18,4 +18,7 @@ target/
 .parcel-cache
 
 # build directory
-dist/
+/dist/
+
+# VS Code config
+/.vscode/
