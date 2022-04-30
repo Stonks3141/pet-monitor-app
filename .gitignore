@@ -8,7 +8,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Dependency directories
 node_modules/
-target/
 
 # Optional npm cache directory
 .npm
@@ -17,8 +16,9 @@ target/
 .cache
 .parcel-cache
 
-# build directory
-/dist/
+# build directories
+dist/
+target/
 
 # VS Code config
-.vscode/
+.vscode
