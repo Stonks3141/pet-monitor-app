@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
     builder
         .set_private_key_file("key.pem", SslFiletype::PEM)
         .unwrap();
-    builder.set_certificate_chain_file("murphycam_ddns_net.pem-chain").unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
 
     HttpServer::new(|| {
         App::new()
