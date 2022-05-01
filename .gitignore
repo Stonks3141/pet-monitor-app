@@ -22,3 +22,9 @@ target/
 
 # VS Code config
 .vscode
+
+# Keys/certificates
+*.key
+*.pem
+*.pem-chain
+*.cert
