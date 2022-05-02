@@ -3,8 +3,8 @@
   "source": "src/index.html",
   "browserslist": "> 1%, not dead",
   "scripts": {
-    "start": "parcel --dist-dir ../dist/dev/static",
-    "build": "parcel build --dist-dir ../dist/production/static"
+    "start": "parcel",
+    "build": "parcel build"
   },
   "alias": {
     "components": "./src/components",

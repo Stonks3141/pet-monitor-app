@@ -1,0 +1,31 @@
+form.LoginMenu {
+  background-color: #2e2e2e;
+  border: 1px solid #494949;
+  border-radius: 5px;
+  width: min-content;
+  color: white;
+  margin: auto;
+  padding: 10px;
+  text-align: center;
+}
+
+form.LoginMenu input {
+  margin: auto;
+}
+
+form.LoginMenu label {
+  padding: 0;
+}
+
+form.LoginMenu hr {
+  border: 1px solid #494949;
+}
+
+form.LoginMenu input.submit {
+  background-color: #d43b54;
+  margin-top: 5px;
+  padding: 5px;
+  border-radius: 5px;
+  border: none;
+  width: 100px;
+}
