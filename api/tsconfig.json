@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "module": "esnext",
+    "target": "esnext",
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "isolatedModules": true,
+    "baseUrl": "./src",
+  },
+  "exclude": ["node_modules/*", "dist/*, public/*"]
+}
