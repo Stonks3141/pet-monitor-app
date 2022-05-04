@@ -1,7 +1,7 @@
 import React from 'react';
 import './style.css';
 
-const LiveCam = (): JSX.Element => {
+const LiveCam = () => {
   return <p>live cam</p>;
 };
 

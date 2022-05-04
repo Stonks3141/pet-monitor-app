@@ -1,16 +1,13 @@
-import React, { useState } from "react";
+import React from "react";
+import { Outlet } from "react-router-dom";
 import './style.css';
-import { LoginMenu, LiveCam } from 'components';
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  //const [activityOpen, setActivityOpen] = useState(false);
-
-  if(!isLoggedIn) {
-    return <LoginMenu onLogin={() => setIsLoggedIn(true)}/>;
-  }
-
-  return <LiveCam />;
+  return (
+    <>
+      <Outlet />
+    </>
+  );
 };
 
 export default App;

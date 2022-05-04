@@ -3,7 +3,7 @@
   "compilerOptions": {
       "lib": ["es6", "dom"],
       "module": "esnext",
-      "target": "es6",
+      "target": "es5",
       "moduleResolution": "node",
       "noImplicitAny": true,
       "removeComments": true,
@@ -11,11 +11,7 @@
       "allowJs": true,
       "allowSyntheticDefaultImports": true,
       "isolatedModules": true,
-      "baseUrl": ".",
-      "paths": {
-        "components": ["./src/components"],
-        "hooks": ["./src/hooks"]
-      }
+      "baseUrl": "./src"
   },
   "exclude": ["node_modules/*", "dist/*"]
 }
