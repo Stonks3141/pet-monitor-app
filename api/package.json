@@ -3,7 +3,7 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "tsc && node ./dist/index.js",
+    "start": "tsc && node --experimental-specifier-resolution=node ./dist/index.js",
     "build": "tsc"
   },
   "devDependencies": {

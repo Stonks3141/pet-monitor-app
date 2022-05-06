@@ -21,10 +21,13 @@ dist/
 target/
 
 # VS Code config
-.vscode
+.vscode/
 
 # Keys/certificates
 *.key
 *.pem
 *.pem-chain
 *.cert
+
+# Favicon
+favicon.*
