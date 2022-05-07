@@ -9,7 +9,7 @@ Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/medi
 ## Roadmap
 
 - [ ] REST API and authentication
-- [ ] Rust v4l2 microservice
+- [ ] Rust v4l2 node module
 - [ ] UI
 - [ ] Docker container
 - [ ] Binary distribution
