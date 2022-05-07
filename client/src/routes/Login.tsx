@@ -8,10 +8,10 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if ('token' in cookies) {
+    if ('password' in cookies) {
       navigate('/camera');
     }
-  });
+  }, [cookies.password]);
 
   return (
     <main>

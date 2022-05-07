@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCookies } from 'react-cookie';
 import { LiveCam } from "components";
@@ -7,9 +7,11 @@ const Camera = () => {
   const [cookies] = useCookies();
   const navigate = useNavigate();
 
-  if (!('token' in cookies)) {
-    navigate('/lock');
-  }
+  useEffect(() => {
+    if (!('connect.sid' in cookies)) {
+      navigate('/lock');
+    }
+  }, [cookies['connect.sid']]);
 
   return (
     <main>

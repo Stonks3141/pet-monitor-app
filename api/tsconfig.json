@@ -12,6 +12,6 @@
     "isolatedModules": true,
     "baseUrl": "./src",
   },
-  "include": ["./src/*"],
+  "include": ["./src/*", "src/routes/auth.ts"],
   "exclude": ["./node_modules/*", "./dist/*"]
 }
