@@ -8,6 +8,9 @@ import { authRouter, streamRouter } from './routes';
 const app = express();
 const port = 8080;
 
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
+
 app.use(session({
     genid: () => crypto.randomBytes(16).toString('hex'),
     secret: 'hi',
