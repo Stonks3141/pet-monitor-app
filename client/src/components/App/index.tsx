@@ -6,7 +6,7 @@ import './style.css';
 const App = () => (
   <>
     {/* TODO: navbar */}
-    <div>
+    <div className='flex bg-stone-50 dark:bg-gray-900 h-screen'>
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Main />} /> // redirects to Login

@@ -11,7 +11,7 @@ const LoginMenu = () => {
   const navigate = useNavigate();
 
   const validate = (pwd: string) => {
-    axios.post('/api/auth', null, {headers: {password: pwd}})
+    axios.post('/api/auth', {password: pwd})
       .then(res => {
         if (res.status == 401) {
           setIncorrect(true);
@@ -37,14 +37,16 @@ const LoginMenu = () => {
   }, []);
 
   return (
-    <form className='LoginMenu' onSubmit={(e) => {
+    <form className='flex flex-col grid-cols-1 place-content-center place-items-center shadow-lg mx-auto max-w-sm rounded-xl items-center p-5 space-y-3 bg-white dark:bg-gray-800' onSubmit={(e) => {
       e.preventDefault();
       validate(password);
     }}>
-      <label>Password</label>
-      <input type='password' onChange={event => setPassword(event.target.value)} />
-      {incorrect && <label className='incorrect'>Incorrect password</label>}
-      <input type='submit' className='submit' value='Unlock' />
+      <label>
+        <span className='dark:text-white my-1'>Master password</span>
+        <input type='password' className='border p-1 text-sm outline-none rounded-md focus:border-2 border-indigo-400 bg-slate-200 dark:bg-slate-700 dark:text-white peer invalid:border-red' onChange={event => setPassword(event.target.value)} />
+        <span className='invisible peer-invalid:visible text-red'>Invalid password</span>
+      </label>
+      <input type='submit' className='shadow-lg px-4 py-1 rounded-full outline-none active:ring-2 active:ring-indigo-300 bg-indigo-500 text-white hover:bg-indigo-600 focus:border-2 focus:border-indigo-400 dark:bg-indigo-600' value='Unlock' />
     </form>
   );
 };
