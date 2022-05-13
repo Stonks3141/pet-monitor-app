@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Login, Camera, Main } from 'routes';
-import './style.css';
 
 const App = () => (
   <>

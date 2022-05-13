@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 
@@ -14,6 +14,8 @@ const Main = () => {
       navigate('/lock');
     }
   });
+
+  return <p>Loading...</p>;
 };
 
 export default Main;

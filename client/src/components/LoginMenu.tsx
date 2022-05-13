@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCookies } from 'react-cookie';
 import axios from 'axios';
-import './style.css';
 
 const eyeIcon = (
   <svg width='24px' height='24px' viewBox='0 0 24 24'>
