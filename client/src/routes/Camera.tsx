@@ -13,11 +13,7 @@ const Camera = () => {
     }
   }, [cookies['connect.sid']]);
 
-  return (
-    <main>
-      <LiveCam />
-    </main>
-  );
+  return <LiveCam />;
 };
 
 export default Camera;

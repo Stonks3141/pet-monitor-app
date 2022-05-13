@@ -22,9 +22,12 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.static('../client/dist'));
+app.use('/', express.static('../client/dist'));
 app.use('/api', authRouter);
 app.use('/api', streamRouter);
+app.get('*', function(req, res) {
+    res.sendFile('index.html', {root: '../../client/dist/'});
+  });
 
 app.listen(port, () => {
     console.log(`App listening on port ${port}`);

@@ -3,7 +3,9 @@ module.exports = {
     "./src/**/*.{html,js,ts,mjs,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    borderRadius: {
+      'sm': '0.25rem'
+    }
   },
   plugins: [],
 }
