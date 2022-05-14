@@ -1,8 +1,9 @@
 import express from 'express';
 import passport from 'passport';
 import { Strategy } from 'passport-custom';
+import argon2 from 'argon2';
 
-const myPassword = '123';
+const myHash = await argon2.hash('123');
 
 declare global {
   namespace Express {
@@ -14,13 +15,11 @@ declare global {
 
 // auth strategy, checks if password is correct
 passport.use('custom', new Strategy((req, done) => {
-    if (req.body.password === myPassword) {
-      const user = { id: '12345' };
-      done(null, user);
-    }
-    else {
-      done(null);
-    }
+  console.log(req.body);
+  if (req.body.hash === '123') {
+    const user = { id: '12345' };
+    done(null, user);
+  }
 }));
 
 // attaches user to request
@@ -36,7 +35,7 @@ passport.serializeUser((user, done) => (
 const router = express.Router();
 
 router.post('/auth',
-  passport.authenticate('custom', {failureRedirect: '/urmom'}),
+  passport.authenticate('custom', {failureRedirect: '/uhoh'}),
   (_req, res) => res.status(200).send()
 );
 

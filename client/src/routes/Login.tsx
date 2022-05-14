@@ -11,7 +11,7 @@ const Login = () => {
     if ('connect.sid' in cookies) {
       navigate('/camera');
     }
-  }, [cookies]);
+  });
 
   return <LoginMenu onSuccess={() => navigate('/camera')} />;
 };

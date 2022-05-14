@@ -3,7 +3,8 @@ import express from 'express';
 const router = express.Router();
 
 router.get('/stream', (req, res) => {
-  if ('session' in req) {
+  console.log(req.user);
+  if (req.user) {
     res.status(200).send('stream');
   }
   else {

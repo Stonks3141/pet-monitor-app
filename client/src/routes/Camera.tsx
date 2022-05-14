@@ -12,7 +12,7 @@ const Camera = () => {
     if (!('connect.sid' in cookies)) {
       navigate('/lock');
     }
-  }, [cookies]);
+  }, []);
 
   return <LiveCam />;
 };

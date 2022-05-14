@@ -26,48 +26,40 @@ interface LoginMenuProps {
  * 
  * @param onSuccess Optional callback, called when validation is successful
 */
-const LoginMenu = ({ onSuccess }: LoginMenuProps) => {
+const LoginMenu = (props: LoginMenuProps) => {
   const [password, setPassword] = useState('');
   const [incorrect, setIncorrect] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [cookies, setCookie] = useCookies();
 
-  const validate = (pwd: string) => {
-    axios.post('/api/auth', {password: pwd})
+  const validate = (pwd: string) => (
+    axios.post('/api/auth', {hash: pwd})
       .then(res => {
         if (res.status == 401) {
           setIncorrect(true);
         }
         else if (res.status == 200) {
-          if (!('password' in cookies)) {
-            setCookie('password', password);
-          }
-
+          setCookie('password', password);
           setIncorrect(false);
-          onSuccess();
+          props.onSuccess();
         }
         else {
           throw new Error(res.statusText + res.data);
         }
       })
-      .catch(err => console.error(err));
-  }
+      .catch(err => console.error(err))
+  );
 
   useEffect(() => {
     if ('password' in cookies && !('connect.sid' in cookies)) {
-      validate(cookies.password);
-    }
-  }, [cookies]);
-
-  useEffect(() => {
-    if ('password' in cookies) {
       setPassword(cookies.password);
+      validate(cookies.password);
     }
   }, []);
 
   return (
     <div className='flex  flex-col content-center place-content-center place-items-center grow'>
-      <form className='flex flex-col gap-2 place-items-center h-fit w-fit p-4 shadow-md rounded-lg bg-white dark:bg-gray-800' onSubmit={(event) => {
+      <form className='flex flex-col gap-3 place-items-center h-fit w-fit p-4 shadow-md rounded-lg bg-white dark:bg-slate-800' onSubmit={(event) => {
         event.preventDefault();
         validate(password);
       }}>
@@ -86,7 +78,7 @@ const LoginMenu = ({ onSuccess }: LoginMenuProps) => {
         {incorrect && <span className='text-red'>Invalid password</span>}
         <input type='submit' className='max-w-fit shadow-md px-4 py-2 rounded cursor-pointer outline-none active:ring-2 active:ring-indigo-300 bg-indigo-500 text-white hover:bg-indigo-600 focus:border-2 focus:border-indigo-400 dark:bg-indigo-600' value='Unlock' />
       </form>
-      <div className='basis-1/2'></div>
+      <div className='basis-1/3'></div>
     </div>
   );
 };

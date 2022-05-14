@@ -4,9 +4,16 @@ import bodyParser from 'body-parser';
 import passport from 'passport';
 import crypto from 'crypto';
 import { authRouter, streamRouter } from './routes';
+import fs from 'fs';
+import https from 'https';
+
+const credentials = {
+  cert: fs.readFileSync('cert.pem'),
+  key: fs.readFileSync('key.pem')
+};
 
 const app = express();
-const port = 8080;
+const port = 8443;
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
@@ -31,7 +38,9 @@ app.use('/api', authRouter);
 app.use('/api', streamRouter);
 app.get('*', (_req, res) => res.sendFile('index.html', {root: '../client/dist/'}));
 
-app.listen(port, () => {
+const server = https.createServer(credentials, app);
+
+server.listen(port, () => {
   console.log(`App listening on port ${port}`);
 });
 

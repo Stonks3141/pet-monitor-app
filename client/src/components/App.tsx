@@ -5,7 +5,7 @@ import { Login, Camera, Main } from 'routes';
 const App = () => (
   <>
     {/* TODO: navbar/logout */}
-    <div className='flex bg-gray-50 dark:bg-gray-900 h-screen dark:text-white'>
+    <div className='flex bg-slate-50 dark:bg-slate-900 h-screen dark:text-white'>
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Main />} />
