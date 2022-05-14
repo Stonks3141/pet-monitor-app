@@ -4,13 +4,13 @@ import { Login, Camera, Main } from 'routes';
 
 const App = () => (
   <>
-    {/* TODO: navbar */}
-    <div className='flex bg-stone-50 dark:bg-gray-900 h-screen'>
+    {/* TODO: navbar/logout */}
+    <div className='flex bg-gray-50 dark:bg-gray-900 h-screen dark:text-white'>
       <BrowserRouter>
         <Routes>
-          <Route path='/' element={<Main />} /> // redirects to Login
-          <Route path='lock' element={<Login />} /> // redirects to Camera if signed in
-          <Route path='camera' element={<Camera />} /> // redirects to Login if not signed in
+          <Route path='/' element={<Main />} />
+          <Route path='lock' element={<Login />} />
+          <Route path='camera' element={<Camera />} />
         </Routes>
       </BrowserRouter>
     </div>

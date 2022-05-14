@@ -7,13 +7,12 @@ const LiveCam = () => {
   const [cookies] = useCookies();
 
   useEffect(() => {
-    axios.get('/api/stream', {headers: {session: cookies.id}})
+    axios.get('/api/stream')
     .then(res => {
       if (res.status == 200) {
         setStream(res.data);
       }
       else {
-        alert('An error has occurred: ' + res.statusText + res.data);
         throw new Error(res.statusText + res.data);
       }
     })

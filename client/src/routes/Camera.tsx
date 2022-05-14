@@ -8,10 +8,11 @@ const Camera = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log(cookies);
     if (!('connect.sid' in cookies)) {
       navigate('/lock');
     }
-  }, [cookies['connect.sid']]);
+  }, [cookies]);
 
   return <LiveCam />;
 };

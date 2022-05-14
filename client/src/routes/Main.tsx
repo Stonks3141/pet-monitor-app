@@ -7,13 +7,13 @@ const Main = () => {
   const [cookies] = useCookies();
 
   useEffect(() => {
-    if ('password' in cookies) {
+    if ('connect.sid' in cookies) {
       navigate('/camera');
     }
     else {
       navigate('/lock');
     }
-  });
+  }, ['connect.sid' in cookies]);
 
   return <p>Loading...</p>;
 };
