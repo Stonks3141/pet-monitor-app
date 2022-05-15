@@ -4,7 +4,7 @@
   "browserslist": "> 1%, not dead",
   "publicUrl": "/static",
   "scripts": {
-    "start": "parcel --cert ../api/cert.pem --key ../api/key.pem",
+    "start": "parcel",
     "build": "parcel build"
   },
   "alias": {

@@ -10,7 +10,7 @@ const Camera = () => {
   useEffect(() => {
     console.log(cookies);
     if (!('connect.sid' in cookies)) {
-      navigate('/lock');
+      //navigate('/lock');
     }
   }, []);
 

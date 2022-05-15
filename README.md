@@ -9,15 +9,15 @@ Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/medi
 
 ## Roadmap
 
-Current plan is to write a Node module in Rust for streaming/recording/audio/processing and use Neon for JS interop.
-
-- [x] REST API and authentication
-- [ ] Secure transmission with hashing
+- [ ] JWT authentication
+- [ ] Secure password storage with `argon2`
 - [ ] HTTPS
-- [ ] Rust v4l2 node module
-- [ ] UI
+- [ ] Rust v4l2 streaming
+- [x] Basic UI
 - [ ] Docker container
 - [ ] Binary distribution
+- [x] Rewrite backend in Rust/Rocket
+- [ ] GraphQL with Juniper
 - [ ] Audio support
 - [ ] Documentation
 - [ ] Fallback for no SSL certificate

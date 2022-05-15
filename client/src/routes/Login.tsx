@@ -9,7 +9,7 @@ const Login = () => {
 
   useEffect(() => {
     if ('connect.sid' in cookies) {
-      navigate('/camera');
+      //navigate('/camera');
     }
   });
 

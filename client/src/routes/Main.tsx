@@ -8,12 +8,12 @@ const Main = () => {
 
   useEffect(() => {
     if ('connect.sid' in cookies) {
-      navigate('/camera');
+      //navigate('/camera');
     }
     else {
-      navigate('/lock');
+      //navigate('/lock');
     }
-  }, ['connect.sid' in cookies]);
+  }, [cookies]);
 
   return <p>Loading...</p>;
 };

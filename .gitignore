@@ -20,9 +20,6 @@ node_modules/
 dist/
 target/
 
-# VS Code config
-.vscode/
-
 # Keys/certificates
 *.key
 *.pem
