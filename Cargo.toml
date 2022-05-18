@@ -1,0 +1,16 @@
+[package]
+name = "pet-monitor-app"
+description = ""
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3"
+rocket = "0.5.0-rc.2"
+juniper = "0.15"
+jsonwebtoken = "8.1"
+v4l-streamer = { version = "0.1.0", path = "./v4l-streamer" }
+
+[workspace]
+members = ["v4l-streamer"]
+exclude = ["client"]
