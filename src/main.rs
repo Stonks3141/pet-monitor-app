@@ -1,7 +1,6 @@
 use pet_monitor_app::routes;
-use rocket::fs::{FileServer, relative};
+use rocket::fs::{relative, FileServer};
 use rocket::{launch, routes};
-//use v4l_streamer::Frames;
 
 #[launch]
 fn rocket() -> _ {

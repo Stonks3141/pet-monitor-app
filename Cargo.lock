@@ -966,6 +966,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpeg2ts"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a38c92bbb0d15f62ed915c392f2d675e3c0889c98be7ad418ae660bfcb7f3b2"
+dependencies = [
+ "byteorder",
+ "trackable 0.2.24",
+]
+
+[[package]]
+name = "mse_fmp4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34e6fb34098b6d1d770566c8361a0bcc6fb94d4d7f77945c0af930723ec14455"
+dependencies = [
+ "byteorder",
+ "mpeg2ts",
+ "trackable 0.2.24",
+]
+
+[[package]]
 name = "muldiv"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1932,6 +1953,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "trackable"
+version = "0.2.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b98abb9e7300b9ac902cc04920945a874c1973e08c310627cc4458c04b70dd32"
+dependencies = [
+ "trackable 1.2.0",
+ "trackable_derive",
+]
+
+[[package]]
+name = "trackable"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "017e2a1a93718e4e8386d037cfb8add78f1d690467f4350fb582f55af1203167"
+dependencies = [
+ "trackable_derive",
+]
+
+[[package]]
+name = "trackable_derive"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebeb235c5847e2f82cfe0f07eb971d1e5f6804b18dac2ae16349cc604380f82f"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,6 +2088,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "gstreamer",
+ "mse_fmp4",
  "rscam",
 ]
 

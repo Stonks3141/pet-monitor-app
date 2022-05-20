@@ -2,6 +2,7 @@ use rscam::{Camera, Frame};
 
 #[cfg(test)]
 mod tests;
+//mod bmff;
 
 /// Stream of h.264 frames
 pub struct Frames(Camera);
