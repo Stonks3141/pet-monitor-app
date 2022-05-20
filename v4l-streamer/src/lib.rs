@@ -10,12 +10,14 @@ impl Frames {
     pub fn new(interval: (u32, u32), resolution: (u32, u32), format: [u8; 4]) -> Self {
         let mut camera = Camera::new("/dev/video0").unwrap();
 
-        camera.start(&rscam::Config {
-                    interval,
-                    resolution,
-                    format: &format,
-                    ..Default::default()
-                }).unwrap();
+        camera
+            .start(&rscam::Config {
+                interval,
+                resolution,
+                format: &format,
+                ..Default::default()
+            })
+            .unwrap();
 
         Self(camera)
     }

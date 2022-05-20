@@ -22,7 +22,7 @@ node_modules/
 #.pnp.*
 
 # build directories
-dist/
+build/
 target/
 
 # Keys/certificates
