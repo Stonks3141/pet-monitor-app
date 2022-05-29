@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
-import { LiveCam } from "components";
+import { LiveCam } from 'components';
 
 const Camera = () => {
   const [cookies] = useCookies();
@@ -9,8 +9,8 @@ const Camera = () => {
 
   useEffect(() => {
     console.log(cookies);
-    if (!('connect.sid' in cookies)) {
-      //navigate('/lock');
+    if (!('token' in cookies)) {
+      navigate('/lock');
     }
   }, []);
 

@@ -11,7 +11,11 @@ const Logout = () => {
     navigate('/lock');
   };
 
-  return <a href='' onClick={handleClick}>Log out</a>;
+  return (
+    <a href="" onClick={handleClick}>
+      Log out
+    </a>
+  );
 };
 
 export default Logout;

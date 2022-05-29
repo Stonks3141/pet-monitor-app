@@ -33,12 +33,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         [null, {\
           "packageLocation": "./",\
           "packageDependencies": [\
+            ["@mdi/js", "npm:6.7.96"],\
+            ["@mdi/react", "npm:1.6.0"],\
             ["@types/jest", "npm:27.5.1"],\
             ["@types/node", "npm:17.0.34"],\
             ["@types/react", "npm:18.0.9"],\
             ["@types/react-dom", "npm:18.0.4"],\
             ["@types/react-router-dom", "npm:5.3.3"],\
-            ["axios", "npm:0.27.2"],\
             ["postcss", "npm:8.4.13"],\
             ["prettier", "npm:2.6.2"],\
             ["react", "npm:18.1.0"],\
@@ -3483,6 +3484,25 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["@mdi/js", [\
+        ["npm:6.7.96", {\
+          "packageLocation": "./.yarn/cache/@mdi-js-npm-6.7.96-9171b53682-8c8f6acb8f.zip/node_modules/@mdi/js/",\
+          "packageDependencies": [\
+            ["@mdi/js", "npm:6.7.96"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@mdi/react", [\
+        ["npm:1.6.0", {\
+          "packageLocation": "./.yarn/cache/@mdi-react-npm-1.6.0-eb845e22a4-3516c240bd.zip/node_modules/@mdi/react/",\
+          "packageDependencies": [\
+            ["@mdi/react", "npm:1.6.0"],\
+            ["prop-types", "npm:15.8.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["@nodelib/fs.scandir", [\
         ["npm:2.1.5", {\
           "packageLocation": "./.yarn/cache/@nodelib-fs.scandir-npm-2.1.5-89c67370dd-a970d595bd.zip/node_modules/@nodelib/fs.scandir/",\
@@ -5383,17 +5403,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/axe-core-npm-4.4.2-4872658842-93fbb36c5a.zip/node_modules/axe-core/",\
           "packageDependencies": [\
             ["axe-core", "npm:4.4.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["axios", [\
-        ["npm:0.27.2", {\
-          "packageLocation": "./.yarn/cache/axios-npm-0.27.2-dbe3a48aea-38cb754046.zip/node_modules/axios/",\
-          "packageDependencies": [\
-            ["axios", "npm:0.27.2"],\
-            ["follow-redirects", "virtual:dbe3a48aea1dd5649e16abaf23d4ae05582d2149e16141955113766a0f84f681baf358c77ddccfc82eb23e4ccc66c6c912df62a9c01f2a83f1842bf86cc297b1#npm:1.15.0"],\
-            ["form-data", "npm:4.0.0"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -8476,10 +8485,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:dbe3a48aea1dd5649e16abaf23d4ae05582d2149e16141955113766a0f84f681baf358c77ddccfc82eb23e4ccc66c6c912df62a9c01f2a83f1842bf86cc297b1#npm:1.15.0", {\
-          "packageLocation": "./.yarn/__virtual__/follow-redirects-virtual-80191232fb/0/cache/follow-redirects-npm-1.15.0-497d406c03-eaec81c3e0.zip/node_modules/follow-redirects/",\
+        ["virtual:a313c479c5c7e54d9ec8fbeeea69ff640f56b8989ea2dff42351a3fa5c4061fb80a52d8ede0f0826a181a216820c2d2c3f15da881e7fdf31cef1c446e42f0c45#npm:1.15.0", {\
+          "packageLocation": "./.yarn/__virtual__/follow-redirects-virtual-15172d2f36/0/cache/follow-redirects-npm-1.15.0-497d406c03-eaec81c3e0.zip/node_modules/follow-redirects/",\
           "packageDependencies": [\
-            ["follow-redirects", "virtual:dbe3a48aea1dd5649e16abaf23d4ae05582d2149e16141955113766a0f84f681baf358c77ddccfc82eb23e4ccc66c6c912df62a9c01f2a83f1842bf86cc297b1#npm:1.15.0"],\
+            ["follow-redirects", "virtual:a313c479c5c7e54d9ec8fbeeea69ff640f56b8989ea2dff42351a3fa5c4061fb80a52d8ede0f0826a181a216820c2d2c3f15da881e7fdf31cef1c446e42f0c45#npm:1.15.0"],\
             ["@types/debug", null],\
             ["debug", null]\
           ],\
@@ -8542,16 +8551,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/form-data-npm-3.0.1-d080d436e0-b019e8d35c.zip/node_modules/form-data/",\
           "packageDependencies": [\
             ["form-data", "npm:3.0.1"],\
-            ["asynckit", "npm:0.4.0"],\
-            ["combined-stream", "npm:1.0.8"],\
-            ["mime-types", "npm:2.1.35"]\
-          ],\
-          "linkType": "HARD"\
-        }],\
-        ["npm:4.0.0", {\
-          "packageLocation": "./.yarn/cache/form-data-npm-4.0.0-916facec2d-01135bf867.zip/node_modules/form-data/",\
-          "packageDependencies": [\
-            ["form-data", "npm:4.0.0"],\
             ["asynckit", "npm:0.4.0"],\
             ["combined-stream", "npm:1.0.8"],\
             ["mime-types", "npm:2.1.35"]\
@@ -9183,7 +9182,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["http-proxy", "npm:1.18.1"],\
             ["eventemitter3", "npm:4.0.7"],\
-            ["follow-redirects", "virtual:dbe3a48aea1dd5649e16abaf23d4ae05582d2149e16141955113766a0f84f681baf358c77ddccfc82eb23e4ccc66c6c912df62a9c01f2a83f1842bf86cc297b1#npm:1.15.0"],\
+            ["follow-redirects", "virtual:a313c479c5c7e54d9ec8fbeeea69ff640f56b8989ea2dff42351a3fa5c4061fb80a52d8ede0f0826a181a216820c2d2c3f15da881e7fdf31cef1c446e42f0c45#npm:1.15.0"],\
             ["requires-port", "npm:1.0.0"]\
           ],\
           "linkType": "HARD"\
@@ -11884,12 +11883,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",\
           "packageDependencies": [\
             ["pet-monitor-app", "workspace:."],\
+            ["@mdi/js", "npm:6.7.96"],\
+            ["@mdi/react", "npm:1.6.0"],\
             ["@types/jest", "npm:27.5.1"],\
             ["@types/node", "npm:17.0.34"],\
             ["@types/react", "npm:18.0.9"],\
             ["@types/react-dom", "npm:18.0.4"],\
             ["@types/react-router-dom", "npm:5.3.3"],\
-            ["axios", "npm:0.27.2"],\
             ["postcss", "npm:8.4.13"],\
             ["prettier", "npm:2.6.2"],\
             ["react", "npm:18.1.0"],\
