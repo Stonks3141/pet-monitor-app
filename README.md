@@ -1,13 +1,14 @@
 # pet-monitor-app
 
 This project is currently pre-alpha.
-Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html) is used for video.
+Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html) will be used for video, but I'm also considering libcamera since it's intended to replace v4l2 for high-level usage.
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Installation](#installation)
     - [General](#general)
     - [Development](#development)
   - [Usage](#usage)
+  - [Testing](#testing)
   - [Motivation](#motivation)
   - [Goals](#goals)
   - [Roadmap](#roadmap)
@@ -18,49 +19,53 @@ Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/medi
 
 ### General
 
-Docker coming soon.
+Docker container coming soon.
 
 ### Development
 
-Clone the repo and install npm/yarn, rustup, and gstreamer. Run `npm install` or `yarn add` in the `/client` directory. Run `cargo run` in the base directory to start
+Clone the repo and install yarn, rustup, and gstreamer. Run `yarn start` in the `/client` directory to start the frontend dev server. Run `cargo run` in the base directory to start the development server. This will try to serve files from `/client/build`, so run `yarn build` first.
 
 ## Usage
 
 In progress
 
+## Testing
+
+Tests are a work in progress.
+
+Test the server with `cargo test` in the root directory, and the client with `yarn run test` in the `/client` directory. The `v4l-streamer` crate can be individually tested.
+
 ## Motivation
 
-I wanted to make a pet monitor without paying for one, so I used [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was unsatisfied with the lack of security and features. This project aims to fix that, with support for TLS/HTTPS, JWT authentication, reverse proxy, and secure password storage. In the future, I hope to expand it with additional features, such as audio and video recording.
+I wanted to make a pet monitor without paying for one, so I used [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was unsatisfied with the lack of security and features. This project aims to fix that, with support for TLS/HTTPS, JWT authentication and authorization, reverse proxy and containerization, and secure password storage. In the future, I hope to expand it with additional features, such as audio and video recording.
 
 ## Goals
 
 - Secure
-- Simple to install
+- Simple to install/use/configure
 - Featureful and attractive
-- \>95% code coverage
-- Complete documentation
-- Streaming crate should have a powerful and high-level API
+- Tested
+- Documented
 
 ## Roadmap
 
-- [ ] JSON web token authentication
-- [ ] Secure password storage with `argon2`
-- [ ] HTTPS
-- [ ] Rust v4l2 streaming
 - [x] Basic UI
-- [ ] Docker container
-- [ ] Binary distribution
+- [x] JSON web token authentication
 - [x] Rewrite backend in Rust/Rocket
-- [ ] GraphQL with Juniper
+- [ ] Secure password and private key storage
+- [ ] Docker container
+- [ ] HTTPS (part of Docker, handled with Nginx reverse proxy)
+- [ ] Rust v4l2 (libcamera?) streaming
 - [ ] Audio support
+- [ ] Recording video/audio to view later
 - [ ] Documentation
 - [ ] As secure as possible without HTTPS
-- [ ] Motion sensing to detect active periods
-- [ ] Add activity overview to UI
+- [ ] GraphQL with Juniper
+- [ ] In-browser configuration/server management
 
 ## Contributing
 
-PRs are welcome.
+PRs are welcome. Look at Github issues for some ideas.
 
 ## Inspiration
 

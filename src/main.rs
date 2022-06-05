@@ -1,4 +1,4 @@
-use pet_monitor_app::routes;
+use pet_monitor_app::routes::*;
 use rocket::fs::{relative, FileServer};
 use rocket::{launch, routes};
 
@@ -6,5 +6,5 @@ use rocket::{launch, routes};
 fn rocket() -> _ {
     rocket::build()
         .mount("/", FileServer::from(relative!("client/build/")).rank(1))
-        .mount("/", routes![routes::index, routes::auth::login])
+        .mount("/", routes![index, stream, login])
 }
