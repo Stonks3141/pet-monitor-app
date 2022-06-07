@@ -14,30 +14,50 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Build Rust
       run: |
-        cargo build --verbose
-        
+        cargo build
+        cargo build -p v4l-streamer
+
     - name: Build React
       run: |
-        cd client
-        yarn add
+        yarn install --frozen-lockfile
         yarn build
-      
+      working-directory: ./client
+
   test:
-  
+
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Run Rust tests
       run: |
-        cargo test --verbose
-        
+        cargo test
+        cargo test -p v4l-streamer
+
     - name: Run React tests
       run: |
-        cd client
-        yarn add
-        yarn run test
+        yarn install --frozen-lockfile
+        yarn test
+      working-directory: ./client
+
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Lint Rust
+      run: |
+        cargo clippy
+        cargo clippy -p v4l-streamer
+
+    - name: Lint React
+      run: |
+        yarn install --frozen-lockfile
+        yarn run lint
+      working-directory: ./client
