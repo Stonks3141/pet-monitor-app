@@ -1,14 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import { LoginMenu } from 'components';
+import { AuthContext } from 'context';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [cookies] = useCookies();
+  const { auth } = useContext(AuthContext);
 
   useEffect(() => {
-    if ('token' in cookies) {
+    if (auth) {
       navigate('/camera');
     }
   }, []);

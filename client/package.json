@@ -21,6 +21,9 @@
       "last 1 safari version"
     ]
   },
+  "eslintConfig": {
+    "extends": "./.eslintrc.yml"
+  },
   "proxy": "http://localhost:8000",
   "devDependencies": {
     "@types/jest": "^27.5.1",
@@ -31,6 +34,7 @@
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "^8.17.0",
+    "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-react": "latest",
     "prettier": "^2.6.2",
     "react-scripts": "^5.0.1",

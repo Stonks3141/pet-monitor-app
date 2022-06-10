@@ -40,7 +40,7 @@ jobs:
 
     - name: Run React tests
       run: |
-        yarn install --frozen-lockfile
+        yarn install --immutable-cache
         yarn test
       working-directory: ./client
 
@@ -58,6 +58,6 @@ jobs:
 
     - name: Lint React
       run: |
-        yarn install --frozen-lockfile
-        yarn run lint
+        yarn install --immutable-cache
+        yarn lint
       working-directory: ./client

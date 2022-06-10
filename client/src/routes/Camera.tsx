@@ -1,15 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import { LiveCam } from 'components';
+import { AuthContext } from 'context';
 
 const Camera = () => {
-  const [cookies] = useCookies();
   const navigate = useNavigate();
+  const { auth } = useContext(AuthContext);
 
   useEffect(() => {
-    console.log(cookies);
-    if (!('token' in cookies)) {
+    if (!auth) {
       navigate('/lock');
     }
   }, []);

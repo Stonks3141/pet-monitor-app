@@ -1,14 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import { Spinner } from 'components';
+import { AuthContext } from 'context';
 
 const Main = () => {
   const navigate = useNavigate();
-  const [cookies] = useCookies();
+  const { auth } = useContext(AuthContext);
 
   useEffect(() => {
-    if ('token' in cookies) {
+    if (auth) {
       navigate('/camera');
     } else {
       navigate('/lock');
@@ -16,7 +16,7 @@ const Main = () => {
   }, []);
 
   return (
-    <div className="flex grow place-content-center place-items-center content-center">
+    <div className='flex grow place-content-center place-items-center content-center'>
       <Spinner />
     </div>
   );

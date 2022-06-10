@@ -7,12 +7,12 @@ const Logout = () => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    deleteCookie('password');
+    deleteCookie('token');
     navigate('/lock');
   };
 
   return (
-    <a href="" onClick={handleClick}>
+    <a href='' onClick={handleClick}>
       Log out
     </a>
   );
