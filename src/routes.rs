@@ -1,15 +1,6 @@
-use rocket::fs::{relative, NamedFile};
+use crate::auth;
 use rocket::http::{CookieJar, Status};
 use rocket::{get, post};
-use crate::auth;
-
-// match all for React Router
-#[get("/<_f..>", rank = 2)]
-pub async fn index(_f: std::path::PathBuf) -> Option<NamedFile> {
-    NamedFile::open(relative!("client/build/index.html"))
-        .await
-        .ok()
-}
 
 #[post("/api/auth", data = "<password>")]
 pub fn login(password: String, cookies: &CookieJar<'_>) -> Status {

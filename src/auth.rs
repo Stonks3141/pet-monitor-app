@@ -1,7 +1,7 @@
 use jsonwebtoken as jwt;
 use jwt::errors::ErrorKind;
 use once_cell::sync::Lazy;
-use rocket::http::{Status, Cookie};
+use rocket::http::{Cookie, Status};
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -49,7 +49,7 @@ pub fn authorize(token: &str) -> Status {
             ErrorKind::Utf8(_) => Status::InternalServerError,
             ErrorKind::Crypto(_) => Status::InternalServerError,
             _ => Status::Unauthorized,
-        }
+        },
     }
 }
 
@@ -65,7 +65,7 @@ fn make_token() -> jwt::errors::Result<String> {
 
     let claims = Claims {
         iat: time,
-        exp: time + 60*60*24,
+        exp: time + 60 * 60 * 24,
     };
 
     jwt::encode(&jwt::Header::default(), &claims, &*ENC_KEY)

@@ -1,6 +1,7 @@
 module.exports = {
   content: [
-    "./src/**/*.{html,js,ts,mjs,jsx,tsx}",
+    "src/**/*.{html,js,ts,mjs,jsx,tsx}",
+    "public/**/*"
   ],
   theme: {
     fontFamily: {
