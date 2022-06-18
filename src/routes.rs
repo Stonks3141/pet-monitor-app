@@ -21,7 +21,7 @@ pub fn stream(cookies: &CookieJar<'_>) -> Result<String, Status> {
     };
 
     // normal matching doesn't work for some reason
-    match auth::authorize(token).code {
+    match auth::validate_token(token).code {
         200 => Ok("stream".to_string()),
         e => Err(Status::new(e)),
     }

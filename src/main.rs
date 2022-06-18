@@ -3,6 +3,5 @@ use rocket::{launch, routes};
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
-        .mount("/", routes![stream, login])
+    rocket::build().mount("/", routes![stream, login])
 }
