@@ -12,9 +12,12 @@ rust-version = "1.60"
 rocket = "0.5.0-rc.2"
 juniper = "0.15"
 jsonwebtoken = "8.1"
-v4l-streamer = { version = "0.1.0", path = "./v4l-streamer" }
+v4l-streamer = { version = "0.1", path = "./v4l-streamer" }
 serde = "1.0"
 once_cell = "1.12"
+rand = "0.8"
+log = "0.4"
+env_logger = "0.9"
 
 [workspace]
 members = ["v4l-streamer"]
