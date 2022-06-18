@@ -54,9 +54,9 @@ I wanted to make a pet monitor without paying for one, so I used [fmp4streamer](
 - [x] Basic UI
 - [x] JSON web token authentication
 - [x] Rewrite backend in Rust/Rocket
-- [ ] Secure password and private key storage
+- [ ] Secure password verification (argon2)
 - [ ] Docker container
-- [ ] HTTPS (part of Docker, handled with Nginx reverse proxy)
+- [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
 - [ ] Proxy authenticated video requests to fmp4streamer as an intermediate solution
 - [ ] Rust v4l2 (libcamera?) streaming
 - [ ] Audio support
