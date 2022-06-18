@@ -1,30 +1,29 @@
 use crate::auth;
 use rocket::http::{CookieJar, Status, Cookie};
 use rocket::{get, post};
-use once_cell::sync::Lazy;
-use std::env;
 use jsonwebtoken::errors::ErrorKind;
 
-#[post("/api/auth", data = "<password>")]
-pub fn login(password: String, cookies: &CookieJar<'_>) -> Status {
-    static PASSWORD: Lazy<String> =
-        Lazy::new(|| env::var("PASSWORD").expect("Please set the 'PASSWORD' env var."));
-
-    if password == *PASSWORD {
-        let token = match String::try_from(auth::Token::new()) {
-            Ok(t) => t,
-            Err(e) => match e.kind() {
-                ErrorKind::Base64(_) |
-                ErrorKind::Crypto(_) |
-                ErrorKind::Json(_) |
-                ErrorKind::Utf8(_) => return Status::InternalServerError,
-                _ => return Status::Unauthorized,
-            }
-        };
-        cookies.add(Cookie::new("token", token));
-        Status::Ok
+#[post("/api/auth", data = "<hash>")]
+pub fn login(hash: String, cookies: &CookieJar<'_>) -> Status {
+    if let Ok(b) = auth::validate(&hash) {
+        if b {
+            let token = match String::try_from(auth::Token::new()) {
+                Ok(t) => t,
+                Err(e) => match e.kind() {
+                    ErrorKind::Base64(_) |
+                    ErrorKind::Crypto(_) |
+                    ErrorKind::Json(_) |
+                    ErrorKind::Utf8(_) => return Status::InternalServerError,
+                    _ => return Status::Unauthorized,
+                }
+            };
+            cookies.add(Cookie::new("token", token));
+            Status::Ok
+        } else {
+            Status::Unauthorized
+        }
     } else {
-        Status::Unauthorized
+        Status::InternalServerError
     }
 }
 

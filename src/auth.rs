@@ -1,12 +1,9 @@
 use jsonwebtoken as jwt;
 use once_cell::sync::Lazy;
-use rand::random;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{fs, io, path::Path};
+use std::{env, fs, io, path::Path};
 use chrono::{prelude::*, Duration};
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -66,6 +63,13 @@ impl TryFrom<Token> for String {
             
         jwt::encode(&token.header, &token.claims, &enc_key)
     }
+}
+
+pub fn validate(hash: &str) -> argon2::Result<bool> {
+    static PASSWORD: Lazy<String> =
+        Lazy::new(|| env::var("PASSWORD").expect("Please set the 'PASSWORD' env var."));
+    
+    argon2::verify_encoded(hash, &*PASSWORD.as_bytes())
 }
 
 const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret.dat";
