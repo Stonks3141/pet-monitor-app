@@ -1,7 +1,7 @@
 use crate::auth;
-use rocket::http::{CookieJar, Status, Cookie};
-use rocket::{get, post};
 use jsonwebtoken::errors::ErrorKind;
+use rocket::http::{Cookie, CookieJar, Status};
+use rocket::{get, post};
 
 #[post("/api/auth", data = "<hash>")]
 pub fn login(hash: String, cookies: &CookieJar<'_>) -> Status {
@@ -10,12 +10,12 @@ pub fn login(hash: String, cookies: &CookieJar<'_>) -> Status {
             let token = match String::try_from(auth::Token::new()) {
                 Ok(t) => t,
                 Err(e) => match e.kind() {
-                    ErrorKind::Base64(_) |
-                    ErrorKind::Crypto(_) |
-                    ErrorKind::Json(_) |
-                    ErrorKind::Utf8(_) => return Status::InternalServerError,
+                    ErrorKind::Base64(_)
+                    | ErrorKind::Crypto(_)
+                    | ErrorKind::Json(_)
+                    | ErrorKind::Utf8(_) => return Status::InternalServerError,
                     _ => return Status::Unauthorized,
-                }
+                },
             };
             cookies.add(Cookie::new("token", token));
             Status::Ok

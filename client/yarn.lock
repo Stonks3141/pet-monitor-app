@@ -3422,6 +3422,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"argon2-browser@npm:^1.18.0":
+  version: 1.18.0
+  resolution: "argon2-browser@npm:1.18.0"
+  checksum: f226431ab71bd9374f958ab74298404ada61b2ab610b5e325a2de0de457829d5d52846d83b1bf00067b5828ff390adbb6230cc9d0d5abcd18c5bc7b87ece5011
+  languageName: node
+  linkType: hard
+
 "argparse@npm:^1.0.7":
   version: 1.0.10
   resolution: "argparse@npm:1.0.10"
@@ -8961,6 +8968,7 @@ __metadata:
     "@types/react-router-dom": ^5.3.3
     "@typescript-eslint/eslint-plugin": latest
     "@typescript-eslint/parser": latest
+    argon2-browser: ^1.18.0
     eslint: ^8.17.0
     eslint-config-prettier: ^8.5.0
     eslint-plugin-react: latest

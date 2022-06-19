@@ -42,6 +42,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/react-router-dom", "npm:5.3.3"],\
             ["@typescript-eslint/eslint-plugin", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:5.27.1"],\
             ["@typescript-eslint/parser", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:5.27.1"],\
+            ["argon2-browser", "npm:1.18.0"],\
             ["eslint", "npm:8.17.0"],\
             ["eslint-config-prettier", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:8.5.0"],\
             ["eslint-plugin-react", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:7.30.0"],\
@@ -5310,6 +5311,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/arg-npm-5.0.1-297491f918-9aefbcb120.zip/node_modules/arg/",\
           "packageDependencies": [\
             ["arg", "npm:5.0.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["argon2-browser", [\
+        ["npm:1.18.0", {\
+          "packageLocation": "./.yarn/cache/argon2-browser-npm-1.18.0-87875f7b67-f226431ab7.zip/node_modules/argon2-browser/",\
+          "packageDependencies": [\
+            ["argon2-browser", "npm:1.18.0"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -11996,6 +12006,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/react-router-dom", "npm:5.3.3"],\
             ["@typescript-eslint/eslint-plugin", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:5.27.1"],\
             ["@typescript-eslint/parser", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:5.27.1"],\
+            ["argon2-browser", "npm:1.18.0"],\
             ["eslint", "npm:8.17.0"],\
             ["eslint-config-prettier", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:8.5.0"],\
             ["eslint-plugin-react", "virtual:4889f0c427a1734df3e6d29cb035abd886f5e80be2887f71c27135ce2c1ce8e77613046f5c548b64cca02cb9b63013c4bd6ca3e51ccaf0d0ea8b1fb326fe8f76#npm:7.30.0"],\

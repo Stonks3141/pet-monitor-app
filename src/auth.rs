@@ -1,9 +1,9 @@
+use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use once_cell::sync::Lazy;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs, io, path::Path};
-use chrono::{prelude::*, Duration};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -41,7 +41,7 @@ impl TryFrom<&str> for Token {
 
     fn try_from(token: &str) -> Result<Self, Self::Error> {
         let dec_key = jwt::DecodingKey::from_secret(&*SECRET);
-    
+
         match jwt::decode::<Claims>(
             token,
             &dec_key,
@@ -60,23 +60,31 @@ impl TryFrom<Token> for String {
     type Error = jwt::errors::Error;
     fn try_from(token: Token) -> Result<Self, Self::Error> {
         let enc_key = jwt::EncodingKey::from_secret(&*SECRET);
-            
+
         jwt::encode(&token.header, &token.claims, &enc_key)
+    }
+}
+
+impl Default for Token {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 pub fn validate(hash: &str) -> argon2::Result<bool> {
     static PASSWORD: Lazy<String> =
         Lazy::new(|| env::var("PASSWORD").expect("Please set the 'PASSWORD' env var."));
-    
+
     argon2::verify_encoded(hash, &*PASSWORD.as_bytes())
 }
 
 const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret.dat";
 
 // This program expects to be run in a Docker container with access to /var/local/..
-static SECRET: Lazy<[u8; 32]> = Lazy::new(|| get_secret()
-    .expect("Failed to initialize JWT secret. Is the program running in a Docker container?"));
+static SECRET: Lazy<[u8; 32]> = Lazy::new(|| {
+    get_secret()
+        .expect("Failed to initialize JWT secret. Is the program running in a Docker container?")
+});
 
 fn get_secret() -> io::Result<[u8; 32]> {
     match fs::read(SECRET_PATH) {
@@ -86,7 +94,7 @@ fn get_secret() -> io::Result<[u8; 32]> {
             } else {
                 init_secret(SECRET_PATH)
             }
-        },
+        }
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => init_secret(SECRET_PATH),
             e => Err(io::Error::from(e)),

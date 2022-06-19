@@ -33,6 +33,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install v4l2
+      run: |
+        sudo apt install libv4l-0 libv4l-dev
+
     - name: Run Rust tests
       run: |
         cargo test
