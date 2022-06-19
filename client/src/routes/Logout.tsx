@@ -12,7 +12,7 @@ const Logout = () => {
   };
 
   return (
-    <a href='' onClick={handleClick}>
+    <a href="" onClick={handleClick}>
       Log out
     </a>
   );

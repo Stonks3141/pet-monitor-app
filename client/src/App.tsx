@@ -18,10 +18,10 @@ const App = () => {
     <AuthContext.Provider value={{ auth, setAuth }}>
       <BrowserRouter>
         <Routes>
-          <Route path='/' element={<Main />} />
-          <Route path='lock' element={<Login />} />
-          <Route path='camera' element={<Camera />} />
-          <Route path='*' element={<NotFoundRoute />} />
+          <Route path="/" element={<Main />} />
+          <Route path="lock" element={<Login />} />
+          <Route path="camera" element={<Camera />} />
+          <Route path="*" element={<NotFoundRoute />} />
         </Routes>
       </BrowserRouter>
     </AuthContext.Provider>

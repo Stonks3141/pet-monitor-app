@@ -1,10 +1,9 @@
 {
   "name": "pet-monitor-app",
-  "source": "src/index.html",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test  --passWithNoTests",
     "eject": "react-scripts eject",
     "prettify": "prettier --write ./src",
     "lint": "eslint ./src"

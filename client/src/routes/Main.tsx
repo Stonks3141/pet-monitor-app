@@ -16,7 +16,7 @@ const Main = () => {
   }, []);
 
   return (
-    <div className='flex grow place-content-center place-items-center content-center'>
+    <div className="flex grow place-content-center place-items-center content-center">
       <Spinner />
     </div>
   );

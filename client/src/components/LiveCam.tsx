@@ -12,7 +12,7 @@ const LiveCam = () => {
   }, []);
 
   return (
-    <div className='flex grow content-center place-content-center place-items-center'>
+    <div className="flex grow content-center place-content-center place-items-center">
       {stream}
     </div>
   );
