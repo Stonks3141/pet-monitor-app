@@ -1,69 +1,66 @@
-name: Build
+name: CI
 
 on:
-- push
-- pull_request
+  - push
+  - pull_request
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Install v4l2
-      run: |
-        sudo apt-get install libv4l-0 libv4l-dev
+      - name: Install v4l2
+        run: |
+          sudo apt-get install libv4l-0 libv4l-dev
 
-    - name: Build backend
-      run: |
-        cargo build -p api
-        cargo build -p v4l-streamer
+      - name: Build backend
+        run: |
+          cargo build -p pet-monitor-app
+          cargo build -p v4l-streamer
 
-    - name: Build frontend
-      working-directory: ./client
-      run: |
-        yarn install --immutable --immutable-cache
-        yarn build
+      - name: Build frontend
+        working-directory: ./client
+        run: |
+          yarn install --immutable --immutable-cache
+          yarn build
 
   test:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Install v4l2
-      run: |
-        sudo apt-get install libv4l-0 libv4l-dev
+      - name: Install v4l2
+        run: |
+          sudo apt-get install libv4l-0 libv4l-dev
 
-    - name: Run backend tests
-      run: |
-        cargo test
+      - name: Run backend tests
+        run: |
+          cargo test
 
-    - name: Run frontend tests
-      working-directory: ./client
-      run: |
-        yarn install --immutable --immutable-cache
-        yarn test
+      - name: Run frontend tests
+        working-directory: ./client
+        run: |
+          yarn install --immutable --immutable-cache
+          yarn test
 
   lint:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Lint backend
-      run: |
-        cargo clippy
+      - name: Lint backend
+        run: |
+          cargo clippy
 
-    - name: Lint frontend
-      working-directory: ./client
-      run: |
-        yarn install --immutable --immutable-cache
-        yarn lint
+      - name: Lint frontend
+        working-directory: ./client
+        run: |
+          yarn install --immutable --immutable-cache
+          yarn lint

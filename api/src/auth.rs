@@ -1,9 +1,8 @@
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use once_cell::sync::Lazy;
-use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{env, fs, io, path::Path};
+use std::str::FromStr;
+use crate::secrets;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -21,6 +20,12 @@ impl Claims {
     }
 }
 
+impl Default for Claims {
+    fn default() -> Self {
+        Self::new(Duration::days(1))
+    }
+}
+
 #[derive(Debug)]
 pub struct Token {
     header: jwt::Header,
@@ -31,19 +36,19 @@ impl Token {
     pub fn new() -> Self {
         Self {
             header: jwt::Header::new(jwt::Algorithm::ES256),
-            claims: Claims::new(Duration::days(1)),
+            claims: Claims::default(),
         }
     }
 }
 
-impl TryFrom<&str> for Token {
-    type Error = jwt::errors::Error;
+impl FromStr for Token {
+    type Err = jwt::errors::Error;
 
-    fn try_from(token: &str) -> Result<Self, Self::Error> {
-        let dec_key = jwt::DecodingKey::from_secret(&*SECRET);
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let dec_key = jwt::DecodingKey::from_secret(&*secrets::SECRET);
 
         match jwt::decode::<Claims>(
-            token,
+            s,
             &dec_key,
             &jwt::Validation::new(jwt::Algorithm::ES256),
         ) {
@@ -59,7 +64,7 @@ impl TryFrom<&str> for Token {
 impl TryFrom<Token> for String {
     type Error = jwt::errors::Error;
     fn try_from(token: Token) -> Result<Self, Self::Error> {
-        let enc_key = jwt::EncodingKey::from_secret(&*SECRET);
+        let enc_key = jwt::EncodingKey::from_secret(&*secrets::SECRET);
 
         jwt::encode(&token.header, &token.claims, &enc_key)
     }
@@ -71,45 +76,6 @@ impl Default for Token {
     }
 }
 
-pub fn validate(hash: &str) -> argon2::Result<bool> {
-    static PASSWORD: Lazy<String> =
-        Lazy::new(|| env::var("PASSWORD").expect("Please set the 'PASSWORD' env var."));
-
-    argon2::verify_encoded(hash, &*PASSWORD.as_bytes())
-}
-
-const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret.dat";
-
-// This program expects to be run in a Docker container with access to /var/local/..
-static SECRET: Lazy<[u8; 32]> = Lazy::new(|| {
-    get_secret()
-        .expect("Failed to initialize JWT secret. Is the program running in a Docker container?")
-});
-
-fn get_secret() -> io::Result<[u8; 32]> {
-    match fs::read(SECRET_PATH) {
-        Ok(s) => {
-            if let Ok(s) = s.try_into() {
-                Ok(s)
-            } else {
-                init_secret(SECRET_PATH)
-            }
-        }
-        Err(e) => match e.kind() {
-            io::ErrorKind::NotFound => init_secret(SECRET_PATH),
-            e => Err(io::Error::from(e)),
-        },
-    }
-}
-
-fn init_secret<P: AsRef<Path>>(path: P) -> io::Result<[u8; 32]> {
-    if !path.as_ref().exists() {
-        if let Some(p) = path.as_ref().parent() {
-            fs::create_dir_all(p)?;
-        }
-    }
-
-    let rand = random::<[u8; 32]>(); // 256-bit secret
-    fs::write(path, rand)?;
-    Ok(rand)
+pub fn validate(password: &str) -> argon2::Result<bool> {
+    argon2::verify_encoded(&*secrets::PASSWORD_HASH, password.as_bytes())
 }
