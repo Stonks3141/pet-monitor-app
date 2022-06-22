@@ -1,0 +1,28 @@
+services:
+  proxy:
+    image: nginx:1.21-alpine
+    build: ./client
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - frontend
+      - backend
+    secrets:
+      - server-certificate
+
+  api:
+    build: ./api
+    ports:
+      - 80:8000
+    networks:
+      - backend
+
+networks:
+  frontend:
+    external: true
+  backend: {}
+
+secrets:
+  server-certificate:
+    external: true

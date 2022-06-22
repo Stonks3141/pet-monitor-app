@@ -19,16 +19,16 @@ jobs:
       run: |
         sudo apt-get install libv4l-0 libv4l-dev
 
-    - name: Build Rust
+    - name: Build backend
       run: |
-        cargo build
+        cargo build -p api
         cargo build -p v4l-streamer
 
-    - name: Build React
+    - name: Build frontend
+      working-directory: ./client
       run: |
         yarn install --immutable --immutable-cache
         yarn build
-      working-directory: ./client
 
   test:
 
@@ -41,16 +41,15 @@ jobs:
       run: |
         sudo apt-get install libv4l-0 libv4l-dev
 
-    - name: Run Rust tests
+    - name: Run backend tests
       run: |
         cargo test
-        cargo test -p v4l-streamer
 
-    - name: Run React tests
+    - name: Run frontend tests
+      working-directory: ./client
       run: |
         yarn install --immutable --immutable-cache
         yarn test
-      working-directory: ./client
 
   lint:
 
@@ -59,13 +58,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Lint Rust
+    - name: Lint backend
       run: |
         cargo clippy
-        cargo clippy -p v4l-streamer
 
-    - name: Lint React
+    - name: Lint frontend
+      working-directory: ./client
       run: |
         yarn install --immutable --immutable-cache
         yarn lint
-      working-directory: ./client
