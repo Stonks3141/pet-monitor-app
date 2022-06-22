@@ -5,8 +5,8 @@ const LiveCam = () => {
 
   useEffect(() => {
     fetch('/api/stream')
-      .then(res => res.text())
-      .then(data => {
+      .then((res) => res.text())
+      .then((data) => {
         setStream(data);
       });
   }, []);

@@ -23,7 +23,10 @@ interface LoginMenuProps {
 const LoginMenu = (props: LoginMenuProps) => {
   const [password, setPassword] = useState('');
   const [incorrect, setIncorrect] = useState(false);
-  const [showPassword, toggleShowPassword] = useReducer(state => !state, false);
+  const [showPassword, toggleShowPassword] = useReducer(
+    (state) => !state,
+    false
+  );
   const { auth: _, setAuth } = useContext(AuthContext);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -51,13 +54,13 @@ const LoginMenu = (props: LoginMenuProps) => {
           <div className="flex flex-row gap-2">
             <input
               type={showPassword ? 'text' : 'password'}
-              onChange={event => setPassword(event.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               className="border w-64 p-1 outline-none rounded focus:border-2
                 bg-slate-200 dark:bg-slate-700 border-indigo-400"
             />
             <button
               title={showPassword ? 'Hide password' : 'Show password'}
-              onClick={e => {
+              onClick={(e) => {
                 e.preventDefault();
                 toggleShowPassword();
               }}
