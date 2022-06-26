@@ -1,4 +1,4 @@
-name: Build
+name: Test
 
 on:
   - push
@@ -18,19 +18,17 @@ jobs:
         run: |
           sudo apt-get install libv4l-0 libv4l-dev
 
-      - name: Build
+      - name: Run tests
         run: |
-          cargo build -p pet-monitor-app
-          cargo build -p v4l-streamer
+          cargo test -p pet-monitor-app
+          cargo test -p v4l-streamer
 
   Typescript:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Build
+      - name: Run tests
         working-directory: ./client
         run: |
           yarn install --immutable --immutable-cache
-          yarn build
+          yarn test

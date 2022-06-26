@@ -1,4 +1,4 @@
-name: Build
+name: Lint
 
 on:
   - push
@@ -14,14 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install v4l2
+      - name: Run lints
         run: |
-          sudo apt-get install libv4l-0 libv4l-dev
-
-      - name: Build
-        run: |
-          cargo build -p pet-monitor-app
-          cargo build -p v4l-streamer
+          cargo clippy
 
   Typescript:
     runs-on: ubuntu-latest
@@ -29,8 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build
+      - name: Run lints
         working-directory: ./client
         run: |
           yarn install --immutable --immutable-cache
-          yarn build
+          yarn lint
