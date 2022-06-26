@@ -15,8 +15,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install v4l2
-        run: |
-          sudo apt-get install libv4l-0 libv4l-dev
+        run: sudo apt-get install libv4l-0 libv4l-dev
 
       - name: Run tests
         run: |
@@ -27,8 +26,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        working-directory: client
+        run: yarn install --immutable --immutable-cache
+
       - name: Run tests
-        working-directory: ./client
-        run: |
-          yarn install --immutable --immutable-cache
-          yarn test
+        working-directory: client
+        run: yarn test
