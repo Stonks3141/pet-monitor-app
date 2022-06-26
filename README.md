@@ -1,6 +1,6 @@
 # pet-monitor-app
 
-![Build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)
+[![Build and test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 
 This project is currently pre-alpha.
 Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html) will be used for video, but I'm also considering libcamera since it's intended to replace v4l2 for high-level usage.
@@ -54,8 +54,8 @@ I wanted to make a pet monitor without paying for one, so I used [fmp4streamer](
 - [x] Basic UI
 - [x] JSON web token authentication
 - [x] Rewrite backend in Rust/Rocket
-- [ ] Secure password verification (argon2)
-- [ ] Docker container
+- [x] Secure password verification (argon2)
+- [x] Docker container
 - [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
 - [ ] Proxy authenticated video requests to fmp4streamer as an intermediate solution
 - [ ] Rust v4l2 (libcamera?) streaming
