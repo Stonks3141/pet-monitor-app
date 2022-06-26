@@ -11,11 +11,11 @@ pub struct Claims {
 }
 
 impl Claims {
-    pub fn new(exp_duration: Duration) -> Self {
+    pub fn new(expires_in: Duration) -> Self {
         let utc = Utc::now();
         Self {
             iat: utc.timestamp() as u64,
-            exp: (utc + exp_duration).timestamp() as u64,
+            exp: (utc + expires_in).timestamp() as u64,
         }
     }
 }
@@ -26,6 +26,8 @@ impl Default for Claims {
     }
 }
 
+const ALG: jwt::Algorithm = jwt::Algorithm::HS256;
+
 #[derive(Debug)]
 pub struct Token {
     header: jwt::Header,
@@ -35,7 +37,7 @@ pub struct Token {
 impl Token {
     pub fn new() -> Self {
         Self {
-            header: jwt::Header::new(jwt::Algorithm::ES256),
+            header: jwt::Header::new(ALG),
             claims: Claims::default(),
         }
     }
@@ -50,13 +52,16 @@ impl FromStr for Token {
         match jwt::decode::<Claims>(
             s,
             &dec_key,
-            &jwt::Validation::new(jwt::Algorithm::ES256),
+            &jwt::Validation::new(ALG),
         ) {
             Ok(t) => Ok(Self {
                 header: t.header,
                 claims: t.claims,
             }),
-            Err(e) => Err(e),
+            Err(e) => {
+                println!("{:?}", e);
+                Err(e)
+            },
         }
     }
 }
