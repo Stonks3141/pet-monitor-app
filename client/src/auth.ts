@@ -7,6 +7,10 @@ const validate = async (password: string): Promise<boolean> => {
     body: password,
   });
 
+  if (res.status == 500) {
+    alert('Server error when attempting to authenticate. Please try again.');
+  }
+
   return res.ok;
 };
 
