@@ -3,6 +3,7 @@
 [![Build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![Test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml)
 [![Lint](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml)
+![License](https://img.shields.io/badge/License-GPLv3-blue)
 
 This project is currently pre-alpha.
 Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html) will be used for video, but I'm also considering libcamera since it's intended to replace v4l2 for high-level usage.
