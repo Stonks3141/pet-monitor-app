@@ -13,13 +13,19 @@ use std::{env, fs, io, path::Path};
 ///
 /// This program expects to be run in a Docker container with access to
 /// `/var/local` and panics if it cannot read or write files there.
+#[cfg(not(debug_assertions))]
 pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
+#[cfg(debug_assertions)]
+pub const SECRET_PATH: &str = "./jwt_secret";
 
 /// The path used to store the password hash.
 ///
 /// This program expects to be run in a Docker container with access to
 /// `/var/local` and panics if it cannot read or write files there.
+#[cfg(not(debug_assertions))]
 pub const PASSWORD_PATH: &str = "/var/local/lib/pet-monitor-app/password";
+#[cfg(debug_assertions)]
+pub const PASSWORD_PATH: &str = "./password";
 
 /// A CSPRNG ([`ring::rand::SystemRandom`]).
 ///
@@ -73,7 +79,8 @@ pub static SECRET: OnceCell<[u8; 32]> = OnceCell::new();
 /// ```
 ///
 /// # Panics
-/// This function may panic if it does not have read or write access to `/var/local`.
+/// This function may panic if it does not have read or write access to
+/// `/var/local` and it was compiled for release.
 pub fn init_pwd() -> io::Result<String> {
     if let Ok(p) = env::var("PASSWORD") {
         let config = argon2::Config {
@@ -86,7 +93,11 @@ pub fn init_pwd() -> io::Result<String> {
         let mut buf = [0u8; 16];
         RAND.get().unwrap().fill(&mut buf).unwrap();
         let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config).unwrap();
-        fs::create_dir_all("/var/local/lib/pet-monitor-app")?;
+
+        if let Some(p) = Path::new(PASSWORD_PATH).parent() {
+            fs::create_dir_all(p)?;
+        }
+
         fs::write(PASSWORD_PATH, &hash)?;
         Ok(hash)
     } else {
@@ -110,17 +121,15 @@ pub fn init_pwd() -> io::Result<String> {
 /// // initialize RNG
 /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
 ///
-/// let old_secret: [u8; 32] = fs::read(secrets::SECRET_PATH).unwrap().try_into().unwrap();
-/// let secret = secrets::init_secret().unwrap();
-/// assert_eq!(old_secret, secret);
-///
+/// let old_secret = secrets::init_secret().unwrap();
 /// env::set_var("REGEN_SECRET", "true");
 /// let secret = secrets::init_secret().unwrap();
 /// assert_ne!(old_secret, secret);
 /// ```
 ///
 /// # Panics
-/// This function may panic if it does not have read or write access to `/var/local`.
+/// This function may panic if it does not have read or write access to
+/// `/var/local` and it was compiled for release.
 pub fn init_secret() -> io::Result<[u8; 32]> {
     if env::var("REGEN_SECRET") == Ok("true".to_string()) {
         new_secret(SECRET_PATH)

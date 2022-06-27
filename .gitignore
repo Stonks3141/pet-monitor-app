@@ -27,3 +27,7 @@ target/
 *.pem-chain
 *.cert
 *.crt
+
+# Test secrets
+password
+jwt_secret

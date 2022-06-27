@@ -1,10 +1,10 @@
 use pet_monitor_app::routes::*;
 use pet_monitor_app::secrets;
 use ring::rand::SystemRandom;
-use rocket::{launch, routes};
+use rocket::routes;
 
-#[launch]
-fn rocket() -> _ {
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
     secrets::RAND.set(SystemRandom::new()).unwrap(); // infallible, the value can't be set at this point
 
     secrets::PASSWORD_HASH
@@ -15,5 +15,10 @@ fn rocket() -> _ {
         .set(secrets::init_secret().expect("Failed to initialize JWT secret."))
         .unwrap(); // infallible
 
-    rocket::build().mount("/", routes![login, stream])
+    let _ = rocket::build()
+        .mount("/", routes![login, stream])
+        .launch()
+        .await?;
+    
+    Ok(())
 }
