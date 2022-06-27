@@ -14,6 +14,9 @@ pub fn init_pwd() -> io::Result<String> {
     if let Ok(p) = env::var("PASSWORD") {
         let config = argon2::Config {
             mem_cost: 8192, // KiB
+            time_cost: 3,
+            lanes: 4,
+            variant: argon2::Variant::Argon2id,
             ..Default::default()
         };
         let mut buf = [0u8; 16];

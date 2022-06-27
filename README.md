@@ -9,8 +9,7 @@ Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/medi
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Installation](#installation)
-    - [General](#general)
-    - [Development](#development)
+  - [Development](#development)
   - [Usage](#usage)
   - [Testing](#testing)
   - [Motivation](#motivation)
@@ -21,23 +20,21 @@ Meant to run on a Raspberry Pi. [v4l2](https://www.kernel.org/doc/html/v4.9/medi
 
 ## Installation
 
-### General
-
 Docker container coming soon.
 
-### Development
+## Development
 
-Clone the repo and install node, yarn and rustup. Run `yarn start` in the `client/` directory to start the frontend dev server. Run `cargo run` in the base directory to start the development server. This will try to serve files from `client/build/`, so run `yarn build` first.
+Clone the repo and install Node, yarn and rustup. Run `yarn start` in the `client/` directory to start the frontend dev server. Run `cargo run` in the base directory to start the development server. This will try to serve files from `client/build/`, so run `yarn build` first.
 
 ## Usage
 
-Run `cargo run` with the SECRET env var set to a base64 secret and the PASSWORD var set to the password you want to use.
+Run `cargo run`. Set the `PASSWORD` env var the first time and any time you want to change the password.
 
 ## Testing
 
 Tests are a work in progress.
 
-Test the server with `cargo test` in the root directory, and the client with `yarn run test` in the `client/` directory.
+Test the server with `cargo test`, and the client with `yarn test` in the `client/` directory.
 
 ## Motivation
 
