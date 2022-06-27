@@ -1,5 +1,5 @@
+use ring::rand::{SecureRandom, SystemRandom};
 use std::time::Instant;
-use ring::rand::{SystemRandom, SecureRandom};
 
 /// used for finding good argon2 params
 #[test]

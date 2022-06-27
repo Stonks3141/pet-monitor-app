@@ -1,3 +1,5 @@
+//! This module provides Rocket routes for the server.
+
 use crate::auth;
 use jsonwebtoken::errors::ErrorKind;
 use rocket::http::{Cookie, CookieJar, Status};
