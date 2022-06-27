@@ -4,14 +4,17 @@ use jsonwebtoken as jwt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
+struct Claims {
     iat: u64,
     exp: u64,
 }
 
 impl Claims {
-    pub fn new(expires_in: Duration) -> Self {
+    fn new(expires_in: Duration) -> Self {
         let utc = Utc::now();
         Self {
             iat: utc.timestamp() as u64,
