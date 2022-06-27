@@ -1,8 +1,8 @@
+use crate::secrets;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use crate::secrets;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -47,13 +47,9 @@ impl FromStr for Token {
     type Err = jwt::errors::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let dec_key = jwt::DecodingKey::from_secret(&*secrets::SECRET);
+        let dec_key = jwt::DecodingKey::from_secret(secrets::SECRET.get().unwrap());
 
-        match jwt::decode::<Claims>(
-            s,
-            &dec_key,
-            &jwt::Validation::new(ALG),
-        ) {
+        match jwt::decode::<Claims>(s, &dec_key, &jwt::Validation::new(ALG)) {
             Ok(t) => Ok(Self {
                 header: t.header,
                 claims: t.claims,
@@ -61,7 +57,7 @@ impl FromStr for Token {
             Err(e) => {
                 println!("{:?}", e);
                 Err(e)
-            },
+            }
         }
     }
 }
@@ -69,7 +65,7 @@ impl FromStr for Token {
 impl TryFrom<Token> for String {
     type Error = jwt::errors::Error;
     fn try_from(token: Token) -> Result<Self, Self::Error> {
-        let enc_key = jwt::EncodingKey::from_secret(&*secrets::SECRET);
+        let enc_key = jwt::EncodingKey::from_secret(secrets::SECRET.get().unwrap());
 
         jwt::encode(&token.header, &token.claims, &enc_key)
     }
@@ -82,5 +78,5 @@ impl Default for Token {
 }
 
 pub fn validate(password: &str) -> argon2::Result<bool> {
-    argon2::verify_encoded(&*secrets::PASSWORD_HASH, password.as_bytes())
+    argon2::verify_encoded(secrets::PASSWORD_HASH.get().unwrap(), password.as_bytes())
 }

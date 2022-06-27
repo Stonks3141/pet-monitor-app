@@ -27,10 +27,10 @@ pub fn stream(cookies: &CookieJar<'_>) -> Result<String, Status> {
         Some(cookie) => match cookie.value().parse::<auth::Token>() {
             Ok(_) => Ok("stream".to_string()),
             Err(e) => match e.kind() {
-                ErrorKind::Base64(_) |
-                ErrorKind::Crypto(_) |
-                ErrorKind::Json(_) |
-                ErrorKind::Utf8(_) => Err(Status::InternalServerError),
+                ErrorKind::Base64(_)
+                | ErrorKind::Crypto(_)
+                | ErrorKind::Json(_)
+                | ErrorKind::Utf8(_) => Err(Status::InternalServerError),
                 _ => Err(Status::Unauthorized),
             },
         },
