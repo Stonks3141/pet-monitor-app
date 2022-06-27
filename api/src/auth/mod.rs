@@ -81,5 +81,6 @@ impl Default for Token {
 }
 
 pub fn validate(password: &str) -> argon2::Result<bool> {
+    // unwrap should be safe if main has run
     argon2::verify_encoded(secrets::PASSWORD_HASH.get().unwrap(), password.as_bytes())
 }

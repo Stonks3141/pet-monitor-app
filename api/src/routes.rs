@@ -3,6 +3,7 @@ use jsonwebtoken::errors::ErrorKind;
 use rocket::http::{Cookie, CookieJar, Status};
 use rocket::{get, post};
 
+/// Validates a password and issues tokens
 #[post("/api/auth", data = "<password>")]
 pub fn login(password: String, cookies: &CookieJar<'_>) -> Result<(), Status> {
     if let Ok(b) = auth::validate(&password) {
@@ -21,6 +22,7 @@ pub fn login(password: String, cookies: &CookieJar<'_>) -> Result<(), Status> {
     }
 }
 
+/// A test route that validates the client's token
 #[get("/api/stream")]
 pub fn stream(cookies: &CookieJar<'_>) -> Result<String, Status> {
     match cookies.get("token") {
