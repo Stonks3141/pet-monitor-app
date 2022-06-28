@@ -1,16 +1,16 @@
 // Pet Montitor App
 // Copyright (C) 2022  Samuel Nystrom
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
@@ -76,8 +76,7 @@ pub static SECRET: OnceCell<[u8; 32]> = OnceCell::new();
 /// the hash to [`PASSWORD_PATH`], and returns the hash. Otherwise, it reads the
 /// hash from [`PASSWORD_PATH`].
 ///
-/// # Examples
-/// Basic usage:
+/// # Example
 /// ```
 /// use std::env;
 /// use ring::rand::SystemRandom;
@@ -127,8 +126,7 @@ pub fn init_pwd() -> io::Result<String> {
 /// it generates a new random secret and writes that to [`SECRET_PATH`]. Otherwise,
 /// it attempts to read the secret from [`SECRET_PATH`].
 ///
-/// # Examples
-/// Basic usage:
+/// # Example
 /// ```
 /// use std::{env, fs};
 /// use ring::rand::SystemRandom;
