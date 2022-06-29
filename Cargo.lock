@@ -967,7 +967,6 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "jsonwebtoken",
- "once_cell",
  "ring",
  "rocket",
  "rust-argon2",

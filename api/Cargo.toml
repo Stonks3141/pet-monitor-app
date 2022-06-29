@@ -17,7 +17,7 @@
 [package]
 name = "pet-monitor-app"
 description = "Simple and secure pet monitor for Raspberry Pi"
-license = "MIT"
+license = "GPL-3.0"
 repository = "https://github.com/Stonks3141/pet-monitor-app"
 readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
 version = "0.1.0"
@@ -26,11 +26,8 @@ rust-version = "1.60"
 
 [dependencies]
 rocket = "0.5.0-rc.2"
-#juniper = "0.15"
 jsonwebtoken = "8.1"
-#v4l-streamer = { version = "0.1", path = "../v4l-streamer" }
 serde = "1.0"
-once_cell = "1.12"
 ring = "0.16"
 chrono = "0.4"
 rust-argon2 = "1.0"

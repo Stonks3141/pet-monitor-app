@@ -14,166 +14,177 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! This module provides statics for a CSPRNG and the password hash and JWT
-//! signing secret, as well as initialization functions.
+//! This module provides structs for the password hash and JWT
+//! signing secret.
 //!
-//! The statics are initialized with [`once_cell::sync::OnceCell`] at the
-//! beginning of the binary crate's `main` function using [`init_secret()`] and
-//! [`init_pwd()`].
+//! The structs are initialized in the `main` function and managed by Rocket
+//! [`State`](rocket::State). This is why wrapper types are necessary.
 
-use once_cell::sync::OnceCell;
-use ring::rand::{SecureRandom, SystemRandom};
-use std::{env, fs, io, path::Path};
+use ring::rand::SecureRandom;
+use std::{
+    env, fs, io,
+    ops::{Deref, DerefMut},
+    path::Path,
+};
 
-/// The path used to store the JWT signing secret.
-///
-/// This program expects to be run in a Docker container with access to
-/// `/var/local` and panics if it cannot read or write files there.
 #[cfg(not(debug_assertions))]
 pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
+/// The path used to store the JWT signing secret.
+///
+/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
+/// mode, and `./jwt_secret` otherwise.
 #[cfg(debug_assertions)]
 pub const SECRET_PATH: &str = "./jwt_secret";
 
-/// The path used to store the password hash.
-///
-/// This program expects to be run in a Docker container with access to
-/// `/var/local` and panics if it cannot read or write files there.
 #[cfg(not(debug_assertions))]
 pub const PASSWORD_PATH: &str = "/var/local/lib/pet-monitor-app/password";
+/// The path used to store the JWT signing secret.
+///
+/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
+/// mode, and `./jwt_secret` otherwise.
 #[cfg(debug_assertions)]
 pub const PASSWORD_PATH: &str = "./password";
 
-/// A CSPRNG ([`ring::rand::SystemRandom`]).
-///
-///
-/// Access it with `RAND.get().unwrap()`. The `.unwrap()` is safe
-/// because the static is initialized at the beginning of `main()`.
-pub static RAND: OnceCell<SystemRandom> = OnceCell::new();
+pub struct Password(pub String);
 
-/// The argon2-hashed password.
-///
-/// Loaded from `/var/local/lib/pet-monitor-app/password`.
-/// If the `PASSWORD` env var is set, then the old password will be overwritten
-/// with the new one.
-///
-/// Access it with `PASSWORD_HASH.get().unwrap()`. The `.unwrap()` is safe
-/// because the static is initialized at the beginning of `main()`.
-pub static PASSWORD_HASH: OnceCell<String> = OnceCell::new();
+impl Password {
+    /// Attempts to initialize the password hash.
+    ///
+    /// It first checks the `PASSWORD` env var. If it is set, it hashes it, writes
+    /// the hash to [`PASSWORD_PATH`], and returns the hash. Otherwise, it reads the
+    /// hash from [`PASSWORD_PATH`].
+    ///
+    /// # Example
+    /// ```
+    /// use std::env;
+    /// use ring::rand::SystemRandom;
+    /// use pet_monitor_app::secrets;
+    ///
+    /// // initialize RNG
+    /// let rng = SystemRandom::new();
+    ///
+    /// let password = "123";
+    /// env::set_var("PASSWORD", password);
+    /// let hash = secrets::Password::new(&rng).unwrap();
+    ///
+    /// let result = argon2::verify_encoded(&hash, password.as_bytes()).unwrap();
+    /// assert!(result);
+    /// ```
+    ///
+    /// # Panics
+    /// This function may panic if it does not have read or write access to
+    /// `/var/local` and it was compiled for release.
+    pub fn new(rng: &impl SecureRandom) -> io::Result<Self> {
+        if let Ok(p) = env::var("PASSWORD") {
+            let config = argon2::Config {
+                mem_cost: 8192, // KiB
+                time_cost: 3,
+                lanes: 4,
+                variant: argon2::Variant::Argon2id,
+                ..Default::default()
+            };
 
-/// The secret value used for signing JWTs.
-///
-/// Loaded from `/var/local/lib/pet-monitor-app/jwt_secret`.
-/// If the `REGEN_SECRET` env var is set to `true`, a new secret will be
-/// generated and stored.
-///
-/// Access it with `SECRET.get().unwrap()`. The `.unwrap()` is safe
-/// because the static is initialized at the beginning of `main()`.
-pub static SECRET: OnceCell<[u8; 32]> = OnceCell::new();
+            let mut buf = [0u8; 16];
+            rng.fill(&mut buf)
+                .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
 
-/// Attempts to initialize the password hash.
-///
-/// It first checks the `PASSWORD` env var. If it is set, it hashes it, writes
-/// the hash to [`PASSWORD_PATH`], and returns the hash. Otherwise, it reads the
-/// hash from [`PASSWORD_PATH`].
-///
-/// # Example
-/// ```
-/// use std::env;
-/// use ring::rand::SystemRandom;
-/// use pet_monitor_app::secrets;
-///
-/// // initialize RNG
-/// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-///
-/// let password = "123";
-/// env::set_var("PASSWORD", password);
-/// let hash = secrets::init_pwd().unwrap();
-///
-/// let result = argon2::verify_encoded(&hash, password.as_bytes()).unwrap();
-/// assert!(result);
-/// ```
-///
-/// # Panics
-/// This function may panic if it does not have read or write access to
-/// `/var/local` and it was compiled for release.
-pub fn init_pwd() -> io::Result<String> {
-    if let Ok(p) = env::var("PASSWORD") {
-        let config = argon2::Config {
-            mem_cost: 8192, // KiB
-            time_cost: 3,
-            lanes: 4,
-            variant: argon2::Variant::Argon2id,
-            ..Default::default()
-        };
-        let mut buf = [0u8; 16];
-        RAND.get().unwrap().fill(&mut buf).unwrap();
-        let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config).unwrap();
+            let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config).unwrap();
 
-        if let Some(p) = Path::new(PASSWORD_PATH).parent() {
-            fs::create_dir_all(p)?;
-        }
-
-        fs::write(PASSWORD_PATH, &hash)?;
-        Ok(hash)
-    } else {
-        fs::read_to_string(PASSWORD_PATH)
-    }
-}
-
-/// A function to initialize the JWT signing secret.
-///
-/// It first checks if the `REGEN_SECRET` env var is set to `true`. If it is,
-/// it generates a new random secret and writes that to [`SECRET_PATH`]. Otherwise,
-/// it attempts to read the secret from [`SECRET_PATH`].
-///
-/// # Example
-/// ```
-/// use std::{env, fs};
-/// use ring::rand::SystemRandom;
-/// use pet_monitor_app::secrets;
-///
-/// // initialize RNG
-/// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-///
-/// let old_secret = secrets::init_secret().unwrap();
-/// env::set_var("REGEN_SECRET", "true");
-/// let secret = secrets::init_secret().unwrap();
-/// assert_ne!(old_secret, secret);
-/// ```
-///
-/// # Panics
-/// This function may panic if it does not have read or write access to
-/// `/var/local` and it was compiled for release.
-pub fn init_secret() -> io::Result<[u8; 32]> {
-    if env::var("REGEN_SECRET") == Ok("true".to_string()) {
-        new_secret(SECRET_PATH)
-    } else {
-        match fs::read(SECRET_PATH) {
-            Ok(s) => {
-                if let Ok(s) = s.try_into() {
-                    Ok(s)
-                } else {
-                    new_secret(SECRET_PATH)
-                }
+            if let Some(p) = Path::new(PASSWORD_PATH).parent() {
+                fs::create_dir_all(p)?;
             }
-            Err(e) => match e.kind() {
-                io::ErrorKind::NotFound => new_secret(SECRET_PATH),
-                e => Err(io::Error::from(e)),
-            },
+
+            fs::write(PASSWORD_PATH, &hash)?;
+            Ok(Self(hash))
+        } else {
+            fs::read_to_string(PASSWORD_PATH).map(|s| Self(s))
         }
     }
 }
 
-/// Generates a secure random secret, writes it to `SECRET_PATH`, and returns it.
-fn new_secret<P: AsRef<Path>>(path: P) -> io::Result<[u8; 32]> {
-    if !path.as_ref().exists() {
-        if let Some(p) = path.as_ref().parent() {
-            fs::create_dir_all(p)?;
+impl Deref for Password {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Password {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub struct Secret(pub [u8; 32]);
+
+impl Secret {
+    /// A function to initialize the JWT signing secret.
+    ///
+    /// It first checks if the `REGEN_SECRET` env var is set to `true`. If it is,
+    /// it generates a new random secret and writes that to [`SECRET_PATH`]. Otherwise,
+    /// it attempts to read the secret from [`SECRET_PATH`].
+    ///
+    /// # Example
+    /// ```
+    /// use std::{env, fs};
+    /// use ring::rand::SystemRandom;
+    /// use pet_monitor_app::secrets;
+    ///
+    /// let rng = SystemRandom::new();
+    ///
+    /// let old_secret = secrets::Secret::new(&rng).unwrap();
+    /// env::set_var("REGEN_SECRET", "true");
+    /// let secret = secrets::Secret::new(&rng).unwrap();
+    /// assert_ne!(*old_secret, *secret);
+    /// ```
+    ///
+    /// # Panics
+    /// This function may panic if it does not have read or write access to
+    /// `/var/local` and it was compiled for release.
+    pub fn new(rng: &impl SecureRandom) -> io::Result<Self> {
+        if env::var("REGEN_SECRET") == Ok("true".to_string()) {
+            Self::new_secret(SECRET_PATH, rng)
+        } else {
+            match fs::read(SECRET_PATH) {
+                Ok(s) => {
+                    if let Ok(s) = s.try_into() {
+                        Ok(Self(s))
+                    } else {
+                        Self::new_secret(SECRET_PATH, rng)
+                    }
+                }
+                Err(e) => match e.kind() {
+                    io::ErrorKind::NotFound => Self::new_secret(SECRET_PATH, rng),
+                    e => Err(io::Error::from(e)),
+                },
+            }
         }
     }
-    let mut buf = [0u8; 32];
-    RAND.get().unwrap().fill(&mut buf).unwrap();
 
-    fs::write(path, buf)?;
-    Ok(buf)
+    /// Generates a secure random secret, writes it to `SECRET_PATH`, and returns it.
+    fn new_secret<P: AsRef<Path>>(path: P, rng: &impl SecureRandom) -> io::Result<Self> {
+        if !path.as_ref().exists() {
+            if let Some(p) = path.as_ref().parent() {
+                fs::create_dir_all(p)?;
+            }
+        }
+        let mut buf = [0u8; 32];
+        rng.fill(&mut buf).unwrap();
+
+        fs::write(path, buf)?;
+        Ok(Self(buf))
+    }
+}
+
+impl Deref for Secret {
+    type Target = [u8; 32];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Secret {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }

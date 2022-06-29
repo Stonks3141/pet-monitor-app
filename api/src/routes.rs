@@ -16,10 +16,10 @@
 
 //! This module provides Rocket routes for the server.
 
-use crate::auth;
+use crate::{auth, secrets};
 use jsonwebtoken::errors::ErrorKind;
 use rocket::http::{Cookie, CookieJar, Status};
-use rocket::{get, post};
+use rocket::{get, post, State};
 
 /// Validates a password and issues tokens.
 ///
@@ -35,10 +35,15 @@ use rocket::{get, post};
 ///     .mount("/", routes![login]);
 /// ```
 #[post("/api/auth", data = "<password>")]
-pub fn login(password: String, cookies: &CookieJar<'_>) -> Result<(), Status> {
-    if let Ok(b) = auth::validate(&password) {
+pub fn login(
+    password: String,
+    cookies: &CookieJar<'_>,
+    hash: &State<secrets::Password>,
+    secret: &State<secrets::Secret>,
+) -> Result<(), Status> {
+    if let Ok(b) = auth::validate(&password, &**hash) {
         if b {
-            let token = match String::try_from(&auth::Token::new()) {
+            let token = match auth::Token::new().to_string(&secret) {
                 Ok(t) => t,
                 Err(_) => return Err(Status::InternalServerError),
             };
@@ -68,14 +73,16 @@ pub fn login(password: String, cookies: &CookieJar<'_>) -> Result<(), Status> {
 ///     .mount("/", routes![stream]);
 /// ```
 #[get("/api/stream")]
-pub fn stream(cookies: &CookieJar<'_>) -> Result<String, Status> {
+pub fn stream(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Result<String, Status> {
     match cookies.get("token") {
-        Some(cookie) => match cookie.value().parse::<auth::Token>() {
-            Ok(t) => if t.verify() {
-                Ok("stream".to_string())
-            } else {
-                Err(Status::Unauthorized)
-            },
+        Some(cookie) => match auth::Token::from_str(cookie.value(), secret) {
+            Ok(t) => {
+                if t.verify() {
+                    Ok("stream".to_string())
+                } else {
+                    Err(Status::Unauthorized)
+                }
+            }
             Err(e) => match e.kind() {
                 ErrorKind::Base64(_)
                 | ErrorKind::Crypto(_)

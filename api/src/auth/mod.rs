@@ -24,7 +24,6 @@ use crate::secrets;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[cfg(test)]
 mod tests;
@@ -71,11 +70,7 @@ impl Token {
     ///
     /// # Example
     /// ```
-    /// use pet_monitor_app::{secrets, auth::Token};
-    /// use ring::rand::SystemRandom;
-    /// 
-    /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-    /// secrets::SECRET.set(secrets::init_secret().unwrap()).unwrap_or(());
+    /// use pet_monitor_app::auth::Token;
     ///
     /// let token = Token::new();
     /// assert!(token.verify());
@@ -88,17 +83,13 @@ impl Token {
     }
 
     /// Creates a new token that expires in `expires_in` time.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use chrono::Duration;
     /// use std::{thread, time};
-    /// use pet_monitor_app::{secrets, auth::Token};
-    /// use ring::rand::SystemRandom;
-    /// 
-    /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-    /// secrets::SECRET.set(secrets::init_secret().unwrap()).unwrap_or(());
-    /// 
+    /// use pet_monitor_app::auth::Token;
+    ///
     /// let token = Token::with_expiration(Duration::seconds(1));
     /// thread::sleep(time::Duration::from_secs(2));
     /// assert!(!token.verify());
@@ -111,15 +102,11 @@ impl Token {
     }
 
     /// Verifies the validity of a `Token`.
-    /// 
+    ///
     /// # Example
     /// ```
-    /// use pet_monitor_app::{secrets, auth::Token};
-    /// use ring::rand::SystemRandom;
-    /// 
-    /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-    /// secrets::SECRET.set(secrets::init_secret().unwrap()).unwrap_or(());
-    /// 
+    /// use pet_monitor_app::auth::Token;
+    ///
     /// let token = Token::new();
     /// assert!(token.verify());
     /// ```
@@ -132,29 +119,22 @@ impl Token {
 
         utc < exp
     }
-}
-
-impl FromStr for Token {
-    type Err = jwt::errors::Error;
 
     /// Parses a JWT into a `Token`.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use pet_monitor_app::{secrets, auth::Token};
-    /// use std::str::FromStr;
-    /// use ring::rand::SystemRandom;
-    /// 
-    /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-    /// secrets::SECRET.set(secrets::init_secret().unwrap()).unwrap_or(());
-    /// 
+    ///
+    /// let secret = secrets::Secret([0u8; 32]);
+    ///
     /// let token = Token::new();
-    /// let str_token = String::try_from(&token).unwrap();
-    /// let new_token = Token::from_str(&str_token).unwrap();
+    /// let str_token = token.to_string(&secret).unwrap();
+    /// let new_token = Token::from_str(&str_token, &secret).unwrap();
     /// assert_eq!(token, new_token);
     /// ```
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let dec_key = jwt::DecodingKey::from_secret(secrets::SECRET.get().unwrap());
+    pub fn from_str(s: &str, secret: &secrets::Secret) -> jwt::errors::Result<Self> {
+        let dec_key = jwt::DecodingKey::from_secret(&**secret);
 
         match jwt::decode::<Claims>(s, &dec_key, &jwt::Validation::new(ALG)) {
             Ok(t) => Ok(Self {
@@ -167,54 +147,39 @@ impl FromStr for Token {
             }
         }
     }
-}
-
-impl TryFrom<&Token> for String {
-    type Error = jwt::errors::Error;
 
     /// Creates a JWT from a `Token`.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use pet_monitor_app::{secrets, auth::Token};
-    /// use ring::rand::SystemRandom;
-    /// 
-    /// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-    /// secrets::SECRET.set(secrets::init_secret().unwrap()).unwrap_or(());
-    /// 
+    ///
+    /// let secret = secrets::Secret([0u8; 32]);
+    ///
     /// let token = Token::new();
-    /// let str_token = String::try_from(&token).unwrap();
+    /// let str_token = token.to_string(&secret).unwrap();
     /// ```
-    fn try_from(token: &Token) -> Result<Self, Self::Error> {
-        let enc_key = jwt::EncodingKey::from_secret(secrets::SECRET.get().unwrap());
+    pub fn to_string(&self, secret: &secrets::Secret) -> jwt::errors::Result<String> {
+        let enc_key = jwt::EncodingKey::from_secret(&**secret);
 
-        jwt::encode(&token.header, &token.claims, &enc_key)
+        jwt::encode(&self.header, &self.claims, &enc_key)
     }
 }
 
-impl Default for Token {
-    /// An alias for `Token::new()`.
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Validates a password against [`secrets::PASSWORD_HASH`].
-/// 
+/// Validates a password against a hash.
+///
 /// # Example
 /// ```
 /// use pet_monitor_app::{secrets, auth};
-/// use ring::rand::SystemRandom;
-/// use std::env;
-/// 
-/// env::set_var("PASSWORD", "123");
-/// 
-/// secrets::RAND.set(SystemRandom::new()).unwrap_or(());
-/// secrets::PASSWORD_HASH.set(secrets::init_pwd().unwrap()).unwrap_or(());
-/// 
-/// assert!(auth::validate("123").unwrap());
+///
+/// let password = "password";
+/// let config = argon2::Config::default();
+/// let hash = secrets::Password(
+///     argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
+///
+/// assert!(auth::validate(password, &hash).unwrap());
 /// ```
-pub fn validate(password: &str) -> argon2::Result<bool> {
+pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
     // unwrap should be safe if main has run
-    argon2::verify_encoded(secrets::PASSWORD_HASH.get().unwrap(), password.as_bytes())
+    argon2::verify_encoded(&hash, password.as_bytes())
 }

@@ -18,17 +18,16 @@ use super::*;
 
 #[test]
 fn valid_token() {
-    secrets::SECRET.set([0; 32]).unwrap_or(());
-
+    let secret = secrets::Secret([0u8; 32]);
     let token = Token::new();
-    let token = String::try_from(&token).unwrap();
+    let token = token.to_string(&secret).unwrap();
 
-    assert!(Token::from_str(&token).is_ok());
+    assert!(Token::from_str(&token, &secret).is_ok());
 }
 
 #[test]
 fn invalid_token() {
-    secrets::SECRET.set([0; 32]).unwrap_or(());
+    let secret = secrets::Secret([0u8; 32]);
 
     let utc = Utc::now();
     let claims = Claims {
@@ -41,25 +40,27 @@ fn invalid_token() {
         claims,
     };
 
-    let token = String::try_from(&token).unwrap();
+    let token = token.to_string(&secret).unwrap();
 
-    assert!(Token::from_str(&token).is_err());
+    assert!(Token::from_str(&token, &secret).is_err());
 }
 
 #[test]
 fn validate_correct_password() {
+    let password = "password";
     let config = argon2::Config::default();
-    let hash = argon2::hash_encoded("password".as_bytes(), &[0u8; 16], &config).unwrap();
-    secrets::PASSWORD_HASH.set(hash).unwrap_or(());
+    let hash =
+        secrets::Password(argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
 
-    assert!(validate("password").unwrap());
+    assert!(validate(password, &hash).unwrap());
 }
 
 #[test]
 fn validate_incorrect_password() {
+    let password = "password";
     let config = argon2::Config::default();
-    let hash = argon2::hash_encoded("password".as_bytes(), &[0u8; 16], &config).unwrap();
-    secrets::PASSWORD_HASH.set(hash).unwrap_or(());
+    let hash =
+        secrets::Password(argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
 
-    assert!(!validate("paswurd").unwrap());
+    assert!(!validate("paswurd", &hash).unwrap());
 }
