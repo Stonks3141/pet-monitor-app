@@ -17,16 +17,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # build frontend
-FROM node:18-alpine AS build
-WORKDIR /tmp/pet-monitor-app
-COPY . .
-RUN yarn install --immutable --immutable-cache
-RUN yarn build
+#FROM node:18-alpine AS build
+#WORKDIR /tmp/pet-monitor-app
+#COPY . .
+#RUN yarn install --immutable --immutable-cache
+#RUN yarn build
 
 # set up nginx
 FROM nginx:1.21-alpine
 COPY nginx.conf /etc/nginx
-COPY --from=build /tmp/pet-monitor-app/build /etc/nginx/html
+#COPY --from=build /tmp/pet-monitor-app/build /etc/nginx/html
+COPY ./build /etc/nginx/html
 
 ENTRYPOINT [ "nginx" ]
 EXPOSE 80 443

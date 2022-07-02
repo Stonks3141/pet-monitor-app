@@ -69,7 +69,7 @@ impl Token {
     /// Creates a new token that expires in 1 day.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use pet_monitor_app::auth::Token;
     ///
     /// let token = Token::new();
@@ -85,7 +85,7 @@ impl Token {
     /// Creates a new token that expires in `expires_in` time.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use chrono::Duration;
     /// use std::{thread, time};
     /// use pet_monitor_app::auth::Token;
@@ -104,7 +104,7 @@ impl Token {
     /// Verifies the validity of a `Token`.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use pet_monitor_app::auth::Token;
     ///
     /// let token = Token::new();
@@ -123,15 +123,18 @@ impl Token {
     /// Parses a JWT into a `Token`.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use pet_monitor_app::{secrets, auth::Token};
+    /// # fn main() -> Result<(), impl std::error::Error> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
     ///
     /// let token = Token::new();
-    /// let str_token = token.to_string(&secret).unwrap();
-    /// let new_token = Token::from_str(&str_token, &secret).unwrap();
+    /// let str_token = token.to_string(&secret)?;
+    /// let new_token = Token::from_str(&str_token, &secret)?;
     /// assert_eq!(token, new_token);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn from_str(s: &str, secret: &secrets::Secret) -> jwt::errors::Result<Self> {
         let dec_key = jwt::DecodingKey::from_secret(&**secret);
@@ -151,13 +154,16 @@ impl Token {
     /// Creates a JWT from a `Token`.
     ///
     /// # Example
-    /// ```
+    /// ```rust
     /// use pet_monitor_app::{secrets, auth::Token};
+    /// # fn main() -> Result<(), impl std::error::Error> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
     ///
     /// let token = Token::new();
-    /// let str_token = token.to_string(&secret).unwrap();
+    /// let str_token = token.to_string(&secret)?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn to_string(&self, secret: &secrets::Secret) -> jwt::errors::Result<String> {
         let enc_key = jwt::EncodingKey::from_secret(&**secret);
@@ -169,8 +175,9 @@ impl Token {
 /// Validates a password against a hash.
 ///
 /// # Example
-/// ```
+/// ```rust
 /// use pet_monitor_app::{secrets, auth};
+/// # fn main() -> Result<(), impl std::error::Error> {
 ///
 /// let password = "password";
 /// let config = argon2::Config::default();
@@ -178,6 +185,8 @@ impl Token {
 ///     argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
 ///
 /// assert!(auth::validate(password, &hash).unwrap());
+/// # Ok(())
+/// # }
 /// ```
 pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
     // unwrap should be safe if main has run

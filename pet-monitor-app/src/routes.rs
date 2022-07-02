@@ -27,7 +27,7 @@ use rocket::{get, post, State};
 /// If the password is correct, it adds a `token` cookie containing a JWT.
 ///
 /// # Example
-/// ```
+/// ```rust
 /// use pet_monitor_app::routes::*;
 /// use rocket::routes;
 ///
@@ -65,7 +65,7 @@ pub fn login(
 /// [`Err(Status::InternalServerError)`](rocket::http::Status::InternalServerError).
 ///
 /// # Example
-/// ```
+/// ```rust
 /// use pet_monitor_app::routes::*;
 /// use rocket::routes;
 ///

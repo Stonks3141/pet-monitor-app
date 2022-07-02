@@ -15,5 +15,5 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [workspace]
-members = ["api", "v4l-streamer"]
+members = ["pet-monitor-app", "v4l-streamer"]
 exclude = ["client"]

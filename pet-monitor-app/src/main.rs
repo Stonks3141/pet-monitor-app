@@ -14,12 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! This crate provides a web server for [pet-monitor-app](https://github.com/Stonks3141/pet-monitor-app).
-//!
-//! The release binary should be run in a Docker container or have access to `/var/local`.
+use pet_monitor_app::routes::*;
+use pet_monitor_app::secrets;
+use ring::rand::SystemRandom;
+use rocket::{launch, routes};
 
-pub mod auth;
-pub mod routes;
-pub mod secrets;
-#[cfg(test)]
-mod tests;
+#[launch]
+fn rocket() -> _ {
+    let rng = SystemRandom::new();
+    let pwd = secrets::Password::new(&rng).expect("Failed to initialize password.");
+    let secret = secrets::Secret::new(&rng).expect("Failed to initialize JWT secret.");
+
+    rocket::build()
+        .mount("/", routes![login, stream])
+        .manage(pwd)
+        .manage(secret)
+        .manage(rng)
+}
