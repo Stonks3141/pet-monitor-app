@@ -1,23 +1,19 @@
-//use rscam::Camera;
-//use futures::prelude::*;
+use futures::stream;
+use rscam::{Camera, Config};
 
-#[cfg(test)]
-mod tests;
+fn frame_stream() -> impl stream::Stream {
+    let mut camera = Camera::new("/dev/video0").unwrap();
 
-//pub fn stream_of_frames(framerate: u32, resolution: (u32, u32)) -> impl Stream {
-//    let mut camera = Camera::new("/dev/video0").unwrap();
-//
-//    camera
-//        .start(&rscam::Config {
-//            interval: (framerate, 1),
-//            resolution,
-//            format: b"H264",
-//            ..Default::default()
-//        }).unwrap();
-//
-//    futures::stream::unfold(camera, |state: Camera| async move {
-//        let frame = blocking::unblock(|| state.capture().unwrap()).await;
-//
-//        Some((frame, state))
-//    })
-//}
+    camera.start(&Config {
+        interval: (1, 30),
+        resolution: (1280, 720),
+        format: b"H264",
+        ..Default::default()
+    }).unwrap();
+
+    stream::unfold(camera, |c| async move {
+        let frame = blocking::unblock(|| c.capture().unwrap()).await;
+        
+        Some((frame, c))
+    })
+}
