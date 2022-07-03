@@ -1,7 +1,7 @@
-use futures::stream;
-use rscam::{Camera, Config};
+use futures::{Stream, stream};
+use rscam::{Camera, Config, Frame};
 
-fn frame_stream() -> impl stream::Stream {
+pub fn frame_stream() -> impl Stream<Item = Frame> {
     let mut camera = Camera::new("/dev/video0").unwrap();
 
     camera.start(&Config {
@@ -12,8 +12,10 @@ fn frame_stream() -> impl stream::Stream {
     }).unwrap();
 
     stream::unfold(camera, |c| async move {
-        let frame = blocking::unblock(|| c.capture().unwrap()).await;
-        
-        Some((frame, c))
+        Some(
+            blocking::unblock(|| {
+                (c.capture().unwrap(), c)
+            }).await
+        )
     })
 }
