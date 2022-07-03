@@ -6,10 +6,10 @@
 
 use ring::rand::SecureRandom;
 use std::{
-    env, fs, io,
+    env, io,
     ops::{Deref, DerefMut},
-    path::Path,
 };
+use async_std::{fs, path::Path};
 
 #[cfg(not(debug_assertions))]
 pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
@@ -62,7 +62,7 @@ impl Password {
     /// # Panics
     /// This function may panic if it does not have read or write access to
     /// `/var/local` and it was compiled for release.
-    pub fn new(rng: &impl SecureRandom) -> io::Result<Self> {
+    pub async fn new(rng: &impl SecureRandom) -> io::Result<Self> {
         if let Ok(p) = env::var("PASSWORD") {
             let config = argon2::Config {
                 mem_cost: 8192, // KiB
@@ -79,13 +79,13 @@ impl Password {
             let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config).unwrap();
 
             if let Some(p) = Path::new(PASSWORD_PATH).parent() {
-                fs::create_dir_all(p)?;
+                fs::create_dir_all(p).await?;
             }
 
-            fs::write(PASSWORD_PATH, &hash)?;
+            fs::write(PASSWORD_PATH, &hash).await?;
             Ok(Self(hash))
         } else {
-            fs::read_to_string(PASSWORD_PATH).map(|s| Self(s))
+            fs::read_to_string(PASSWORD_PATH).await.map(|s| Self(s))
         }
     }
 }
@@ -133,20 +133,20 @@ impl Secret {
     /// # Panics
     /// This function may panic if it does not have read or write access to
     /// `/var/local` and it was compiled for release.
-    pub fn new(rng: &impl SecureRandom) -> io::Result<Self> {
+    pub async fn new(rng: &impl SecureRandom) -> io::Result<Self> {
         if env::var("REGEN_SECRET") == Ok("true".to_string()) {
-            Self::new_secret(SECRET_PATH, rng)
+            Self::new_secret(SECRET_PATH, rng).await
         } else {
-            match fs::read(SECRET_PATH) {
+            match fs::read(SECRET_PATH).await {
                 Ok(s) => {
                     if let Ok(s) = s.try_into() {
                         Ok(Self(s))
                     } else {
-                        Self::new_secret(SECRET_PATH, rng)
+                        Self::new_secret(SECRET_PATH, rng).await
                     }
                 }
                 Err(e) => match e.kind() {
-                    io::ErrorKind::NotFound => Self::new_secret(SECRET_PATH, rng),
+                    io::ErrorKind::NotFound => Self::new_secret(SECRET_PATH, rng).await,
                     e => Err(io::Error::from(e)),
                 },
             }
@@ -154,16 +154,16 @@ impl Secret {
     }
 
     /// Generates a secure random secret, writes it to `SECRET_PATH`, and returns it.
-    fn new_secret<P: AsRef<Path>>(path: P, rng: &impl SecureRandom) -> io::Result<Self> {
-        if !path.as_ref().exists() {
+    async fn new_secret<P: AsRef<Path>>(path: P, rng: &impl SecureRandom) -> io::Result<Self> {
+        if !path.as_ref().exists().await {
             if let Some(p) = path.as_ref().parent() {
-                fs::create_dir_all(p)?;
+                fs::create_dir_all(p).await?;
             }
         }
         let mut buf = [0u8; 32];
         rng.fill(&mut buf).unwrap();
 
-        fs::write(path, buf)?;
+        fs::write(path, buf).await?;
         Ok(Self(buf))
     }
 }

@@ -10,6 +10,7 @@ rust-version = "1.60"
 
 [dependencies]
 rocket = "0.5.0-rc.2"
+async-std = "1.12"
 jsonwebtoken = "8.1"
 serde = "1.0"
 ring = "0.16"
