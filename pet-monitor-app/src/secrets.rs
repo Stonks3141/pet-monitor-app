@@ -40,23 +40,20 @@ impl Password {
     /// hash from [`PASSWORD_PATH`].
     ///
     /// # Example
-    /// ```rust
+    /// ```no_test
     /// use std::env;
     /// use ring::rand::SystemRandom;
     /// use pet_monitor_app::secrets;
-    /// # fn main() -> Result<(), impl std::error::Error> {
     ///
     /// // initialize RNG
     /// let rng = SystemRandom::new();
     ///
     /// let password = "123";
     /// env::set_var("PASSWORD", password);
-    /// let hash = secrets::Password::new(&rng)?;
+    /// let hash = secrets::Password::new(&rng).await?;
     ///
     /// let result = argon2::verify_encoded(&hash, password.as_bytes())?;
     /// assert!(result);
-    /// # Ok(())
-    /// # }
     /// ```
     ///
     /// # Panics
@@ -114,20 +111,17 @@ impl Secret {
     /// it attempts to read the secret from [`SECRET_PATH`].
     ///
     /// # Example
-    /// ```rust
+    /// ```no_test
     /// use std::{env, fs};
     /// use ring::rand::SystemRandom;
     /// use pet_monitor_app::secrets;
-    /// # fn main() -> Result<(), impl std::error::Error> {
     ///
     /// let rng = SystemRandom::new();
     ///
-    /// let old_secret = secrets::Secret::new(&rng)?;
+    /// let old_secret = secrets::Secret::new(&rng).await?;
     /// env::set_var("REGEN_SECRET", "true");
-    /// let secret = secrets::Secret::new(&rng)?;
+    /// let secret = secrets::Secret::new(&rng).await?;
     /// assert_ne!(*old_secret, *secret);
-    /// # Ok(())
-    /// # }
     /// ```
     ///
     /// # Panics

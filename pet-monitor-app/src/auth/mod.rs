@@ -109,7 +109,7 @@ impl Token {
     /// # Example
     /// ```rust
     /// use pet_monitor_app::{secrets, auth::Token};
-    /// # fn main() -> Result<(), impl std::error::Error> {
+    /// # fn main() -> jsonwebtoken::errors::Result<()> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
     ///
@@ -122,17 +122,15 @@ impl Token {
     /// ```
     pub fn from_str(s: &str, secret: &secrets::Secret) -> jwt::errors::Result<Self> {
         let dec_key = jwt::DecodingKey::from_secret(&**secret);
+        let val = jwt::Validation::new(ALG);
 
-        match jwt::decode::<Claims>(s, &dec_key, &jwt::Validation::new(ALG)) {
-            Ok(t) => Ok(Self {
-                header: t.header,
-                claims: t.claims,
-            }),
-            Err(e) => {
-                println!("{:?}", e);
-                Err(e)
-            }
-        }
+        jwt::decode::<Claims>(s, &dec_key, &val)
+            .map(|t| {
+                Self {
+                    header: t.header,
+                    claims: t.claims,
+                }
+            })
     }
 
     /// Creates a JWT from a `Token`.
@@ -140,7 +138,7 @@ impl Token {
     /// # Example
     /// ```rust
     /// use pet_monitor_app::{secrets, auth::Token};
-    /// # fn main() -> Result<(), impl std::error::Error> {
+    /// # fn main() -> jsonwebtoken::errors::Result<()> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
     ///
@@ -161,7 +159,7 @@ impl Token {
 /// # Example
 /// ```rust
 /// use pet_monitor_app::{secrets, auth};
-/// # fn main() -> Result<(), impl std::error::Error> {
+/// # fn main() -> jsonwebtoken::errors::Result<()> {
 ///
 /// let password = "password";
 /// let config = argon2::Config::default();
