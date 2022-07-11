@@ -1,2 +1,2 @@
 [release]
-port = 80
+port = 8001 # fmp4streamer uses 8000
