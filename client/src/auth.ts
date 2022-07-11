@@ -1,5 +1,5 @@
 const validate = async (password: string): Promise<boolean> => {
-  const res = await fetch('/api/auth', {
+  const res = await fetch('/api/login', {
     method: 'POST',
     mode: 'cors',
     cache: 'no-cache',

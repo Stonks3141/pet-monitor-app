@@ -6,6 +6,8 @@ services:
       - 443:443
 
   api:
-    build: ./pet-monitor-app
+    build: .
     ports:
-      - 80:8000
+      - 8000:80
+    volumes:
+      - /var/local/lib/pet-monitor-app

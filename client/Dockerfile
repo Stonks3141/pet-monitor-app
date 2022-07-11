@@ -12,6 +12,8 @@ FROM nginx:1.21-alpine
 COPY nginx.conf /etc/nginx
 #COPY --from=build /tmp/pet-monitor-app/build /etc/nginx/html
 COPY ./build /etc/nginx/html
+COPY ./pet-monitor-app.pem /etc/ssl/certs
+COPY ./pet-monitor-app.key /etc/ssl/certs
 
 ENTRYPOINT [ "nginx" ]
 EXPOSE 80 443

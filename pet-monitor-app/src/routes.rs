@@ -18,7 +18,7 @@ use rocket::{get, post, State};
 /// let rocket = rocket::build()
 ///     .mount("/", routes![login]);
 /// ```
-#[post("/api/auth", data = "<password>")]
+#[post("/api/login", data = "<password>")]
 pub fn login(
     password: String,
     cookies: &CookieJar<'_>,
@@ -27,7 +27,7 @@ pub fn login(
 ) -> Result<(), Status> {
     if let Ok(b) = auth::validate(&password, &**hash) {
         if b {
-            let token = match auth::Token::new().to_string(&secret) {
+            let token = match auth::Token::new().to_string(secret) {
                 Ok(t) => t,
                 Err(_) => return Err(Status::InternalServerError),
             };
@@ -41,12 +41,14 @@ pub fn login(
     }
 }
 
-/// A test route that validates the client's token.
+/// An authorization route that returns [`Status::Ok`](rocket::http::Status::Ok)
+/// if the request has a valid token.
 ///
-/// It accepts GETs to `/api/stream` and returns the word "stream" as plain
-/// text if the request has a `token` cookie that is a valid JWT. If JWT
-/// decoding fails, it returns a
-/// [`Err(Status::InternalServerError)`](rocket::http::Status::InternalServerError).
+/// It accepts GETs to `/api/auth` and returns status code 200 if the request
+/// has a `token` cookie that is a valid JWT. If JWT decoding fails, it returns
+/// a [`Status::InternalServerError`](rocket::http::Status::InternalServerError).
+/// If the token is expired or has an invalid signature, it returns a
+/// [`Status::Unauthorized`](rocket::http::Status::Unauthorized).
 ///
 /// # Example
 /// ```rust
@@ -54,27 +56,27 @@ pub fn login(
 /// use rocket::routes;
 ///
 /// let rocket = rocket::build()
-///     .mount("/", routes![stream]);
+///     .mount("/", routes![verify]);
 /// ```
-#[get("/api/stream")]
-pub fn stream(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Result<String, Status> {
+#[get("/api/auth")]
+pub fn verify(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Status {
     match cookies.get("token") {
         Some(cookie) => match auth::Token::from_str(cookie.value(), secret) {
             Ok(t) => {
                 if t.verify() {
-                    Ok("stream".to_string())
+                    Status::Ok
                 } else {
-                    Err(Status::Unauthorized)
+                    Status::Unauthorized
                 }
             }
             Err(e) => match e.kind() {
                 ErrorKind::Base64(_)
                 | ErrorKind::Crypto(_)
                 | ErrorKind::Json(_)
-                | ErrorKind::Utf8(_) => Err(Status::InternalServerError),
-                _ => Err(Status::Unauthorized),
+                | ErrorKind::Utf8(_) => Status::InternalServerError,
+                _ => Status::Unauthorized,
             },
         },
-        None => Err(Status::Unauthorized),
+        None => Status::Unauthorized,
     }
 }

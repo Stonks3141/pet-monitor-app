@@ -1,9 +1,10 @@
 # pet-monitor-app
 
-[![Build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
-[![Test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml)
-[![Lint](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml)
-[![License](https://img.shields.io/badge/License-GPLv3-blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
+[![test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml)
+[![lint](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml/badge.svg?style=flat-square)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml)
+[![license](https://img.shields.io/static/v1?label=License&message=GPLv3&color=blue&style=flat-square)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![loc](https://img.shields.io/tokei/lines/github/Stonks3141/pet-monitor-app?style=flat-square)](https://github.com/XAMPPRocky/tokei)
 
 This project is currently pre-alpha.
 Meant to run on a Raspberry Pi.
@@ -22,9 +23,21 @@ replace v4l2 for high-level usage.
   - [Contributing](#contributing)
   - [Inspiration](#inspiration)
 
-## Installation
+## Quickstart
 
-Docker container coming soon.
+Install Nginx and copy `nginx.conf` from the [releases] page into `/etc/nginx/`.
+Download the static files from the [releases] page and extract the archive into
+the `/etc/nginx/html/` directory. Download the correct binary for your
+architecture and put it in `/usr/local/bin`. To start the server, run
+
+```bash
+$ nginx -s start
+$ pet-monitor-app
+```
+
+You can use systemd to run the servers automatically and handle logs.
+
+[releases]: https://Stonks3141/pet-monitor-app/releases/
 
 ## Development
 

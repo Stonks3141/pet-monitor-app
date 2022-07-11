@@ -124,13 +124,10 @@ impl Token {
         let dec_key = jwt::DecodingKey::from_secret(&**secret);
         let val = jwt::Validation::new(ALG);
 
-        jwt::decode::<Claims>(s, &dec_key, &val)
-            .map(|t| {
-                Self {
-                    header: t.header,
-                    claims: t.claims,
-                }
-            })
+        jwt::decode::<Claims>(s, &dec_key, &val).map(|t| Self {
+            header: t.header,
+            claims: t.claims,
+        })
     }
 
     /// Creates a JWT from a `Token`.
@@ -154,6 +151,12 @@ impl Token {
     }
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Validates a password against a hash.
 ///
 /// # Example
@@ -172,5 +175,5 @@ impl Token {
 /// ```
 pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
     // unwrap should be safe if main has run
-    argon2::verify_encoded(&hash, password.as_bytes())
+    argon2::verify_encoded(hash, password.as_bytes())
 }

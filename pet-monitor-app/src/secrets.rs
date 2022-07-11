@@ -4,13 +4,17 @@
 //! The structs are initialized in the `main` function and managed by Rocket
 //! [`State`](rocket::State). This is why wrapper types are necessary.
 
+use async_std::{fs, path::Path};
 use ring::rand::SecureRandom;
 use std::{
     env, io,
     ops::{Deref, DerefMut},
 };
-use async_std::{fs, path::Path};
 
+/// The path used to store the JWT signing secret.
+///
+/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
+/// mode, and `./jwt_secret` otherwise.
 #[cfg(not(debug_assertions))]
 pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
 /// The path used to store the JWT signing secret.
@@ -20,6 +24,10 @@ pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
 #[cfg(debug_assertions)]
 pub const SECRET_PATH: &str = "./jwt_secret";
 
+/// The path used to store the JWT signing secret.
+///
+/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
+/// mode, and `./jwt_secret` otherwise.
 #[cfg(not(debug_assertions))]
 pub const PASSWORD_PATH: &str = "/var/local/lib/pet-monitor-app/password";
 /// The path used to store the JWT signing secret.
@@ -82,7 +90,7 @@ impl Password {
             fs::write(PASSWORD_PATH, &hash).await?;
             Ok(Self(hash))
         } else {
-            fs::read_to_string(PASSWORD_PATH).await.map(|s| Self(s))
+            fs::read_to_string(PASSWORD_PATH).await.map(Self)
         }
     }
 }

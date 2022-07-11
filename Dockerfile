@@ -9,7 +9,7 @@
 
 FROM alpine:3.16
 # COPY --from=build /tmp/pet-monitor-app/target/release/pet-monitor-app /usr/local/bin
-COPY ../target/release/pet-monitor-app /usr/local/bin
+COPY ./target/release/pet-monitor-app /usr/local/bin
 
 ENTRYPOINT [ "pet-monitor-app" ]
 EXPOSE 80
