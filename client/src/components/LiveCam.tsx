@@ -4,10 +4,11 @@ const LiveCam = () => {
   const [stream, setStream] = useState('loading...');
 
   useEffect(() => {
-    fetch('/api/stream')
-      .then((res) => res.text())
-      .then((data) => {
-        setStream(data);
+    fetch('/api/auth')
+      .then((res) => {
+        if (res.ok) {
+          setStream('stream');
+        }
       });
   }, []);
 

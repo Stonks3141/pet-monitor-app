@@ -12,16 +12,16 @@ Meant to run on a Raspberry Pi.
 used for video, but I'm also considering libcamera since it's intended to
 replace v4l2 for high-level usage.
 
-- [pet-monitor-app](#pet-monitor-app)
-  - [Installation](#installation)
-  - [Development](#development)
-  - [Usage](#usage)
-  - [Testing](#testing)
-  - [Motivation](#motivation)
-  - [Goals](#goals)
-  - [Roadmap](#roadmap)
-  - [Contributing](#contributing)
-  - [Inspiration](#inspiration)
+* [pet-monitor-app](#pet-monitor-app)
+  * [Installation](#installation)
+  * [Development](#development)
+  * [Usage](#usage)
+  * [Testing](#testing)
+  * [Motivation](#motivation)
+  * [Goals](#goals)
+  * [Roadmap](#roadmap)
+  * [Contributing](#contributing)
+  * [Inspiration](#inspiration)
 
 ## Quickstart
 
@@ -41,12 +41,10 @@ You can use systemd to run the servers automatically and handle logs.
 
 ## Development
 
-Clone the repo and install [Node](https://nodejs.org),
-[yarn](https://yarnpkg.com/getting-started/install) and
-[rustup](https://www.rust-lang.org/learn/get-started). Run `yarn start` in the
-`client/` directory to start the frontend dev server. Run `cargo run` in the
-base directory to start the development server. This will try to serve files
-from `client/build/`, so run `yarn build` first.
+Clone the repo. Install Docker and Docker Compose and run `sudo docker compose up`
+in the base directory. View the development server at [http://localhost:3000].
+The frontend will reload automatically as you make changes, but you will need
+to rebuild the backend container.
 
 ## Usage
 
@@ -72,26 +70,26 @@ as audio and video recording.
 
 ## Goals
 
-- Secure
-- Simple to install/use/configure
-- Featureful and attractive
-- Tested
-- Documented
+* Secure
+* Simple to install/use/configure
+* Featureful and attractive
+* Tested
+* Documented
 
 ## Roadmap
 
-- [x] Basic UI
-- [x] JSON web token authentication
-- [x] Rewrite backend in Rust/Rocket
-- [x] Secure password verification (argon2)
-- [x] Docker container
-- [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
-- [ ] Proxy authenticated video requests to fmp4streamer as an intermediate solution
-- [ ] Rust v4l2 (libcamera?) streaming
-- [ ] Audio support
-- [ ] Recording video/audio to view later
-- [ ] Documentation
-- [ ] In-browser configuration/server management
+* [x] Basic UI
+* [x] JSON web token authentication
+* [x] Rewrite backend in Rust/Rocket
+* [x] Secure password verification (argon2)
+* [x] Docker container
+* [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
+* [ ] Proxy authenticated video requests to fmp4streamer as an intermediate solution
+* [ ] Rust v4l2 (libcamera?) streaming
+* [ ] Audio support
+* [ ] Recording video/audio to view later
+* [ ] Documentation
+* [ ] In-browser configuration/server management
 
 ## Contributing
 
@@ -99,4 +97,4 @@ PRs are welcome. Look at Github issues for some ideas.
 
 ## Inspiration
 
-This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
+This project was inspired by @soyersoyer/fmp4streamer.

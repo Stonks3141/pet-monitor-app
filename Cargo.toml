@@ -1,3 +1,0 @@
-[workspace]
-members = ["pet-monitor-app", "v4l-streamer"]
-exclude = ["client"]

@@ -1,12 +1,12 @@
 [package]
 name = "pet-monitor-app"
 description = "Simple and secure pet monitor for Raspberry Pi"
-license = "GPL-3.0"
+license = "MIT"
 repository = "https://github.com/Stonks3141/pet-monitor-app"
 readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.62"
 
 [dependencies]
 rocket = "0.5.0-rc.2"
