@@ -1,0 +1,22 @@
+name: Docker Image CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build ./pet-monitor-app --file Dockerfile --tag pet-monitor-app_auth:$(date +%s)
+
+#  proxy:
+#    runs-on: ubuntu-latest
+
+#    steps:
+#    - uses: actions/checkout@v3
+#    - name: Build the Docker image
+#      run: docker build ./client --file Dockerfile --tag pet-monitor-app_proxy:$(date +%s)
