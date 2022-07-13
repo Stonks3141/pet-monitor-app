@@ -8,12 +8,12 @@ WORKDIR /tmp/pet-monitor-app
 # Separate layer for dependencies
 COPY ./Cargo.toml ./Cargo.lock ./
 RUN mkdir ./src/ && touch ./src/lib.rs
-RUN [[ $ENV=PROD ]] && cargo build --release || cargo build
+RUN [ $ENV=PROD ] && cargo build --release || cargo build
 
 COPY . .
 # update modification time so it rebuilds
 RUN touch -m ./src/lib.rs
-RUN [[ $ENV=PROD ]] && cargo build --release || cargo build
+RUN [ $ENV=PROD ] && cargo build --release || cargo build
 
 FROM debian:bullseye-slim
 COPY --from=build /tmp/pet-monitor-app/target/debug/pet-monitor-app /usr/local/bin/

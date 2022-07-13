@@ -3,8 +3,8 @@
 [![build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml)
 [![lint](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml/badge.svg?style=flat-square)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml)
-[![license](https://img.shields.io/static/v1?label=License&message=GPLv3&color=blue&style=flat-square)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![loc](https://img.shields.io/tokei/lines/github/Stonks3141/pet-monitor-app?style=flat-square)](https://github.com/XAMPPRocky/tokei)
+[![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![loc](https://img.shields.io/tokei/lines/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
 
 This project is currently pre-alpha.
 Meant to run on a Raspberry Pi.
