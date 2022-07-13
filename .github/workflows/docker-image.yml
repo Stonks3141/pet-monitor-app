@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build ./pet-monitor-app --file Dockerfile --tag pet-monitor-app_auth:$(date +%s)
+      run: docker build ./pet-monitor-app #--tag pet-monitor-app_auth:$(date +%s)
 
 #  proxy:
 #    runs-on: ubuntu-latest
