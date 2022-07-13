@@ -1,21 +1,21 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.4
 
-# Alpine uses musl instead of glibc
-FROM rust:1.62-slim-buster as build
-# RUN apk add --no-cache musl-dev
+# Alpine uses musl instead of glibc, which is slower
+FROM rust:1.62-slim-bullseye as build
+ARG ENV=DEV
 WORKDIR /tmp/pet-monitor-app
 
 # Separate layer for dependencies
-COPY ./Cargo.* .
+COPY ./Cargo.toml ./Cargo.lock ./
 RUN mkdir ./src/ && touch ./src/lib.rs
-RUN cargo build
+RUN [[ $ENV=PROD ]] && cargo build --release || cargo build
 
 COPY . .
 # update modification time so it rebuilds
 RUN touch -m ./src/lib.rs
-RUN cargo build
+RUN [[ $ENV=PROD ]] && cargo build --release || cargo build
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 COPY --from=build /tmp/pet-monitor-app/target/debug/pet-monitor-app /usr/local/bin/
 
 COPY ./Rocket.toml /usr/local/etc/pet-monitor-app/
