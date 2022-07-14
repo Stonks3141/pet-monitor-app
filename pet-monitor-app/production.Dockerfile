@@ -15,7 +15,7 @@ RUN touch -m ./src/lib.rs
 RUN cargo build --release
 
 FROM debian:bullseye-slim
-COPY --from=build /tmp/pet-monitor-app/target/debug/pet-monitor-app /usr/local/bin/
+COPY --from=build /tmp/pet-monitor-app/target/release/pet-monitor-app /usr/local/bin/
 
 COPY ./Rocket.toml /usr/local/etc/pet-monitor-app/
 ENV ROCKET_CONFIG=/usr/local/etc/pet-monitor-app/Rocket.toml

@@ -15,27 +15,13 @@ use std::{
 ///
 /// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
 /// mode, and `./jwt_secret` otherwise.
-#[cfg(not(debug_assertions))]
 pub const SECRET_PATH: &str = "/var/local/lib/pet-monitor-app/jwt_secret";
-/// The path used to store the JWT signing secret.
-///
-/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
-/// mode, and `./jwt_secret` otherwise.
-#[cfg(debug_assertions)]
-pub const SECRET_PATH: &str = "./jwt_secret";
 
-/// The path used to store the JWT signing secret.
+// The path used to store the JWT signing secret.
 ///
 /// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
 /// mode, and `./jwt_secret` otherwise.
-#[cfg(not(debug_assertions))]
 pub const PASSWORD_PATH: &str = "/var/local/lib/pet-monitor-app/password";
-/// The path used to store the JWT signing secret.
-///
-/// It is `/var/local/lib/pet-monitor-app/jwt_secret` when compiled in release
-/// mode, and `./jwt_secret` otherwise.
-#[cfg(debug_assertions)]
-pub const PASSWORD_PATH: &str = "./password";
 
 /// A wrapper struct for a password hash. A separate type is needed for Rocket state.
 pub struct Password(pub String);

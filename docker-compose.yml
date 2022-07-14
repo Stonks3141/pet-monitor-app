@@ -11,6 +11,6 @@ services:
   rocket:
     build: ./pet-monitor-app
     ports:
-      - 8000:8000
+      - 8000:8001
     environment:
       - PASSWORD=123

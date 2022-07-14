@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
+import { Spinner } from 'components';
 
 const LiveCam = () => {
-  const [stream, setStream] = useState('loading...');
+  const [stream, setStream] = useState(null);
 
   useEffect(() => {
-    fetch('/api/auth')
+    fetch('/stream.mp4')
       .then((res) => {
         if (res.ok) {
-          setStream('stream');
+          setStream(res.text());
         }
       });
   }, []);
 
   return (
     <div className="flex grow content-center place-content-center place-items-center">
-      {stream}
+      {stream === null ? <Spinner /> : stream}
     </div>
   );
 };
