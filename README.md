@@ -13,7 +13,7 @@ used for video, but I'm also considering libcamera since it's intended to
 replace v4l2 for high-level usage.
 
 * [pet-monitor-app](#pet-monitor-app)
-  * [Installation](#installation)
+  * [Quickstart](#quickstart)
   * [Development](#development)
   * [Usage](#usage)
   * [Testing](#testing)
@@ -25,19 +25,11 @@ replace v4l2 for high-level usage.
 
 ## Quickstart
 
-Install Nginx and copy `nginx.conf` from the [releases] page into `/etc/nginx/`.
-Download the static files from the [releases] page and extract the archive into
-the `/etc/nginx/html/` directory. Download the correct binary for your
-architecture and put it in `/usr/local/bin`. To start the server, run
+Clone the repo, install Docker and Docker Compose, and run with
 
 ```bash
-$ nginx -s start
-$ pet-monitor-app
+$ docker compose --file production.docker-compose.yml up
 ```
-
-You can use systemd to run the servers automatically and handle logs.
-
-[releases]: https://Stonks3141/pet-monitor-app/releases/
 
 ## Development
 
@@ -97,4 +89,4 @@ PRs are welcome. Look at Github issues for some ideas.
 
 ## Inspiration
 
-This project was inspired by @soyersoyer/fmp4streamer.
+This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
