@@ -20,10 +20,10 @@ services:
     environment:
       PASSWORD: 123
 
-  fmp4streamer:
-    build: ./fmp4streamer
-  ports:
-    - 8000:8000
-  volumes:
-    - /dev/video0:/dev/video0
-    - ./fmp4streamer/fmp4streamer.conf:/usr/local/src/fmp4streamer/fmp4streamer.conf
+# fmp4streamer:
+#   build: ./fmp4streamer
+#   ports:
+#     - 8000:8000
+#   volumes:
+#     - /dev/video0:/dev/video0
+#     - ./fmp4streamer/fmp4streamer.conf:/usr/local/src/fmp4streamer/fmp4streamer.conf

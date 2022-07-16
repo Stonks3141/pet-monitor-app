@@ -1,23 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Spinner } from 'components';
+import React from 'react';
 
-const LiveCam = () => {
-  const [stream, setStream] = useState(null);
-
-  useEffect(() => {
-    fetch('/stream.mp4')
-      .then((res) => {
-        if (res.ok) {
-          setStream(res.text());
-        }
-      });
-  }, []);
-
-  return (
-    <div className="flex grow content-center place-content-center place-items-center">
-      {stream === null ? <Spinner /> : stream}
-    </div>
-  );
-};
+const LiveCam = () => (
+  <div className="flex content-center place-content-center place-items-center grow">
+    <video controls autoPlay muted playsInline className="flex max-w-full max-h-full">
+      <source src="stream.mp4" type="video/mp4; codecs=&quot;avc1.64002a&quot;" />
+      <source src="stream.m3u8" type="applicaton/x-mpegURL" />
+    </video>
+  </div>
+);
 
 export default LiveCam;
