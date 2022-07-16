@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Login, Camera, Main, NotFoundRoute } from 'routes';
+import { Login, Camera, Main } from 'routes';
 import { AuthContext } from 'context';
 import { useCookies } from 'react-cookie';
 
@@ -21,7 +21,7 @@ const App = () => {
           <Route path="/" element={<Main />} />
           <Route path="lock" element={<Login />} />
           <Route path="camera" element={<Camera />} />
-          <Route path="*" element={<NotFoundRoute />} />
+          <Route path="*" element={<Main />} />
         </Routes>
       </BrowserRouter>
     </AuthContext.Provider>

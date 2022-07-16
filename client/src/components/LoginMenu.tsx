@@ -50,7 +50,7 @@ const LoginMenu = (props: LoginMenuProps) => {
           bg-white dark:bg-slate-800"
       >
         <label className="flex flex-col gap-2">
-          <span className="dark:text-white">Master password</span>
+          <span className="dark:text-white">Password</span>
           <div className="flex flex-row gap-2">
             <input
               type={showPassword ? 'text' : 'password'}
