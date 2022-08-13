@@ -9,5 +9,6 @@
 pub mod auth;
 pub mod routes;
 pub mod secrets;
+mod stream;
 #[cfg(test)]
 mod tests;

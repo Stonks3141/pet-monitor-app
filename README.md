@@ -76,7 +76,7 @@ as audio and video recording.
 * [x] Secure password verification (argon2)
 * [x] Docker container
 * [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
-* [ ] Proxy authenticated video requests to fmp4streamer as an intermediate solution
+* [x] Proxy authenticated video requests to fmp4streamer as an intermediate solution
 * [ ] Rust v4l2 (libcamera?) streaming
 * [ ] Audio support
 * [ ] Recording video/audio to view later
