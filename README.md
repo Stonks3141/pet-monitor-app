@@ -1,10 +1,8 @@
 # pet-monitor-app
 
-[![build](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
-[![test](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/test.yml)
-[![lint](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml/badge.svg?style=flat-square)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/lint.yml)
+[![CI](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![loc](https://img.shields.io/tokei/lines/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
+[![loc](https://tokei.rs/github/Stonks3141/pet-monitor-app?category=code)](https://github.com/XAMPPRocky/tokei)
 
 This project is currently pre-alpha.
 Meant to run on a Raspberry Pi.
@@ -12,23 +10,23 @@ Meant to run on a Raspberry Pi.
 used for video, but I'm also considering libcamera since it's intended to
 replace v4l2 for high-level usage.
 
-* [pet-monitor-app](#pet-monitor-app)
-  * [Quickstart](#quickstart)
-  * [Development](#development)
-  * [Usage](#usage)
-  * [Testing](#testing)
-  * [Motivation](#motivation)
-  * [Goals](#goals)
-  * [Roadmap](#roadmap)
-  * [Contributing](#contributing)
-  * [Inspiration](#inspiration)
+- [pet-monitor-app](#pet-monitor-app)
+  - [Quickstart](#quickstart)
+  - [Development](#development)
+  - [Usage](#usage)
+  - [Testing](#testing)
+  - [Motivation](#motivation)
+  - [Goals](#goals)
+  - [Roadmap](#roadmap)
+  - [Contributing](#contributing)
+  - [Inspiration](#inspiration)
 
 ## Quickstart
 
 Clone the repo, install Docker and Docker Compose, and run with
 
 ```bash
-$ docker compose --file production.docker-compose.yml up
+docker compose --file production.docker-compose.yml up
 ```
 
 ## Development
@@ -62,26 +60,26 @@ as audio and video recording.
 
 ## Goals
 
-* Secure
-* Simple to install/use/configure
-* Featureful and attractive
-* Tested
-* Documented
+- Secure
+- Simple to install/use/configure
+- Featureful and attractive
+- Tested
+- Documented
 
 ## Roadmap
 
-* [x] Basic UI
-* [x] JSON web token authentication
-* [x] Rewrite backend in Rust/Rocket
-* [x] Secure password verification (argon2)
-* [x] Docker container
-* [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
-* [x] Proxy authenticated video requests to fmp4streamer as an intermediate solution
-* [ ] Rust v4l2 (libcamera?) streaming
-* [ ] Audio support
-* [ ] Recording video/audio to view later
-* [ ] Documentation
-* [ ] In-browser configuration/server management
+- [x] Basic UI
+- [x] JSON web token authentication
+- [x] Rewrite backend in Rust/Rocket
+- [x] Secure password verification (argon2)
+- [x] Docker container
+- [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
+- [x] Proxy authenticated video requests to fmp4streamer as an intermediate solution
+- [ ] Rust v4l2 (libcamera?) streaming
+- [ ] Audio support
+- [ ] Recording video/audio to view later
+- [ ] Documentation
+- [ ] In-browser configuration/server management
 
 ## Contributing
 

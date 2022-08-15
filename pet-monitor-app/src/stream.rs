@@ -25,6 +25,7 @@ mod tests {
     use futures::stream::StreamExt;
     use rocket::tokio;
 
+    #[ignore = "requires a camera device"]
     #[tokio::test]
     async fn frame_stream_test() {
         let mut stream = Box::pin(frame_stream(30, (1280, 720))).take(120);

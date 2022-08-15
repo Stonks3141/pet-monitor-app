@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   - push
@@ -8,18 +8,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  Rust:
+  Rust-build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install v4l2
+        run: sudo apt-get install libv4l-0 libv4l-dev
 
       - name: Build
         working-directory: pet-monitor-app
-        run: |
-          cargo build
+        run: cargo build
 
-  Typescript:
+  Typescript-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,3 +33,53 @@ jobs:
       - name: Build
         working-directory: client
         run: yarn build
+
+  Clippy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run lints
+        working-directory: pet-monitor-app
+        run: cargo clippy
+
+  ESLint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        working-directory: client
+        run: yarn install --immutable --immutable-cache
+      
+      - name: Run lints
+        working-directory: client
+        run: yarn lint
+
+  Rust-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install v4l2
+        run: sudo apt-get install libv4l-0 libv4l-dev
+
+      - name: Run tests
+        working-directory: pet-monitor-app
+        run: cargo test
+
+  Typescript-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        working-directory: client
+        run: yarn install --immutable --immutable-cache
+
+      - name: Run tests
+        working-directory: client
+        run: yarn test
