@@ -4,7 +4,7 @@
 FROM rust:1.62-slim-bullseye as build
 
 # install libv4l2
-RUN apt-get install v4l2-0 v4l2-dev
+RUN apt-get install libv4l-0 libv4l-dev
 
 WORKDIR /tmp/pet-monitor-app
 
