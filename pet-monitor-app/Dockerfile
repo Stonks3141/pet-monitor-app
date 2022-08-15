@@ -2,6 +2,10 @@
 
 # Alpine uses musl instead of glibc, which is slower
 FROM rust:1.62-slim-bullseye as build
+
+# install libv4l2
+RUN apt-get install v4l2-0 v4l2-dev
+
 WORKDIR /tmp/pet-monitor-app
 
 # Separate layer for dependencies
