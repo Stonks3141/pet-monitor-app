@@ -9,15 +9,6 @@ use rocket::{get, post, State};
 ///
 /// It accepts POSTs to the `/api/auth` path with the password as plain text.
 /// If the password is correct, it adds a `token` cookie containing a JWT.
-///
-/// # Example
-/// ```rust
-/// use pet_monitor_app::routes::*;
-/// use rocket::routes;
-///
-/// let rocket = rocket::build()
-///     .mount("/", routes![login]);
-/// ```
 #[post("/api/login", data = "<password>")]
 pub fn login(
     password: String,
@@ -25,7 +16,7 @@ pub fn login(
     hash: &State<secrets::Password>,
     secret: &State<secrets::Secret>,
 ) -> Result<(), Status> {
-    if let Ok(b) = auth::validate(&password, &**hash) {
+    if let Ok(b) = auth::validate(&password, hash) {
         if b {
             let token = match auth::Token::new().to_string(secret) {
                 Ok(t) => t,
@@ -49,15 +40,6 @@ pub fn login(
 /// a [`Status::InternalServerError`](rocket::http::Status::InternalServerError).
 /// If the token is expired or has an invalid signature, it returns a
 /// [`Status::Unauthorized`](rocket::http::Status::Unauthorized).
-///
-/// # Example
-/// ```rust
-/// use pet_monitor_app::routes::*;
-/// use rocket::routes;
-///
-/// let rocket = rocket::build()
-///     .mount("/", routes![verify]);
-/// ```
 #[get("/api/auth")]
 pub fn verify(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Status {
     match cookies.get("token") {

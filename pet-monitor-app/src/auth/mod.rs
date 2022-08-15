@@ -5,15 +5,17 @@
 //! password against a hash.
 
 use crate::secrets;
-use chrono::{prelude::*, Duration};
+//use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use serde::{Deserialize, Serialize};
+use rocket::serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[cfg(test)]
 mod tests;
 
 /// The claims in a JWT issued by this server.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
 struct Claims {
     /// Issued-at time (Unix timestamp)
     iat: u64,
@@ -24,10 +26,10 @@ struct Claims {
 impl Claims {
     /// Creates new JWT claims that expire in `expires_in` time.
     fn new(expires_in: Duration) -> Self {
-        let utc = Utc::now();
+        let now = jwt::get_current_timestamp();
         Self {
-            iat: utc.timestamp() as u64,
-            exp: (utc + expires_in).timestamp() as u64,
+            iat: now,
+            exp: now + expires_in.as_secs(),
         }
     }
 }
@@ -35,7 +37,7 @@ impl Claims {
 impl Default for Claims {
     /// Creates new JWT claims that expire in 1 day.
     fn default() -> Self {
-        Self::new(Duration::days(1))
+        Self::new(Duration::from_secs(60 * 60 * 24))
     }
 }
 
@@ -53,8 +55,8 @@ impl Token {
     /// Creates a new token that expires in 1 day.
     ///
     /// # Example
-    /// ```rust
-    /// use pet_monitor_app::auth::Token;
+    /// ```no_test
+    /// use crate::auth::Token;
     ///
     /// let token = Token::new();
     /// assert!(token.verify());
@@ -69,10 +71,10 @@ impl Token {
     /// Creates a new token that expires in `expires_in` time.
     ///
     /// # Example
-    /// ```rust
+    /// ```no_test
     /// use chrono::Duration;
     /// use std::{thread, time};
-    /// use pet_monitor_app::auth::Token;
+    /// use crate::auth::Token;
     ///
     /// let token = Token::with_expiration(Duration::seconds(1));
     /// thread::sleep(time::Duration::from_secs(2));
@@ -88,27 +90,23 @@ impl Token {
     /// Verifies the validity of a `Token`.
     ///
     /// # Example
-    /// ```rust
-    /// use pet_monitor_app::auth::Token;
+    /// ```no_test
+    /// use crate::auth::Token;
     ///
     /// let token = Token::new();
     /// assert!(token.verify());
     /// ```
     pub fn verify(&self) -> bool {
-        let utc = Utc::now();
-        let exp = DateTime::<Utc>::from_utc(
-            NaiveDateTime::from_timestamp(self.claims.exp as i64, 0),
-            Utc,
-        );
+        let now = jwt::get_current_timestamp();
 
-        utc < exp
+        now < self.claims.exp
     }
 
     /// Parses a JWT into a `Token`.
     ///
     /// # Example
-    /// ```rust
-    /// use pet_monitor_app::{secrets, auth::Token};
+    /// ```no_test
+    /// use crate::{secrets, auth::Token};
     /// # fn main() -> jsonwebtoken::errors::Result<()> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
@@ -121,7 +119,7 @@ impl Token {
     /// # }
     /// ```
     pub fn from_str(s: &str, secret: &secrets::Secret) -> jwt::errors::Result<Self> {
-        let dec_key = jwt::DecodingKey::from_secret(&**secret);
+        let dec_key = jwt::DecodingKey::from_secret(&secret.0);
         let val = jwt::Validation::new(ALG);
 
         jwt::decode::<Claims>(s, &dec_key, &val).map(|t| Self {
@@ -133,8 +131,8 @@ impl Token {
     /// Creates a JWT from a `Token`.
     ///
     /// # Example
-    /// ```rust
-    /// use pet_monitor_app::{secrets, auth::Token};
+    /// ```no_test
+    /// use crate::{secrets, auth::Token};
     /// # fn main() -> jsonwebtoken::errors::Result<()> {
     ///
     /// let secret = secrets::Secret([0u8; 32]);
@@ -145,7 +143,7 @@ impl Token {
     /// # }
     /// ```
     pub fn to_string(&self, secret: &secrets::Secret) -> jwt::errors::Result<String> {
-        let enc_key = jwt::EncodingKey::from_secret(&**secret);
+        let enc_key = jwt::EncodingKey::from_secret(&secret.0);
 
         jwt::encode(&self.header, &self.claims, &enc_key)
     }
@@ -160,8 +158,8 @@ impl Default for Token {
 /// Validates a password against a hash.
 ///
 /// # Example
-/// ```rust
-/// use pet_monitor_app::{secrets, auth};
+/// ```no_test
+/// use crate::{secrets, auth};
 /// # fn main() -> jsonwebtoken::errors::Result<()> {
 ///
 /// let password = "password";
@@ -174,5 +172,5 @@ impl Default for Token {
 /// # }
 /// ```
 pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
-    argon2::verify_encoded(hash, password.as_bytes())
+    argon2::verify_encoded(&hash.0, password.as_bytes())
 }

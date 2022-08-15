@@ -1,7 +1,32 @@
-use futures::stream::{self, Stream};
-use rscam::{Camera, Config, Frame};
+//! This module provides utilities for creating async streams of video data.
 
-pub fn frame_stream(fps: u32, resolution: (u32, u32)) -> impl Stream<Item = Frame> {
+use mse_fmp4::fmp4::{InitializationSegment as InitSegment, MediaSegment};
+use rocket::futures::stream::{self, Stream};
+use rocket::response::stream::ByteStream;
+use rocket::tokio::task::spawn_blocking;
+use rscam::{Camera, Config, Frame};
+use std::io;
+
+/// This function returns a byte stream that contains fragmented MP4 data. The
+/// initialization segment is included.
+pub fn video_stream() -> ByteStream![Vec<u8>] {
+    ByteStream! {
+        loop {
+            yield vec![]
+        }
+    }
+}
+
+fn init_segment() -> InitSegment {
+    InitSegment::default()
+}
+
+fn media_seg_stream() -> impl Stream<Item = MediaSegment> {
+    // `MediaSegment isn't `clone`, so we can't use `stream::repeat`
+    stream::unfold((), |_| async move { Some((MediaSegment::default(), ())) })
+}
+
+fn frame_stream(fps: u32, resolution: (u32, u32)) -> impl Stream<Item = io::Result<Frame>> {
     let mut camera = Camera::new("/dev/video0").unwrap();
 
     camera
@@ -14,16 +39,15 @@ pub fn frame_stream(fps: u32, resolution: (u32, u32)) -> impl Stream<Item = Fram
         .unwrap();
 
     stream::unfold(camera, |c| async move {
-        Some(blocking::unblock(|| (c.capture().unwrap(), c)).await)
+        Some(spawn_blocking(|| (c.capture(), c)).await.unwrap())
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_std::{fs, io::prelude::*};
-    use futures::stream::StreamExt;
-    use rocket::tokio;
+    use rocket::futures::stream::StreamExt;
+    use rocket::tokio::{self, fs, io::AsyncWriteExt};
 
     #[ignore = "requires a camera device"]
     #[tokio::test]
@@ -32,6 +56,10 @@ mod tests {
         let mut file = fs::File::create("data.mjpg").await.unwrap();
 
         while let Some(frame) = stream.next().await {
+            if frame.is_err() {
+                continue;
+            }
+            let frame = frame.unwrap();
             file.write_all(&*frame).await.unwrap();
         }
     }

@@ -13,10 +13,10 @@ fn valid_token() {
 fn invalid_token() {
     let secret = secrets::Secret([0u8; 32]);
 
-    let utc = Utc::now();
+    let now = jwt::get_current_timestamp();
     let claims = Claims {
-        iat: (utc - Duration::days(2)).timestamp() as u64, // issued 2 days ago
-        exp: (utc - Duration::days(1)).timestamp() as u64, // expired 1 day ago
+        iat: now - 2 * 60 * 60 * 24, // issued 2 days ago
+        exp: now - 1 * 60 * 60 * 24, // expired 1 day ago
     };
 
     let token = Token {

@@ -4,12 +4,10 @@
 //! The structs are initialized in the `main` function and managed by Rocket
 //! [`State`](rocket::State). This is why wrapper types are necessary.
 
-use async_std::{fs, path::Path};
 use ring::rand::SecureRandom;
-use std::{
-    env, io,
-    ops::{Deref, DerefMut},
-};
+use rocket::tokio::fs;
+use std::path::Path;
+use std::{env, io};
 
 /// The path used to store the JWT signing secret.
 ///
@@ -82,19 +80,6 @@ impl Password {
     }
 }
 
-impl Deref for Password {
-    type Target = String;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Password {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 /// A wrapper struct for a password hash. A separate type is needed for Rocket state.
 pub struct Secret(pub [u8; 32]);
 
@@ -143,8 +128,11 @@ impl Secret {
     }
 
     /// Generates a secure random secret, writes it to `SECRET_PATH`, and returns it.
-    async fn new_secret<P: AsRef<Path>>(path: P, rng: &impl SecureRandom) -> io::Result<Self> {
-        if !path.as_ref().exists().await {
+    async fn new_secret(path: impl AsRef<Path>, rng: &impl SecureRandom) -> io::Result<Self> {
+        // check if path exists
+        if fs::File::open(path.as_ref()).await.err().map(|e| e.kind())
+            == Some(io::ErrorKind::NotFound)
+        {
             if let Some(p) = path.as_ref().parent() {
                 fs::create_dir_all(p).await?;
             }
@@ -155,18 +143,5 @@ impl Secret {
 
         fs::write(path, buf).await?;
         Ok(Self(buf))
-    }
-}
-
-impl Deref for Secret {
-    type Target = [u8; 32];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Secret {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }

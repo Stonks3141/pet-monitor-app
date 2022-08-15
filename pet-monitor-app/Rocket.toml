@@ -1,3 +1,2 @@
 [default]
 address = "0.0.0.0" # Docker
-port = 8001 # fmp4streamer uses 8000

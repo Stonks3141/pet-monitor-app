@@ -2,13 +2,11 @@
 //!
 //! The release binary should be run in a Docker container or have access to `/var/local`.
 
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_crate_level_docs)]
-#![warn(rustdoc::private_doc_tests)]
+#![deny(missing_docs)]
 
-pub mod auth;
-pub mod routes;
-pub mod secrets;
+mod auth;
+mod routes;
+mod secrets;
 mod stream;
 #[cfg(test)]
 mod tests;
@@ -18,12 +16,12 @@ use routes::*;
 
 /// The main function for the program. This is a library function to make unit
 /// and integration testing easier.
-/// 
+///
 /// # Example
 /// ```no_test
 /// use rocket::local::blocking::Client;
 /// use rocket::http::Status;
-/// 
+///
 /// let client = Client::tracked(pet_monitor_app::rocket().await).unwrap();
 /// let res = client.get("/api/auth").dispatch();
 /// ```
