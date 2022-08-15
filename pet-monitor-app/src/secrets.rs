@@ -67,7 +67,8 @@ impl Password {
             rng.fill(&mut buf)
                 .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
 
-            let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config).unwrap();
+            let hash = argon2::hash_encoded(p.as_bytes(), &buf, &config)
+                .map_err(|_| io::Error::new(io::ErrorKind::Other, "hashing error"))?;
 
             if let Some(p) = Path::new(PASSWORD_PATH).parent() {
                 fs::create_dir_all(p).await?;
@@ -149,7 +150,8 @@ impl Secret {
             }
         }
         let mut buf = [0u8; 32];
-        rng.fill(&mut buf).unwrap();
+        rng.fill(&mut buf)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "rng error"))?;
 
         fs::write(path, buf).await?;
         Ok(Self(buf))

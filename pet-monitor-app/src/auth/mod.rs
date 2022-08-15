@@ -97,7 +97,7 @@ impl Token {
     pub fn verify(&self) -> bool {
         let utc = Utc::now();
         let exp = DateTime::<Utc>::from_utc(
-            NaiveDateTime::from_timestamp(self.claims.exp.try_into().unwrap(), 0),
+            NaiveDateTime::from_timestamp(self.claims.exp as i64, 0),
             Utc,
         );
 
@@ -174,6 +174,5 @@ impl Default for Token {
 /// # }
 /// ```
 pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
-    // unwrap should be safe if main has run
     argon2::verify_encoded(hash, password.as_bytes())
 }
