@@ -58,7 +58,7 @@ pub async fn rocket() -> rocket::Rocket<rocket::Build> {
     };
 
     rocket::build()
-        .mount("/", rocket::routes![login, verify, stream_mp4])
+        .mount("/", rocket::routes![files, login, verify, stream_mp4])
         .manage(conf)
         .manage(rng)
 }

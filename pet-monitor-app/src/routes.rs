@@ -1,11 +1,39 @@
 //! This module provides Rocket routes for the server.
 
 use crate::stream::video_stream;
-use crate::{auth, config::Config, secrets};
+use crate::{auth, config::Config};
 use jsonwebtoken::errors::ErrorKind;
-use rocket::http::{Cookie, CookieJar, Status};
+use rocket::http::{Cookie, CookieJar, Status, ContentType};
 use rocket::response::stream::ByteStream;
 use rocket::{get, post, State};
+use include_dir::{Dir, include_dir};
+use std::path::PathBuf;
+
+const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/build");
+
+#[get("/<path..>", rank = 2)]
+pub fn files(path: PathBuf) -> (ContentType, &'static str) {
+    if let Some(s) = STATIC_FILES.get_file(&path).map(|f| f.contents_utf8().unwrap()) {
+        (
+            if let Some(ext) = path.extension() {
+                ContentType::from_extension(&ext.to_string_lossy())
+                    .unwrap_or(ContentType::Plain)
+            } else {
+                ContentType::Plain
+            },
+            s,
+        )
+    } else {
+        (
+            ContentType::HTML,
+            STATIC_FILES
+                .get_file("index.html")
+                .unwrap()
+                .contents_utf8()
+                .unwrap(),
+        )
+    }
+}
 
 /// Validates a password and issues tokens.
 ///
@@ -19,7 +47,7 @@ pub fn login(
 ) -> Result<(), Status> {
     if let Ok(b) = auth::validate(&password, &config.password_hash) {
         if b {
-            let token = match auth::Token::new().to_string(&config.jwt_secret) {
+            let token = match auth::Token::with_expiration(config.jwt_timeout).to_string(&config.jwt_secret) {
                 Ok(t) => t,
                 Err(_) => return Err(Status::InternalServerError),
             };

@@ -23,11 +23,35 @@ replace v4l2 for high-level usage.
 
 ## Quickstart
 
-Clone the repo, install Docker and Docker Compose, and run with
+Download the binary for your OS/architecture from the
+[releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
+move it into your `$PATH`. Run this command to start the server:
 
 ```bash
-docker compose --file production.docker-compose.yml up
+pet-monitor-app --regen-secret --password MY_PASSWORD
 ```
+
+The `regen-secret` flag generates a new secret for JWT signing, and the
+`password` flag sets your password. You can view the page at
+[localhost]. On subsequent runs, these flags are not
+necessary. To reset your password, run
+
+```bash
+pet-monitor-app --password NEW_PASSWORD
+```
+
+For a full list of command-line options, run with the `--help` flag.
+
+The configuration file is located in
+`~/.config/pet-monitor-app/pet-monitor-app.toml`. To enable TLS, add this to
+the config file:
+
+```toml
+cert = "path/to/cert.pem"
+key = "path/to/key.key"
+```
+
+You can now view the page at [https://localhost].
 
 ## Development
 
@@ -72,9 +96,10 @@ as audio and video recording.
 - [x] JSON web token authentication
 - [x] Rewrite backend in Rust/Rocket
 - [x] Secure password verification (argon2)
-- [x] Docker container
-- [x] HTTPS (part of Docker, handled with Nginx reverse proxy)
+- [x] HTTPS
 - [x] Proxy authenticated video requests to fmp4streamer as an intermediate solution
+- [x] CLI and config file
+- [x] Bundle static files into release binary
 - [ ] Rust v4l2 (libcamera?) streaming
 - [ ] Audio support
 - [ ] Recording video/audio to view later
