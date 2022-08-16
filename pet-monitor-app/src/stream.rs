@@ -2,19 +2,14 @@
 
 use mse_fmp4::fmp4::{InitializationSegment as InitSegment, MediaSegment};
 use rocket::futures::stream::{self, Stream};
-use rocket::response::stream::ByteStream;
 use rocket::tokio::task::spawn_blocking;
 use rscam::{Camera, Config, Frame};
 use std::io;
 
 /// This function returns a byte stream that contains fragmented MP4 data. The
 /// initialization segment is included.
-pub fn video_stream() -> ByteStream![Vec<u8>] {
-    ByteStream! {
-        loop {
-            yield vec![]
-        }
-    }
+pub fn video_stream() -> impl Stream<Item = Vec<u8>> {
+    stream::repeat(vec![0])
 }
 
 fn init_segment() -> InitSegment {

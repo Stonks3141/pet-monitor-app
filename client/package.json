@@ -23,7 +23,7 @@
   "eslintConfig": {
     "extends": "./.eslintrc.yml"
   },
-  "proxy": "http://rocket:8000",
+  "proxy": "http://127.0.0.1:8000",
   "devDependencies": {
     "@types/jest": "^27.5.1",
     "@types/node": "^17.0.34",

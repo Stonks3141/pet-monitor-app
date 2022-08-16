@@ -1,8 +1,10 @@
 //! This module provides Rocket routes for the server.
 
-use crate::{auth, secrets};
+use crate::stream::video_stream;
+use crate::{auth, config::Config, secrets};
 use jsonwebtoken::errors::ErrorKind;
 use rocket::http::{Cookie, CookieJar, Status};
+use rocket::response::stream::ByteStream;
 use rocket::{get, post, State};
 
 /// Validates a password and issues tokens.
@@ -13,12 +15,11 @@ use rocket::{get, post, State};
 pub fn login(
     password: String,
     cookies: &CookieJar<'_>,
-    hash: &State<secrets::Password>,
-    secret: &State<secrets::Secret>,
+    config: &State<Config>,
 ) -> Result<(), Status> {
-    if let Ok(b) = auth::validate(&password, hash) {
+    if let Ok(b) = auth::validate(&password, &config.password_hash) {
         if b {
-            let token = match auth::Token::new().to_string(secret) {
+            let token = match auth::Token::new().to_string(&config.jwt_secret) {
                 Ok(t) => t,
                 Err(_) => return Err(Status::InternalServerError),
             };
@@ -41,9 +42,9 @@ pub fn login(
 /// If the token is expired or has an invalid signature, it returns a
 /// [`Status::Unauthorized`](rocket::http::Status::Unauthorized).
 #[get("/api/auth")]
-pub fn verify(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Status {
+pub fn verify(cookies: &CookieJar<'_>, config: &State<Config>) -> Status {
     match cookies.get("token") {
-        Some(cookie) => match auth::Token::from_str(cookie.value(), secret) {
+        Some(cookie) => match auth::Token::from_str(cookie.value(), &config.jwt_secret) {
             Ok(t) => {
                 if t.verify() {
                     Status::Ok
@@ -61,4 +62,9 @@ pub fn verify(cookies: &CookieJar<'_>, secret: &State<secrets::Secret>) -> Statu
         },
         None => Status::Unauthorized,
     }
+}
+
+#[get("/stream.mp4")]
+pub fn stream_mp4() -> ByteStream![Vec<u8>] {
+    ByteStream(video_stream())
 }

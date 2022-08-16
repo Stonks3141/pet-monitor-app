@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn valid_token() {
-    let secret = secrets::Secret([0u8; 32]);
+    let secret = [0u8; 32];
     let token = Token::new();
     let token = token.to_string(&secret).unwrap();
 
@@ -11,12 +11,12 @@ fn valid_token() {
 
 #[test]
 fn invalid_token() {
-    let secret = secrets::Secret([0u8; 32]);
+    let secret = [0u8; 32];
 
-    let now = jwt::get_current_timestamp();
+    let utc = Utc::now();
     let claims = Claims {
-        iat: now - 2 * 60 * 60 * 24, // issued 2 days ago
-        exp: now - 1 * 60 * 60 * 24, // expired 1 day ago
+        iat: (utc - Duration::days(2)).timestamp() as u64, // issued 2 days ago
+        exp: (utc - Duration::days(1)).timestamp() as u64, // expired 1 day ago
     };
 
     let token = Token {
@@ -33,8 +33,7 @@ fn invalid_token() {
 fn validate_correct_password() {
     let password = "password";
     let config = argon2::Config::default();
-    let hash =
-        secrets::Password(argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
+    let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
     assert!(validate(password, &hash).unwrap());
 }
@@ -43,8 +42,7 @@ fn validate_correct_password() {
 fn validate_incorrect_password() {
     let password = "password";
     let config = argon2::Config::default();
-    let hash =
-        secrets::Password(argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
+    let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
     assert!(!validate("paswurd", &hash).unwrap());
 }

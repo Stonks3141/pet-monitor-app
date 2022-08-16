@@ -4,18 +4,15 @@
 //! and represents a JWT, and the [`validate()`] function, which verifies a
 //! password against a hash.
 
-use crate::secrets;
-//use chrono::{prelude::*, Duration};
+use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use rocket::serde::{Deserialize, Serialize};
-use std::time::Duration;
+use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;
 
 /// The claims in a JWT issued by this server.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct Claims {
     /// Issued-at time (Unix timestamp)
     iat: u64,
@@ -26,10 +23,10 @@ struct Claims {
 impl Claims {
     /// Creates new JWT claims that expire in `expires_in` time.
     fn new(expires_in: Duration) -> Self {
-        let now = jwt::get_current_timestamp();
+        let utc = Utc::now();
         Self {
-            iat: now,
-            exp: now + expires_in.as_secs(),
+            iat: utc.timestamp() as u64,
+            exp: (utc + expires_in).timestamp() as u64,
         }
     }
 }
@@ -37,7 +34,7 @@ impl Claims {
 impl Default for Claims {
     /// Creates new JWT claims that expire in 1 day.
     fn default() -> Self {
-        Self::new(Duration::from_secs(60 * 60 * 24))
+        Self::new(Duration::days(1))
     }
 }
 
@@ -55,6 +52,7 @@ impl Token {
     /// Creates a new token that expires in 1 day.
     ///
     /// # Example
+    ///
     /// ```no_test
     /// use crate::auth::Token;
     ///
@@ -71,6 +69,7 @@ impl Token {
     /// Creates a new token that expires in `expires_in` time.
     ///
     /// # Example
+    ///
     /// ```no_test
     /// use chrono::Duration;
     /// use std::{thread, time};
@@ -90,6 +89,7 @@ impl Token {
     /// Verifies the validity of a `Token`.
     ///
     /// # Example
+    ///
     /// ```no_test
     /// use crate::auth::Token;
     ///
@@ -97,14 +97,19 @@ impl Token {
     /// assert!(token.verify());
     /// ```
     pub fn verify(&self) -> bool {
-        let now = jwt::get_current_timestamp();
+        let utc = Utc::now();
+        let exp = DateTime::<Utc>::from_utc(
+            NaiveDateTime::from_timestamp(self.claims.exp as i64, 0),
+            Utc,
+        );
 
-        now < self.claims.exp
+        utc < exp
     }
 
     /// Parses a JWT into a `Token`.
     ///
     /// # Example
+    ///
     /// ```no_test
     /// use crate::{secrets, auth::Token};
     /// # fn main() -> jsonwebtoken::errors::Result<()> {
@@ -118,8 +123,8 @@ impl Token {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_str(s: &str, secret: &secrets::Secret) -> jwt::errors::Result<Self> {
-        let dec_key = jwt::DecodingKey::from_secret(&secret.0);
+    pub fn from_str(s: &str, secret: &[u8; 32]) -> jwt::errors::Result<Self> {
+        let dec_key = jwt::DecodingKey::from_secret(secret);
         let val = jwt::Validation::new(ALG);
 
         jwt::decode::<Claims>(s, &dec_key, &val).map(|t| Self {
@@ -131,6 +136,7 @@ impl Token {
     /// Creates a JWT from a `Token`.
     ///
     /// # Example
+    ///
     /// ```no_test
     /// use crate::{secrets, auth::Token};
     /// # fn main() -> jsonwebtoken::errors::Result<()> {
@@ -142,8 +148,8 @@ impl Token {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_string(&self, secret: &secrets::Secret) -> jwt::errors::Result<String> {
-        let enc_key = jwt::EncodingKey::from_secret(&secret.0);
+    pub fn to_string(&self, secret: &[u8; 32]) -> jwt::errors::Result<String> {
+        let enc_key = jwt::EncodingKey::from_secret(secret);
 
         jwt::encode(&self.header, &self.claims, &enc_key)
     }
@@ -158,6 +164,7 @@ impl Default for Token {
 /// Validates a password against a hash.
 ///
 /// # Example
+///
 /// ```no_test
 /// use crate::{secrets, auth};
 /// # fn main() -> jsonwebtoken::errors::Result<()> {
@@ -171,6 +178,6 @@ impl Default for Token {
 /// # Ok(())
 /// # }
 /// ```
-pub fn validate(password: &str, hash: &secrets::Password) -> argon2::Result<bool> {
-    argon2::verify_encoded(&hash.0, password.as_bytes())
+pub fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
+    argon2::verify_encoded(hash, password.as_bytes())
 }
