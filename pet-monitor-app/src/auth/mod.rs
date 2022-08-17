@@ -6,7 +6,11 @@
 
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
+use rocket::request::{Request, Outcome, FromRequest};
+use rocket::http::Status;
+use rocket::tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
+use crate::config::Context;
 
 #[cfg(test)]
 mod tests;
@@ -49,37 +53,8 @@ pub struct Token {
 }
 
 impl Token {
-    /// Creates a new token that expires in 1 day.
-    ///
-    /// # Example
-    ///
-    /// ```no_test
-    /// use crate::auth::Token;
-    ///
-    /// let token = Token::new();
-    /// assert!(token.verify());
-    /// ```
-    pub fn new() -> Self {
-        Self {
-            header: jwt::Header::new(ALG),
-            claims: Claims::default(),
-        }
-    }
-
     /// Creates a new token that expires in `expires_in` time.
-    ///
-    /// # Example
-    ///
-    /// ```no_test
-    /// use chrono::Duration;
-    /// use std::{thread, time};
-    /// use crate::auth::Token;
-    ///
-    /// let token = Token::with_expiration(Duration::seconds(1));
-    /// thread::sleep(time::Duration::from_secs(2));
-    /// assert!(!token.verify());
-    /// ```
-    pub fn with_expiration(expires_in: Duration) -> Self {
+    pub fn new(expires_in: Duration) -> Self {
         Self {
             header: jwt::Header::new(ALG),
             claims: Claims::new(expires_in),
@@ -87,15 +62,6 @@ impl Token {
     }
 
     /// Verifies the validity of a `Token`.
-    ///
-    /// # Example
-    ///
-    /// ```no_test
-    /// use crate::auth::Token;
-    ///
-    /// let token = Token::new();
-    /// assert!(token.verify());
-    /// ```
     pub fn verify(&self) -> bool {
         let utc = Utc::now();
         let exp = DateTime::<Utc>::from_utc(
@@ -107,22 +73,6 @@ impl Token {
     }
 
     /// Parses a JWT into a `Token`.
-    ///
-    /// # Example
-    ///
-    /// ```no_test
-    /// use crate::{secrets, auth::Token};
-    /// # fn main() -> jsonwebtoken::errors::Result<()> {
-    ///
-    /// let secret = secrets::Secret([0u8; 32]);
-    ///
-    /// let token = Token::new();
-    /// let str_token = token.to_string(&secret)?;
-    /// let new_token = Token::from_str(&str_token, &secret)?;
-    /// assert_eq!(token, new_token);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn from_str(s: &str, secret: &[u8; 32]) -> jwt::errors::Result<Self> {
         let dec_key = jwt::DecodingKey::from_secret(secret);
         let val = jwt::Validation::new(ALG);
@@ -134,20 +84,6 @@ impl Token {
     }
 
     /// Creates a JWT from a `Token`.
-    ///
-    /// # Example
-    ///
-    /// ```no_test
-    /// use crate::{secrets, auth::Token};
-    /// # fn main() -> jsonwebtoken::errors::Result<()> {
-    ///
-    /// let secret = secrets::Secret([0u8; 32]);
-    ///
-    /// let token = Token::new();
-    /// let str_token = token.to_string(&secret)?;
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn to_string(&self, secret: &[u8; 32]) -> jwt::errors::Result<String> {
         let enc_key = jwt::EncodingKey::from_secret(secret);
 
@@ -157,27 +93,50 @@ impl Token {
 
 impl Default for Token {
     fn default() -> Self {
-        Self::new()
+        Self::new(Duration::days(1))
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for Token {
+    type Error = jwt::errors::Error;
+    async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        use jwt::errors::{Error, ErrorKind};
+        if let Some(token) = req
+            .headers()
+            .get_one("Authorization")
+            .map(|t| t.split_once("Bearer "))
+            .flatten()
+            .map(|t| t.1)
+        {
+            let ctx = req.rocket().state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>().unwrap();
+            let (tx, rx) = oneshot::channel();
+            ctx.send((None, tx)).await.unwrap();
+            let ctx = rx.await.unwrap();
+
+            match Self::from_str(token, &ctx.jwt_secret) {
+                Ok(token) => {
+                    if token.verify() {
+                        Outcome::Success(token)
+                    } else {
+                        Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))
+                    }
+                }
+                Err(e) => match e.kind() {
+                    ErrorKind::Base64(_)
+                    | ErrorKind::Crypto(_)
+                    | ErrorKind::Json(_)
+                    | ErrorKind::Utf8(_) => Outcome::Failure((Status::InternalServerError, e)),
+                    _ => Outcome::Failure((Status::Unauthorized, e)),
+                },
+            }
+        } else {
+            Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))
+        }
     }
 }
 
 /// Validates a password against a hash.
-///
-/// # Example
-///
-/// ```no_test
-/// use crate::{secrets, auth};
-/// # fn main() -> jsonwebtoken::errors::Result<()> {
-///
-/// let password = "password";
-/// let config = argon2::Config::default();
-/// let hash = secrets::Password(
-///     argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap());
-///
-/// assert!(auth::validate(password, &hash).unwrap());
-/// # Ok(())
-/// # }
-/// ```
 pub fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
     argon2::verify_encoded(hash, password.as_bytes())
 }

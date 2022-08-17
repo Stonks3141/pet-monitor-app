@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn valid_token() {
     let secret = [0u8; 32];
-    let token = Token::new();
+    let token = Token::new(Duration::days(1));
     let token = token.to_string(&secret).unwrap();
 
     assert!(Token::from_str(&token, &secret).is_ok());
