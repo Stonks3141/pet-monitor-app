@@ -4,7 +4,6 @@
 //! The structs are initialized in the `main` function and managed by Rocket
 //! [`State`](rocket::State). This is why wrapper types are necessary.
 
-use log::{debug, error, info, trace, warn};
 use quick_error::quick_error;
 use ring::rand::SecureRandom;
 
@@ -29,8 +28,6 @@ quick_error! {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
-    info!("Hashing new password");
-
     let mut buf = [0u8; 16];
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
     let config = argon2::Config {

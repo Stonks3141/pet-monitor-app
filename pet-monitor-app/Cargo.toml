@@ -9,10 +9,9 @@ edition = "2021"
 rust-version = "1.62"
 
 [dependencies]
-rocket = "0.5.0-rc.2"
+rocket = { version="0.5.0-rc.2", features=["json"] }
 jsonwebtoken = "8.1"
 clap = "3.2"
-log = "0.4"
 include_dir = "0.7"
 quick-error = "2.0"
 confy = "0.4"
@@ -25,6 +24,5 @@ rscam = "0.5"
 mse_fmp4 = "0.2"
 
 [profile.release]
-panic = "abort"
 codegen-units = 1
 lto = true
