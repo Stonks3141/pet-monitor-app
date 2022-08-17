@@ -1,0 +1,124 @@
+openapi: 3.1.0
+
+info:
+  title: pet-monitor-app API
+  description: Provides authentication, configuration, and media streaming.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /api/login:
+    post:
+      tags:
+        - Authentication
+      summary: login
+      description: Login route that responds with a JSON web token if the password is correct.
+      requestBody:
+        description: password
+        content:
+          text/plain: {}
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NjA3NDY3ODAsImV4cCI6MTY2MDgzMzE4MH0.D3YL5X0khSuXKmaUmasBlmuBaz5i96DgJq_mdzKyrlU
+        '401':
+          description: Unauthorized
+
+  /api/config:
+    get:
+      tags:
+        - Configuration
+      summary: Get config
+      description: Retrieves user-facing configuration.
+      security:
+        - bearer: []
+      requestBody:
+        description: new config
+        content: {}
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Configuration
+      summary: Udate config
+      description: Updates video configuration.
+      security:
+        - bearer: []
+      requestBody:
+        description: new config
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Config'
+        required: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+          
+  /stream.mp4:
+    get:
+      tags:
+        - Streaming
+      summary: Get stream
+      description: Returns an infinite fragmented MP4 video stream.
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            video/mp4: {}
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Config:
+      type: object
+      properties:
+        resolution:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+          example: [1280, 720]
+        rotation:
+          type: integer
+          example: 90
+        framerate:
+          type: integer
+          example: 30
+        device:
+          type: string
+          example: /dev/video0
+        jwt_timeout:
+          type: integer
+          example: 86400
+      required: ["resolution", "rotation", "framerate", "device", "jwt_timeout"]
