@@ -7,7 +7,7 @@
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use rocket::request::{Request, Outcome, FromRequest};
-use rocket::http::Status;
+use rocket::http::{Cookie, Status};
 use rocket::tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
 use crate::config::Context;
@@ -102,13 +102,7 @@ impl<'r> FromRequest<'r> for Token {
     type Error = jwt::errors::Error;
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         use jwt::errors::{Error, ErrorKind};
-        if let Some(token) = req
-            .headers()
-            .get_one("Authorization")
-            .map(|t| t.split_once("Bearer "))
-            .flatten()
-            .map(|t| t.1)
-        {
+        if let Some(token) = req.cookies().get("token").map(Cookie::value) {
             let ctx = req.rocket().state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>().unwrap();
             let (tx, rx) = oneshot::channel();
             ctx.send((None, tx)).await.unwrap();

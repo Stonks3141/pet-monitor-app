@@ -1,4 +1,0 @@
-.pnp.*
-.yarn/
-node_modules/
-build/

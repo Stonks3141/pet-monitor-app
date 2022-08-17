@@ -10,7 +10,7 @@ use rscam::{Camera, Frame};
 use std::io;
 
 pub fn video_stream(config: &Config) -> impl Stream<Item = Vec<u8>> {
-    let mut stream = Box::pin(media_seg_stream(&config));
+    let stream = Box::pin(media_seg_stream(&config));
     stream::unfold(stream, |mut s| async move {
         let mut vec = Vec::new();
         if let Some(item) = s.next().await {

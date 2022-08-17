@@ -12,8 +12,8 @@ pub fn parse_args() -> Options {
     let matches = Command::new("pet-monitor-app")
         .about("A simple and secure pet monitor")
         .long_about(
-            "A simple and secure pet monitor. This program is a web
-        server that handles authentication and media streaming, intended for
+            "A simple and secure pet monitor. This program is a web \
+        server that handles authentication and media streaming, intended for \
         use as a pet monitor.",
         )
         .author("Sam Nystrom")

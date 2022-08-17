@@ -3,14 +3,14 @@
 use crate::auth::{self, Token};
 use crate::config::{Config, Context};
 use include_dir::{include_dir, Dir};
-use rocket::http::{ContentType, Status};
+use rocket::http::{ContentType, Status, CookieJar, Cookie, SameSite};
 //use rocket::response::stream::ByteStream;
 use rocket::serde::json::Json;
 use rocket::tokio::sync::{mpsc, oneshot};
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
-const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/build");
+const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/dist");
 
 #[get("/<path..>", rank = 2)]
 pub fn files(path: PathBuf) -> (ContentType, String) {
@@ -46,25 +46,34 @@ pub fn files(path: PathBuf) -> (ContentType, String) {
 #[post("/api/login", data = "<password>")]
 pub async fn login(
     password: String,
+    cookies: &CookieJar<'_>,
     ctx: &State<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>,
-) -> Result<String, Status> {
+) -> Status {
     let (tx, rx) = oneshot::channel();
     ctx.send((None, tx)).await.unwrap();
     let ctx = rx.await.unwrap();
 
     if let Ok(b) = auth::validate(&password, &ctx.password_hash) {
         if b {
-            match Token::new(ctx.config.jwt_timeout)
-                .to_string(&ctx.jwt_secret)
-            {
-                Ok(t) => Ok(t),
-                Err(_) => Err(Status::InternalServerError),
+            match Token::new(ctx.config.jwt_timeout).to_string(&ctx.jwt_secret) {
+                Ok(token) => {
+                    let cookie = Cookie::build("token", token)
+                        .http_only(true)
+                        .max_age(rocket::time::Duration::seconds(ctx.config.jwt_timeout.num_seconds()))
+                        .same_site(SameSite::Strict)
+                        .finish();
+
+                    cookies.add(cookie);
+
+                    Status::Ok
+                },
+                Err(_) => Status::InternalServerError,
             }
         } else {
-            Err(Status::Unauthorized)
+            Status::Unauthorized
         }
     } else {
-        Err(Status::InternalServerError)
+        Status::InternalServerError
     }
 }
 
