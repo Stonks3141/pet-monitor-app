@@ -60,7 +60,6 @@ pub async fn login(
             match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
                 Ok(token) => {
                     let cookie = Cookie::build("token", token)
-                        .http_only(true)
                         .max_age(rocket::time::Duration::seconds(
                             ctx.jwt_timeout.num_seconds(),
                         ))
@@ -79,11 +78,6 @@ pub async fn login(
     } else {
         Status::InternalServerError
     }
-}
-
-#[get("/api/logout")]
-pub fn logout(cookies: &CookieJar<'_>) {
-    cookies.remove(Cookie::named("token"));
 }
 
 #[get("/api/config")]

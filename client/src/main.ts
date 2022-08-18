@@ -12,6 +12,15 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 
 let model = init();
 
+const getToken = (): string => {
+  const match = document.cookie.match(new RegExp('(^| )token=([^;]+)'));
+  if (match) {
+    return match[2];
+  } else {
+    return '';
+  }
+};
+
 const setupLogin = () => {
   app.innerHTML = `
     <div class="card w-96 h-fit bg-base-100">
@@ -23,10 +32,13 @@ const setupLogin = () => {
     </div>
     <div class="basis-1/4"></div>
   `;
+
   const form = document.querySelector<HTMLFormElement>('#login')!;
   const passwordInput = document.querySelector<HTMLInputElement>('#password')!;
+
   form.onsubmit = async (event: SubmitEvent) => {
     event.preventDefault();
+
     const res = await fetch('/api/login', {
       method: 'POST',
       mode: 'cors',
@@ -34,6 +46,7 @@ const setupLogin = () => {
       credentials: 'same-origin',
       body: passwordInput.value,
     });
+
     if (res.ok) {
       passwordInput.classList.replace('input-error', 'input-success');
       model = update(model, Msg.LogIn);
@@ -43,6 +56,7 @@ const setupLogin = () => {
       model = update(model, Msg.Incorrect);
       passwordInput.classList.add('input-error');
     }
+
     view();
   }
 };
@@ -116,16 +130,12 @@ const setupConfig = async () => {
     model = update(model, Msg.CloseConfig);
     view();
   }
-  
+
   document.querySelector<HTMLButtonElement>('#logout')!.onclick = async () => {
-    const res = await fetch('/api/logout');
-    if (!res.ok) {
-      alert('An error occured. Please try again.');
-    } else {
-      model = update(model, Msg.LogOut);
-      model = update(model, Msg.CloseConfig);
-      view();
-    }
+    document.cookie = 'token=; Max-Age=0';
+    model = update(model, Msg.LogOut);
+    model = update(model, Msg.CloseConfig);
+    view();
   }
 
   const form = document.querySelector<HTMLFormElement>('#config')!;
@@ -137,10 +147,12 @@ const setupConfig = async () => {
 
   form.onsubmit = async (event: SubmitEvent) => {
     event.preventDefault();
+
     const res = await fetch('/api/config', {
       method: 'PUT',
       headers: new Headers({
         'Content-Type': 'application/json',
+        'X-CSRF-Token': getToken(),
       }),
       body: JSON.stringify({
         resolution: [
@@ -152,6 +164,7 @@ const setupConfig = async () => {
         device: device!.value,
       }),
     });
+
     if (res.status === 401) {
       model = update(model, Msg.LogOut);
       view();

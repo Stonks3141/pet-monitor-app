@@ -97,10 +97,7 @@ pub async fn rocket() -> rocket::Rocket<rocket::Build> {
     });*/
 
     rocket::build()
-        .mount(
-            "/",
-            rocket::routes![files, login, logout, get_config, put_config],
-        )
+        .mount("/", rocket::routes![files, login, get_config, put_config])
         .manage(cfg_tx)
         .manage(options)
         .manage(stream)

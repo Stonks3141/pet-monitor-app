@@ -7,7 +7,7 @@
 use crate::config::Context;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use rocket::http::{Cookie, Status};
+use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
@@ -103,6 +103,21 @@ impl<'r> FromRequest<'r> for Token {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         use jwt::errors::{Error, ErrorKind};
         if let Some(token) = req.cookies().get("token").map(Cookie::value) {
+            if req.method() != Method::Get && req.method() != Method::Head {
+                if let Some(csrf_token) = req.headers().get_one("X-CSRF-Token") {
+                    if token != csrf_token {
+                        return Outcome::Failure((
+                            Status::Unauthorized,
+                            Error::from(ErrorKind::InvalidToken),
+                        ));
+                    }
+                } else {
+                    return Outcome::Failure((
+                        Status::Unauthorized,
+                        Error::from(ErrorKind::InvalidToken),
+                    ));
+                }
+            }
             let ctx = req
                 .rocket()
                 .state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>()

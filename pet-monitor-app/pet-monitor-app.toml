@@ -1,5 +1,6 @@
 password_hash = '$argon2id$v=19$m=8192,t=3,p=4$6XONWFzTLxzREFfu91CGEw$YmGlUnuTteo1KKY9WIFehnTa05+nc032CauaaS5E6NE'
 jwt_secret = 'sGJj9WQvtoT6dpLHloWeVLR04gWOpLfrM5J5f7QwfDc='
+jwt_timeout = 86400
 resolution = [
     1280,
     720,
@@ -7,4 +8,3 @@ resolution = [
 rotation = 0
 framerate = 30
 device = '/dev/video0'
-jwt_timeout = 86400
