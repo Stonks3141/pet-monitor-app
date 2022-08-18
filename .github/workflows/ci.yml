@@ -19,7 +19,7 @@ jobs:
 
       - name: Create dummy build directory
         working-directory: client
-        run: mkdir build/
+        run: mkdir dist/
 
       - name: Build
         working-directory: pet-monitor-app
@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v2.2.2
 
       - name: Install dependencies
         working-directory: client
@@ -48,7 +48,7 @@ jobs:
 
       - name: Create dummy build directory
         working-directory: client
-        run: mkdir build/
+        run: mkdir dist/
 
       - name: Run lints
         working-directory: pet-monitor-app
@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v2.2.2
 
       - name: Install v4l2
         run: sudo apt-get install libv4l-0 libv4l-dev

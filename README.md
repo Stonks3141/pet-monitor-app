@@ -13,8 +13,6 @@ replace v4l2 for high-level usage.
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
   - [Development](#development)
-  - [Usage](#usage)
-  - [Testing](#testing)
   - [Motivation](#motivation)
   - [Goals](#goals)
   - [Roadmap](#roadmap)
@@ -42,11 +40,12 @@ pet-monitor-app --password NEW_PASSWORD
 
 For a full list of command-line options, run with the `--help` flag.
 
-The configuration file is located in
+The configuration file is located at
 `~/.config/pet-monitor-app/pet-monitor-app.toml`. To enable TLS, add this to
 the config file:
 
 ```toml
+[TLS]
 cert = "path/to/cert.pem"
 key = "path/to/key.key"
 ```
@@ -59,18 +58,6 @@ Clone the repo. Install Docker and Docker Compose and run `sudo docker compose u
 in the base directory. View the development server at [http://localhost:3000].
 The frontend will reload automatically as you make changes, but you will need
 to rebuild the backend container.
-
-## Usage
-
-Run `cargo run`. Set the `PASSWORD` env var the first time and any time you
-want to change the password.
-
-## Testing
-
-Tests are a work in progress.
-
-Test the server with `cargo test`, and the client with `yarn test` in the
-`client/` directory.
 
 ## Motivation
 
@@ -104,7 +91,7 @@ as audio and video recording.
 - [ ] Audio support
 - [ ] Recording video/audio to view later
 - [ ] Documentation
-- [ ] In-browser configuration/server management
+- [x] In-browser configuration/server management
 
 ## Contributing
 

@@ -10,6 +10,8 @@ use rocket::tokio::sync::{mpsc, oneshot};
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
+type Manager<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
+
 const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/dist");
 
 #[get("/<path..>", rank = 2)]
@@ -47,7 +49,7 @@ pub fn files(path: PathBuf) -> (ContentType, String) {
 pub async fn login(
     password: String,
     cookies: &CookieJar<'_>,
-    ctx: &State<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>,
+    ctx: &State<Manager<Context>>,
 ) -> Status {
     let (tx, rx) = oneshot::channel();
     ctx.send((None, tx)).await.unwrap();
@@ -55,11 +57,11 @@ pub async fn login(
 
     if let Ok(b) = auth::validate(&password, &ctx.password_hash) {
         if b {
-            match Token::new(ctx.config.jwt_timeout).to_string(&ctx.jwt_secret) {
+            match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
                 Ok(token) => {
                     let cookie = Cookie::build("token", token)
                         .http_only(true)
-                        .max_age(rocket::time::Duration::seconds(ctx.config.jwt_timeout.num_seconds()))
+                        .max_age(rocket::time::Duration::seconds(ctx.jwt_timeout.num_seconds()))
                         .same_site(SameSite::Strict)
                         .finish();
 
@@ -80,7 +82,7 @@ pub async fn login(
 #[get("/api/config")]
 pub async fn get_config(
     _token: Token,
-    ctx: &State<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>,
+    ctx: &State<Manager<Context>>,
 ) -> Result<Json<Config>, Status> {
     let (tx, rx) = oneshot::channel();
     ctx.send((None, tx)).await.unwrap();
@@ -91,7 +93,7 @@ pub async fn get_config(
 #[put("/api/config", format = "json", data = "<new_config>")]
 pub async fn put_config(
     _token: Token,
-    ctx: &State<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>,
+    ctx: &State<Manager<Context>>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
     let (tx, rx) = oneshot::channel();
