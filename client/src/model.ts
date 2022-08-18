@@ -32,14 +32,10 @@ const update = (model: Model, msg: Msg): Model => {
       newModel.incorrect = true;
       break;
     case Msg.OpenConfig:
-      if (model.loggedIn) {
-        newModel.page = 'config';
-      }
+      newModel.page = 'config';
       break;
     case Msg.CloseConfig:
-      if (model.loggedIn) {
-        newModel.page = 'camera';
-      }
+      newModel.page = 'camera';
       break;
   }
   return newModel;

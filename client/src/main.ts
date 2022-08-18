@@ -14,13 +14,11 @@ let model = init();
 
 const setupLogin = () => {
   app.innerHTML = `
-    <div class="card w-96 h-fit shadow-xl bg-base-100">
+    <div class="card w-96 h-fit bg-base-100">
       <form class="form-control card-body" id="login">
         <label for="password" class="sr-only">Password</label>
         <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required class="input bg-base-200" />
-        <button type="submit" class="btn btn-primary">
-          Sign in
-        </button>
+        <button type="submit" class="btn btn-primary mt-2">Sign in</button>
       </form>
     </div>
     <div class="basis-1/4"></div>
@@ -86,7 +84,10 @@ const setupConfig = async () => {
     <div class="card h-fit w-1/2 bg-base-100">
       <div class="flex flex-row justify-between mx-8 mt-8">
         <h2 class="card-title">Settings</h2>
-        <button id="close" class="btn btn-ghost w-fit">Close</button>
+        <div>
+          <button id="logout" class="btn btn-ghost w-fit">Log out</button>
+          <button id="close" class="btn btn-ghost w-fit">Close</button>
+        </div>
       </div>
       <form id="config" class="form-control card-body">
         <label for="width" class="label">Width</label>
@@ -114,6 +115,17 @@ const setupConfig = async () => {
   document.querySelector<HTMLButtonElement>('#close')!.onclick = () => {
     model = update(model, Msg.CloseConfig);
     view();
+  }
+  
+  document.querySelector<HTMLButtonElement>('#logout')!.onclick = async () => {
+    const res = await fetch('/api/logout');
+    if (!res.ok) {
+      alert('An error occured. Please try again.');
+    } else {
+      model = update(model, Msg.LogOut);
+      model = update(model, Msg.CloseConfig);
+      view();
+    }
   }
 
   const form = document.querySelector<HTMLFormElement>('#config')!;

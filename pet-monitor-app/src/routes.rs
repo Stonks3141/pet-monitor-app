@@ -3,7 +3,7 @@
 use crate::auth::{self, Token};
 use crate::config::{Config, Context};
 use include_dir::{include_dir, Dir};
-use rocket::http::{ContentType, Status, CookieJar, Cookie, SameSite};
+use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status};
 //use rocket::response::stream::ByteStream;
 use rocket::serde::json::Json;
 use rocket::tokio::sync::{mpsc, oneshot};
@@ -61,14 +61,16 @@ pub async fn login(
                 Ok(token) => {
                     let cookie = Cookie::build("token", token)
                         .http_only(true)
-                        .max_age(rocket::time::Duration::seconds(ctx.jwt_timeout.num_seconds()))
+                        .max_age(rocket::time::Duration::seconds(
+                            ctx.jwt_timeout.num_seconds(),
+                        ))
                         .same_site(SameSite::Strict)
                         .finish();
 
                     cookies.add(cookie);
 
                     Status::Ok
-                },
+                }
                 Err(_) => Status::InternalServerError,
             }
         } else {
@@ -77,6 +79,11 @@ pub async fn login(
     } else {
         Status::InternalServerError
     }
+}
+
+#[get("/api/logout")]
+pub fn logout(cookies: &CookieJar<'_>) {
+    cookies.remove(Cookie::named("token"));
 }
 
 #[get("/api/config")]

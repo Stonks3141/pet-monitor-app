@@ -4,13 +4,13 @@
 //! and represents a JWT, and the [`validate()`] function, which verifies a
 //! password against a hash.
 
+use crate::config::Context;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use rocket::request::{Request, Outcome, FromRequest};
 use rocket::http::{Cookie, Status};
+use rocket::request::{FromRequest, Outcome, Request};
 use rocket::tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
-use crate::config::Context;
 
 #[cfg(test)]
 mod tests;
@@ -103,7 +103,10 @@ impl<'r> FromRequest<'r> for Token {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         use jwt::errors::{Error, ErrorKind};
         if let Some(token) = req.cookies().get("token").map(Cookie::value) {
-            let ctx = req.rocket().state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>().unwrap();
+            let ctx = req
+                .rocket()
+                .state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>()
+                .unwrap();
             let (tx, rx) = oneshot::channel();
             ctx.send((None, tx)).await.unwrap();
             let ctx = rx.await.unwrap();
@@ -113,7 +116,10 @@ impl<'r> FromRequest<'r> for Token {
                     if token.verify() {
                         Outcome::Success(token)
                     } else {
-                        Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))
+                        Outcome::Failure((
+                            Status::Unauthorized,
+                            Error::from(ErrorKind::InvalidToken),
+                        ))
                     }
                 }
                 Err(e) => match e.kind() {
