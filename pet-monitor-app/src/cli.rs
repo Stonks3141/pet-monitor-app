@@ -17,7 +17,7 @@ pub fn parse_args() -> Options {
         use as a pet monitor.",
         )
         .author("Sam Nystrom")
-        .version("0.1.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .args(&[
             arg!(   --password [PASSWORD] "Reset the password").min_values(1),
             arg!(   --"regen-secret"      "Regenerate the JWT secret"),

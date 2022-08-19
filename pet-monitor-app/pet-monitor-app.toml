@@ -5,6 +5,10 @@ resolution = [
     1280,
     720,
 ]
-rotation = 0
+rotation = 90
 framerate = 30
 device = '/dev/video0'
+
+[tls]
+cert = '../pet-monitor-app.pem'
+key = '../pet-monitor-app.key'

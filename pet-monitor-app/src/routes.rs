@@ -5,12 +5,18 @@ use crate::config::{Config, Context};
 use include_dir::{include_dir, Dir};
 use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status};
 //use rocket::response::stream::ByteStream;
+use rocket::response::Redirect;
 use rocket::serde::json::Json;
 use rocket::tokio::sync::{mpsc, oneshot};
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
-type Manager<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
+type Provider<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
+
+#[get("/<p..>")]
+pub fn redirect(p: PathBuf) -> Redirect {
+    Redirect::permanent(format!("https://localhost/{}", p.as_path().to_string_lossy()))
+}
 
 const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/dist");
 
@@ -49,7 +55,7 @@ pub fn files(path: PathBuf) -> (ContentType, String) {
 pub async fn login(
     password: String,
     cookies: &CookieJar<'_>,
-    ctx: &State<Manager<Context>>,
+    ctx: &State<Provider<Context>>,
 ) -> Status {
     let (tx, rx) = oneshot::channel();
     ctx.send((None, tx)).await.unwrap();
@@ -83,7 +89,7 @@ pub async fn login(
 #[get("/api/config")]
 pub async fn get_config(
     _token: Token,
-    ctx: &State<Manager<Context>>,
+    ctx: &State<Provider<Context>>,
 ) -> Result<Json<Config>, Status> {
     let (tx, rx) = oneshot::channel();
     ctx.send((None, tx)).await.unwrap();
@@ -94,7 +100,7 @@ pub async fn get_config(
 #[put("/api/config", format = "json", data = "<new_config>")]
 pub async fn put_config(
     _token: Token,
-    ctx: &State<Manager<Context>>,
+    ctx: &State<Provider<Context>>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
     let (tx, rx) = oneshot::channel();

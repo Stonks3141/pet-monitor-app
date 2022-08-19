@@ -8,6 +8,7 @@ use config::Context;
 use ring::rand::SystemRandom;
 use rocket::response::stream::ByteStream;
 use rocket::tokio::sync::{mpsc, oneshot};
+use rocket::config::TlsConfig;
 use routes::*;
 
 mod auth;
@@ -55,13 +56,26 @@ pub async fn rocket() -> rocket::Rocket<rocket::Build> {
         confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
     };
 
+    if ctx.tls.is_some() {
+        let rocket_cfg = rocket::Config {
+            port: 80,
+            ..rocket::Config::figment().extract::<rocket::Config>().unwrap()
+        };
+        let _rocket = rocket::custom(&rocket_cfg)
+            .mount("/", rocket::routes![redirect])
+            .ignite()
+            .await
+            .unwrap();
+    }
+
     let stream = ByteStream(stream::video_stream(&ctx.config));
 
     let (cfg_tx, mut cfg_rx) = mpsc::channel::<(Option<Context>, oneshot::Sender<Context>)>(100);
 
+    let ctx_clone = ctx.clone();
     let conf_path = options.conf_path.clone();
     rocket::tokio::spawn(async move {
-        let mut ctx = ctx;
+        let mut ctx = ctx_clone;
         while let Some((new, response)) = cfg_rx.recv().await {
             if let Some(new) = new {
                 let prev = ctx.clone();
@@ -80,6 +94,7 @@ pub async fn rocket() -> rocket::Rocket<rocket::Build> {
             }
         }
     });
+
     /*
     let (stream_tx, mut stream_rx) = mpsc::channel::<(Option<ByteStream>, oneshot::Sender<ByteStream>)>(100);
 
@@ -96,7 +111,20 @@ pub async fn rocket() -> rocket::Rocket<rocket::Build> {
         }
     });*/
 
-    rocket::build()
+    let rocket_cfg = if let Some(tls) = &ctx.tls {
+        rocket::Config {
+            tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
+            port: 443,
+            ..rocket::Config::figment().extract::<rocket::Config>().unwrap()
+        }
+    } else {
+        rocket::Config {
+            port: 80,
+            ..rocket::Config::figment().extract::<rocket::Config>().unwrap()
+        }
+    };
+
+    rocket::custom(&rocket_cfg)
         .mount("/", rocket::routes![files, login, get_config, put_config])
         .manage(cfg_tx)
         .manage(options)

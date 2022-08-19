@@ -45,7 +45,7 @@ The configuration file is located at
 the config file:
 
 ```toml
-[TLS]
+[tls]
 cert = "path/to/cert.pem"
 key = "path/to/key.key"
 ```

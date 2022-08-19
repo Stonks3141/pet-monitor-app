@@ -12,7 +12,6 @@ pub struct Context {
     pub jwt_timeout: Duration,
     #[serde(flatten)]
     pub config: Config,
-    #[serde(rename = "TLS")]
     pub tls: Option<Tls>,
 }
 
@@ -50,8 +49,8 @@ impl Default for Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tls {
-    cert: String,
-    key: String,
+    pub cert: String,
+    pub key: String,
 }
 
 impl Default for Tls {

@@ -104,7 +104,7 @@ impl<'r> FromRequest<'r> for Token {
         use jwt::errors::{Error, ErrorKind};
         if let Some(token) = req.cookies().get("token").map(Cookie::value) {
             if req.method() != Method::Get && req.method() != Method::Head {
-                if let Some(csrf_token) = req.headers().get_one("X-CSRF-Token") {
+                if let Some(csrf_token) = req.headers().get_one("x-csrf-token") {
                     if token != csrf_token {
                         return Outcome::Failure((
                             Status::Unauthorized,
