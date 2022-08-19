@@ -13,9 +13,18 @@ use std::path::PathBuf;
 
 type Provider<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
 
-#[get("/<p..>")]
-pub fn redirect(p: PathBuf) -> Redirect {
-    Redirect::permanent(format!("https://localhost/{}", p.as_path().to_string_lossy()))
+#[get("/<path..>")]
+pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
+    println!("{}", path.as_path().to_string_lossy());
+    let (tx, rx) = oneshot::channel();
+    ctx.send((None, tx)).await.unwrap();
+    let ctx = rx.await.unwrap();
+
+    Redirect::permanent(format!(
+        "https://{}/{}",
+        ctx.domain,
+        path.as_path().to_string_lossy()
+    ))
 }
 
 const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/dist");

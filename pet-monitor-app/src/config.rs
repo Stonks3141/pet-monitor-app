@@ -10,6 +10,7 @@ pub struct Context {
     /// days
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub jwt_timeout: Duration,
+    pub domain: String,
     #[serde(flatten)]
     pub config: Config,
     pub tls: Option<Tls>,
@@ -21,8 +22,9 @@ impl Default for Context {
             password_hash: String::new(),
             jwt_secret: [0; 32],
             jwt_timeout: Duration::days(4),
-            tls: None,
+            domain: "localhost".to_string(),
             config: Config::default(),
+            tls: None,
         }
     }
 }
