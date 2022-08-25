@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  rocket:
+    build:
+      context: ./pet-monitor-app
+      target: base
+    command: cargo run --config ./pet-monitor-app
+    ports:
+      - 8080:8080
+      - 8443:8443
+    working_dir: /usr/local/src/pet-monitor-app
+    volumes:
+      - ./pet-monitor-app:/usr/local/src/pet-monitor-app
+  client:
+    build:
+      context: ./client
+      target: base
+    command: sh -c "pnpm install && pnpm dev"
+    ports:
+      - 5173:5173
+    working_dir: /usr/local/src/pet-monitor-app
+    volumes:
+      - ./client:/usr/local/src/pet-monitor-app

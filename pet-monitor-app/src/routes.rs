@@ -27,8 +27,10 @@ pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect
     ))
 }
 
-const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/../client/dist");
+#[cfg(not(debug_assertions))]
+const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 
+#[cfg(not(debug_assertions))]
 #[get("/<path..>", rank = 2)]
 pub fn files(path: PathBuf) -> (ContentType, String) {
     if let Some(s) = STATIC_FILES
