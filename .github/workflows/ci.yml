@@ -13,18 +13,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: ./scripts/build.sh
+      - run: sudo ./scripts/build.sh
 
   test:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-      - run: ./scripts/test.sh
+      - run: sudo ./scripts/test.sh
 
   lint:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-      - run: ./scripts/lint.sh
+      - run: sudo ./scripts/lint.sh
