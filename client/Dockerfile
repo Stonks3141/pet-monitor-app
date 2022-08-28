@@ -1,7 +1,7 @@
 FROM node:18-alpine as base
-EXPOSE 5173
+RUN corepack enable
 
-FROM node:18-alpine
+FROM base
 WORKDIR /usr/local/src/pet-monitor-app
 RUN pnpm install
 RUN pnpm build
