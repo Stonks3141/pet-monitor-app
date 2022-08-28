@@ -7,12 +7,12 @@ gstreamer1.0-plugins-ugly \
 libv4l-0 \
 libv4l-dev
 
-EXPOSE 8080 8443
+FROM base as build
+ARG target=""
 
-FROM rust:1.63-slim-bullseye as build
 WORKDIR /usr/local/src/pet-monitor-app
 COPY . ../client/dist ./
-RUN cargo build --release
+RUN [ $target = "" ] && cargo build --release || cargo build --release --target $target
 
 FROM debian:bullseye-slim
 RUN apt-get install \
