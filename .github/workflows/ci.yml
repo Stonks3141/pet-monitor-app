@@ -8,71 +8,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  Rust-build:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+      - run: ./scripts/build.sh
 
-      - name: Install v4l2
-        run: sudo apt-get install libv4l-0 libv4l-dev
-
-      - name: Create dummy build directory
-        working-directory: client
-        run: mkdir dist/
-
-      - name: Build
-        working-directory: pet-monitor-app
-        run: cargo build
-
-  Typescript-build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2.2.2
-        working-directory: client
+      - run: ./scripts/test.sh
 
-      - name: Install dependencies
-        working-directory: client
-        run: pnpm install
-      
-      - name: Build
-        working-directory: client
-        run: pnpm build
-
-  Clippy:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-
-      - name: Create dummy build directory
-        working-directory: client
-        run: mkdir dist/
-
-      - name: Run lints
-        working-directory: pet-monitor-app
-        run: cargo clippy
-
-  Rust-test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2.2.2
-
-      - name: Install v4l2
-        run: sudo apt-get install libv4l-0 libv4l-dev
-
-      - name: Install JS dependencies
-        working-directory: client
-        run: pnpm install
-      
-      - name: Build static files
-        working-directory: client
-        run: pnpm build
-
-      - name: Run tests
-        working-directory: pet-monitor-app
-        run: cargo test
+      - run: ./scripts/lint.sh
