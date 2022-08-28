@@ -1,5 +1,6 @@
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, Ipv4Addr};
 
 #[serde_with::serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,6 +12,7 @@ pub struct Context {
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub jwt_timeout: Duration,
     pub domain: String,
+    pub host: Option<IpAddr>,
     #[serde(flatten)]
     pub config: Config,
     pub tls: Option<Tls>,
@@ -23,6 +25,7 @@ impl Default for Context {
             jwt_secret: [0; 32],
             jwt_timeout: Duration::days(4),
             domain: "localhost".to_string(),
+            host: Some(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             config: Config::default(),
             tls: None,
         }

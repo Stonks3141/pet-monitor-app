@@ -8,8 +8,4 @@ resolution = [
 ]
 rotation = 0
 framerate = 30
-device = '/dev/video0'
-
-[tls]
-cert = '../pet-monitor-app.pem'
-key = '../pet-monitor-app.key'
+device = '/dev/video2'

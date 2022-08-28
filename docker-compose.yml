@@ -4,13 +4,15 @@ services:
     build:
       context: ./pet-monitor-app
       target: base
-    command: cargo run --config ./pet-monitor-app
+    command: sh -c "cargo run -- --config ./pet-monitor-app.toml"
     ports:
       - 8080:8080
       - 8443:8443
     working_dir: /usr/local/src/pet-monitor-app
     volumes:
       - ./pet-monitor-app:/usr/local/src/pet-monitor-app
+    devices:
+      - /dev/video0:/dev/video0
   client:
     build:
       context: ./client

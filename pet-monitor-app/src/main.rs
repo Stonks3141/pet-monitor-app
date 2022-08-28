@@ -2,9 +2,9 @@ use config::Context;
 use ring::rand::SystemRandom;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
-use rocket::response::stream::ByteStream;
 use rocket::tokio::sync::{mpsc, oneshot};
 use routes::*;
+use std::net::{IpAddr, Ipv4Addr};
 
 mod auth;
 mod cli;
@@ -41,8 +41,6 @@ async fn main() {
         confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
     };
 
-    let stream = ByteStream(stream::video_stream(&ctx.config));
-
     let (cfg_tx, mut cfg_rx) = mpsc::channel::<(Option<Context>, oneshot::Sender<Context>)>(100);
 
     let ctx_clone = ctx.clone();
@@ -78,28 +76,26 @@ async fn main() {
     #[cfg(not(debug_assertions))]
     const TLS_PORT: u16 = 443;
 
-    let http_rocket = if ctx.tls.is_some() {
+    let http_rocket = ctx.tls.clone().map(|_| {
         let rocket_cfg = rocket::Config {
             port: PORT,
+            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
         };
 
-        Some(
-            rocket::custom(&rocket_cfg)
-                .mount("/", rocket::routes![redirect])
-                .manage(cfg_tx.clone())
-                .launch(),
-        )
-    } else {
-        None
-    };
+        rocket::custom(&rocket_cfg)
+            .mount("/", rocket::routes![redirect])
+            .manage(cfg_tx.clone())
+            .launch()
+    });
 
     let rocket_cfg = if let Some(tls) = &ctx.tls {
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: TLS_PORT,
+            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -107,6 +103,7 @@ async fn main() {
     } else {
         rocket::Config {
             port: PORT,
+            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -116,13 +113,12 @@ async fn main() {
     let rocket = rocket::custom(&rocket_cfg)
         .mount("/", rocket::routes![login, get_config, put_config])
         .manage(cfg_tx)
-        .manage(options)
-        .manage(stream);
+        .manage(options);
 
     #[cfg(not(debug_assertions))]
-    rocket.mount("/", rocket::routes![files]);
+    let rocket = rocket.mount("/", rocket::routes![files]);
 
-    rocket.launch();
+    let rocket = rocket.launch();
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;

@@ -1,15 +1,15 @@
 #!/bin/sh
 
 git update-index --refresh
-if [ git diff-index --quiet HEAD -- ]; then
+if [ $(git diff-index --quiet HEAD --) = 0 ]; then
   tag=$(git log -1 --pretty=%H)
 else
   tag="latest"
 fi
 
-if [ -t 1 ]; then; echo "Building server container..."; fi
+echo "Building server container..."
 docker build ./pet-monitor-app -t pet-monitor-app:test-$tag --target base
-if [ -t 1 ]; then; echo "Linting server..."; fi
+echo "Linting server..."
 docker run --workdir /usr/local/src/pet-monitor-app pet-monitor-app:test-$tag "cargo clippy"
 
-if [ -t 1 ]; then; echo "Lint complete!"; fi
+echo "Lint complete!"

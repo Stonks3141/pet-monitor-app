@@ -129,16 +129,3 @@ pub async fn put_config(
 
     Ok(())
 }
-/*
-#[get("/stream.mp4")]
-pub fn stream_mp4(
-    cookies: &CookieJar<'_>,
-    ctx: &State<RwLock<Context>>,
-) -> Result<ByteStream![Vec<u8>], Status> {
-    // can't match directly for some reason even though `Status` impls `Eq` and `PartialEq`.
-    match verify(&cookies, &*ctx).code {
-        200 => Ok(ByteStream(video_stream())),
-        c => Err(Status::new(c)),
-    }
-}
-*/
