@@ -12,6 +12,7 @@ replace v4l2 for high-level usage.
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
+    - [Docker](#docker)
   - [Development](#development)
   - [Motivation](#motivation)
   - [Goals](#goals)
@@ -25,16 +26,16 @@ Download the binary for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
 move it into your `$PATH`. Run this command to start the server:
 
-```bash
+```sh
 pet-monitor-app --regen-secret --password MY_PASSWORD
 ```
 
 The `regen-secret` flag generates a new secret for JWT signing, and the
 `password` flag sets your password. You can view the page at
-[localhost]. On subsequent runs, these flags are not
+[http://localhost](http://localhost). On subsequent runs, these flags are not
 necessary. To reset your password, run
 
-```bash
+```sh
 pet-monitor-app --password NEW_PASSWORD
 ```
 
@@ -50,14 +51,28 @@ cert = "path/to/cert.pem"
 key = "path/to/key.key"
 ```
 
-You can now view the page at [https://localhost].
+You can now view the page at [https://localhost](https://localhost).
+
+### Docker
+
+To run with Docker, clone the repository and run the build script.
+
+```sh
+sudo sh ./scripts/build.sh
+```
+
+You can now run the container with
+
+```sh
+docker run -it -p 80:80 -p 443:443 pet-monitor-app
+```
 
 ## Development
 
 Clone the repo. Install Docker and Docker Compose and run `sudo docker compose up`
-in the base directory. View the development server at [http://localhost:3000].
+in the base directory. View the development server at [http://localhost:5173](http://localhost:5173).
 The frontend will reload automatically as you make changes, but you will need
-to rebuild the backend container.
+to restart the backend container.
 
 ## Motivation
 
