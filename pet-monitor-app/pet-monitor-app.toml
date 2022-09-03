@@ -8,4 +8,4 @@ resolution = [
 ]
 rotation = 0
 framerate = 30
-device = '/dev/video2'
+device = '/dev/video0'

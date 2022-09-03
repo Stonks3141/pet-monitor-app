@@ -5,11 +5,12 @@
 //! password against a hash.
 
 use crate::config::Context;
+use crate::{get_provider, Provider};
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
+use jwt::errors::{Error, ErrorKind, Result};
 use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -32,13 +33,6 @@ impl Claims {
             iat: utc.timestamp() as u64,
             exp: (utc + expires_in).timestamp() as u64,
         }
-    }
-}
-
-impl Default for Claims {
-    /// Creates new JWT claims that expire in 1 day.
-    fn default() -> Self {
-        Self::new(Duration::days(1))
     }
 }
 
@@ -73,7 +67,7 @@ impl Token {
     }
 
     /// Parses a JWT into a `Token`.
-    pub fn from_str(s: &str, secret: &[u8; 32]) -> jwt::errors::Result<Self> {
+    pub fn from_str(s: &str, secret: &[u8; 32]) -> Result<Self> {
         let dec_key = jwt::DecodingKey::from_secret(secret);
         let val = jwt::Validation::new(ALG);
 
@@ -84,24 +78,17 @@ impl Token {
     }
 
     /// Creates a JWT from a `Token`.
-    pub fn to_string(&self, secret: &[u8; 32]) -> jwt::errors::Result<String> {
+    pub fn to_string(&self, secret: &[u8; 32]) -> Result<String> {
         let enc_key = jwt::EncodingKey::from_secret(secret);
 
         jwt::encode(&self.header, &self.claims, &enc_key)
     }
 }
 
-impl Default for Token {
-    fn default() -> Self {
-        Self::new(Duration::days(1))
-    }
-}
-
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Token {
-    type Error = jwt::errors::Error;
+    type Error = Error;
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        use jwt::errors::{Error, ErrorKind};
         if let Some(token) = req.cookies().get("token").map(Cookie::value) {
             if req.method() != Method::Get && req.method() != Method::Head {
                 if let Some(csrf_token) = req.headers().get_one("x-csrf-token") {
@@ -118,13 +105,8 @@ impl<'r> FromRequest<'r> for Token {
                     ));
                 }
             }
-            let ctx = req
-                .rocket()
-                .state::<mpsc::Sender<(Option<Context>, oneshot::Sender<Context>)>>()
-                .unwrap();
-            let (tx, rx) = oneshot::channel();
-            ctx.send((None, tx)).await.unwrap();
-            let ctx = rx.await.unwrap();
+            let ctx = req.rocket().state::<Provider<Context>>().unwrap();
+            let ctx = get_provider(&ctx).await;
 
             match Self::from_str(token, &ctx.jwt_secret) {
                 Ok(token) => {

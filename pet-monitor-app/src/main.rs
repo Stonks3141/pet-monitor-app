@@ -1,4 +1,5 @@
 use config::Context;
+use human_panic::setup_panic;
 use ring::rand::SystemRandom;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
@@ -15,9 +16,25 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
+pub type Provider<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
+
+pub async fn get_provider<T: std::fmt::Debug>(provider: &Provider<T>) -> T {
+    let (tx, rx) = oneshot::channel();
+    provider.send((None, tx)).await.unwrap();
+    rx.await.unwrap()
+}
+
+pub async fn set_provider<T: std::fmt::Debug>(provider: &Provider<T>, new: T) {
+    let (tx, rx) = oneshot::channel();
+    provider.send((Some(new), tx)).await.unwrap();
+    rx.await.unwrap();
+}
+
 #[rocket::main]
 async fn main() {
-    let options = cli::parse_args();
+    setup_panic!();
+
+    let options = cli::parse_args(std::env::args());
 
     let mut ctx: Context = if let Some(path) = &options.conf_path {
         confy::load_path(&path).expect("Failed to load configuration file")
@@ -79,7 +96,10 @@ async fn main() {
     let http_rocket = ctx.tls.clone().map(|_| {
         let rocket_cfg = rocket::Config {
             port: PORT,
-            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            address: ctx
+                .host
+                .clone()
+                .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -95,7 +115,10 @@ async fn main() {
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: TLS_PORT,
-            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            address: ctx
+                .host
+                .clone()
+                .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -103,7 +126,10 @@ async fn main() {
     } else {
         rocket::Config {
             port: PORT,
-            address: ctx.host.clone().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            address: ctx
+                .host
+                .clone()
+                .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -122,9 +148,13 @@ async fn main() {
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
+        // Rocket takes over the panic hook, so we have to reset it.
+        setup_panic!();
         let _ = result.0.unwrap();
         let _ = result.1.unwrap();
     } else {
-        let _ = rocket.await.unwrap();
+        let result = rocket.await;
+        setup_panic!();
+        let _ = result.unwrap();
     }
 }

@@ -2,23 +2,21 @@
 
 use crate::auth::{self, Token};
 use crate::config::{Config, Context};
+use crate::{get_provider, set_provider, Provider};
+#[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
-use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status};
-//use rocket::response::stream::ByteStream;
+#[cfg(not(debug_assertions))]
+use rocket::http::ContentType;
+use rocket::http::{Cookie, CookieJar, SameSite, Status};
 use rocket::response::Redirect;
 use rocket::serde::json::Json;
-use rocket::tokio::sync::{mpsc, oneshot};
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
-
-type Provider<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
 
 #[get("/<path..>")]
 pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
     println!("{}", path.as_path().to_string_lossy());
-    let (tx, rx) = oneshot::channel();
-    ctx.send((None, tx)).await.unwrap();
-    let ctx = rx.await.unwrap();
+    let ctx = get_provider(&**ctx).await;
 
     Redirect::permanent(format!(
         "https://{}/{}",
@@ -68,9 +66,7 @@ pub async fn login(
     cookies: &CookieJar<'_>,
     ctx: &State<Provider<Context>>,
 ) -> Status {
-    let (tx, rx) = oneshot::channel();
-    ctx.send((None, tx)).await.unwrap();
-    let ctx = rx.await.unwrap();
+    let ctx = get_provider(&**ctx).await;
 
     if let Ok(b) = auth::validate(&password, &ctx.password_hash) {
         if b {
@@ -102,9 +98,7 @@ pub async fn get_config(
     _token: Token,
     ctx: &State<Provider<Context>>,
 ) -> Result<Json<Config>, Status> {
-    let (tx, rx) = oneshot::channel();
-    ctx.send((None, tx)).await.unwrap();
-    let ctx = rx.await.unwrap();
+    let ctx = get_provider(&**ctx).await;
     Ok(Json(ctx.config))
 }
 
@@ -114,18 +108,13 @@ pub async fn put_config(
     ctx: &State<Provider<Context>>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
-    let (tx, rx) = oneshot::channel();
-    ctx.send((None, tx)).await.unwrap();
-    let ctx_read = rx.await.unwrap();
+    let ctx_read = get_provider(&**ctx).await;
 
     let new_ctx = Context {
         config: new_config.into_inner(),
         ..ctx_read
     };
 
-    let (tx, rx) = oneshot::channel();
-    ctx.send((Some(new_ctx.clone()), tx)).await.unwrap();
-    rx.await.unwrap();
-
+    set_provider(&**ctx, new_ctx).await;
     Ok(())
 }

@@ -8,8 +8,8 @@ pub struct Options {
     pub conf_path: Option<PathBuf>,
 }
 
-pub fn parse_args() -> Options {
-    let matches = Command::new("pet-monitor-app")
+pub fn cmd() -> Command<'static> {
+    Command::new("pet-monitor-app")
         .about("A simple and secure pet monitor")
         .long_about(
             "A simple and secure pet monitor. This program is a web \
@@ -23,7 +23,14 @@ pub fn parse_args() -> Options {
             arg!(   --"regen-secret"      "Regenerate the JWT secret"),
             arg!(-c --config [CONFIG]     "Path to configuration file").min_values(1),
         ])
-        .get_matches();
+}
+
+pub fn parse_args<I, T>(args: I) -> Options
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let matches = cmd().get_matches_from(args);
 
     Options {
         regen_secret: matches.contains_id("regen-secret"),
@@ -32,5 +39,15 @@ pub fn parse_args() -> Options {
             .get_one::<String>("config")
             .cloned()
             .map(PathBuf::from),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_cmd() {
+        cmd().debug_assert();
     }
 }

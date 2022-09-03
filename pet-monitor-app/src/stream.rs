@@ -1,57 +1,22 @@
 //! This module provides utilities for creating async streams of video data.
 
 use crate::config::Config;
+use gst::glib::prelude::*;
+use gst::prelude::*;
+use gstreamer as gst;
 use rocket::futures::prelude::*;
 use rocket::futures::stream::{self, Stream};
 use rocket::tokio::task::spawn_blocking;
-use rscam::{Camera, Frame};
-use gstreamer as gst;
-use gst::prelude::*;
-use gst::glib::prelude::*;
 use std::io;
-
-pub fn video_stream(config: &Config) -> impl Stream<Item = Vec<u8>> {
-    let stream = Box::pin(frame_stream(&config));
-
-    stream::repeat(Vec::new())
-}
-
-fn frame_stream(config: &Config) -> impl Stream<Item = io::Result<Frame>> {
-    let mut camera = Camera::new(&config.device).unwrap();
-
-    camera
-        .start(&rscam::Config {
-            interval: (1, config.framerate),
-            resolution: config.resolution,
-            format: b"H264",
-            ..Default::default()
-        })
-        .unwrap();
-
-    stream::unfold(camera, |c| async move {
-        Some(spawn_blocking(|| (c.capture(), c)).await.unwrap())
-    })
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rocket::tokio::{self, fs};
     use rocket::tokio::io::AsyncWriteExt;
-
-    #[tokio::test]
-    async fn h264() {
-        let config = confy::load_path("./pet-monitor-app.toml").unwrap();
-        let mut file = fs::File::create("data.h264").await.unwrap();
-        let mut stream = Box::pin(frame_stream(&config).take(240));
-        while let Some(frame) = stream.next().await {
-            if let Ok(frame) = frame {
-                file.write_all(&*frame).await.unwrap();
-            }
-        }
-    }
+    use rocket::tokio::{self, fs};
 
     #[test]
+    #[ignore]
     fn mp4() {
         let config: Config = confy::load_path("./pet-monitor-app.toml").unwrap();
 
