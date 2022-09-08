@@ -2,7 +2,7 @@
 
 use crate::auth::{self, Token};
 use crate::config::{Config, Context};
-use crate::{get_provider, set_provider, Provider};
+use crate::provider::{get_provider, set_provider, Provider};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 #[cfg(not(debug_assertions))]

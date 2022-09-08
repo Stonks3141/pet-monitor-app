@@ -1,5 +1,5 @@
-password_hash = '$argon2id$v=19$m=8192,t=3,p=4$6XONWFzTLxzREFfu91CGEw$YmGlUnuTteo1KKY9WIFehnTa05+nc032CauaaS5E6NE'
-jwt_secret = 'sGJj9WQvtoT6dpLHloWeVLR04gWOpLfrM5J5f7QwfDc='
+password_hash = '$argon2id$v=19$m=8192,t=3,p=4$BO1St77ggzWXbXcbFWNGCw$8eD2geYn0m9AIsqTYv5QheJuRIgTfc55RyHoexjygCQ'
+jwt_secret = '7SriZgV8Hx43eFX26SGXVm5MTbjInhLa1e8LurotwzA='
 jwt_timeout = 86400
 domain = 'localhost'
 resolution = [

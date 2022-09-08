@@ -5,7 +5,7 @@
 //! password against a hash.
 
 use crate::config::Context;
-use crate::{get_provider, Provider};
+use crate::provider::{get_provider, Provider};
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
