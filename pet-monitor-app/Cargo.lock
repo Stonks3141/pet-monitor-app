@@ -1416,7 +1416,6 @@ dependencies = [
  "quick-error 2.0.1",
  "ring",
  "rocket",
- "rscam",
  "rust-argon2",
  "serde",
  "serde_with",
@@ -1804,15 +1803,6 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "uncased",
-]
-
-[[package]]
-name = "rscam"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89056084211cd54924fedf2e2199b906409d1f795cfd8e7e3271061742457018"
-dependencies = [
- "libc",
 ]
 
 [[package]]

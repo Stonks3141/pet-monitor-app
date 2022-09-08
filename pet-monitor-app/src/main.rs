@@ -34,34 +34,36 @@ pub async fn set_provider<T: std::fmt::Debug>(provider: &Provider<T>, new: T) {
 async fn main() {
     setup_panic!();
 
-    let options = cli::parse_args(std::env::args());
+    let cmd = cli::parse_args(std::env::args());
 
-    let mut ctx: Context = if let Some(path) = &options.conf_path {
+    let mut ctx: Context = if let Some(path) = &cmd.conf_path {
         confy::load_path(&path).expect("Failed to load configuration file")
     } else {
         confy::load("pet-monitor-app").expect("Failed to load configuration file")
     };
 
-    let rng = SystemRandom::new();
+    if let cli::SubCmd::Configure { password, regen_secret } = cmd.command {
+        let rng = SystemRandom::new();
 
-    if let Some(pwd) = &options.password {
-        ctx.password_hash = secrets::init_password(&rng, pwd).unwrap();
+        if let Some(pwd) = password {
+            ctx.password_hash = secrets::init_password(&rng, &pwd).unwrap();
+        }
+
+        if regen_secret {
+            ctx.jwt_secret = secrets::new_secret(&rng).unwrap();
+        }
+
+        if let Some(path) = &cmd.conf_path {
+            confy::store_path(&path, &ctx).expect("Failed to load configuration file")
+        } else {
+            confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
+        };
     }
-
-    if options.regen_secret {
-        ctx.jwt_secret = secrets::new_secret(&rng).unwrap();
-    }
-
-    if let Some(path) = &options.conf_path {
-        confy::store_path(&path, &ctx).expect("Failed to load configuration file")
-    } else {
-        confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
-    };
 
     let (cfg_tx, mut cfg_rx) = mpsc::channel::<(Option<Context>, oneshot::Sender<Context>)>(100);
 
     let ctx_clone = ctx.clone();
-    let conf_path = options.conf_path.clone();
+    let conf_path = cmd.conf_path.clone();
     rocket::tokio::spawn(async move {
         let mut ctx = ctx_clone;
         while let Some((new, response)) = cfg_rx.recv().await {
@@ -138,8 +140,7 @@ async fn main() {
 
     let rocket = rocket::custom(&rocket_cfg)
         .mount("/", rocket::routes![login, get_config, put_config])
-        .manage(cfg_tx)
-        .manage(options);
+        .manage(cfg_tx);
 
     #[cfg(not(debug_assertions))]
     let rocket = rocket.mount("/", rocket::routes![files]);

@@ -1,11 +1,19 @@
-use clap::{arg, builder::Command};
+use clap::{arg, builder::Command, value_parser};
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub struct Options {
-    pub regen_secret: bool,
-    pub password: Option<String>,
+pub struct Cmd {
+    pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub enum SubCmd {
+    Start,
+    Configure {
+        password: Option<String>,
+        regen_secret: bool,
+    },
 }
 
 pub fn cmd() -> Command<'static> {
@@ -13,32 +21,47 @@ pub fn cmd() -> Command<'static> {
         .about("A simple and secure pet monitor")
         .long_about(
             "A simple and secure pet monitor. This program is a web \
-        server that handles authentication and media streaming, intended for \
-        use as a pet monitor.",
+        server that handles authentication and media streaming.",
         )
-        .author("Sam Nystrom")
+        .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
-        .args(&[
-            arg!(   --password [PASSWORD] "Reset the password").min_values(1),
-            arg!(   --"regen-secret"      "Regenerate the JWT secret"),
-            arg!(-c --config [CONFIG]     "Path to configuration file").min_values(1),
-        ])
+        .subcommand(
+            Command::new("configure")
+                .about("Set configuration options")
+                .arg(arg!(--password <PASSWORD> "The new password to set").required(false))
+                .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")),
+        )
+        .subcommand(
+            Command::new("start").about("Starts the server").arg(
+                arg!(-p --port <PORT> "Set the port to listen on")
+                    .value_parser(value_parser!(u16))
+                    .required(false),
+            ),
+        )
+        .subcommand_required(true)
+        .arg(
+            arg!(-c --config <CONFIG> "Path to configuration file")
+                .value_parser(value_parser!(PathBuf))
+                .required(false),
+        )
 }
 
-pub fn parse_args<I, T>(args: I) -> Options
+pub fn parse_args<I, T>(args: I) -> Cmd
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
     let matches = cmd().get_matches_from(args);
-
-    Options {
-        regen_secret: matches.contains_id("regen-secret"),
-        password: matches.get_one("password").cloned(),
-        conf_path: matches
-            .get_one::<String>("config")
-            .cloned()
-            .map(PathBuf::from),
+    Cmd {
+        command: match matches.subcommand() {
+            Some(("configure", matches)) => SubCmd::Configure {
+                password: matches.get_one::<String>("password").map(|s| s.to_owned()),
+                regen_secret: matches.is_present("regen-secret"),
+            },
+            Some(("start", _)) => SubCmd::Start,
+            _ => panic!("subcommand required"),
+        },
+        conf_path: matches.get_one::<PathBuf>("config").map(|s| s.to_owned()),
     }
 }
 

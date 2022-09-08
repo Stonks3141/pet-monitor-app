@@ -8,7 +8,7 @@ authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
 readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.62"
+rust-version = "1.63"
 
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = ["json", "tls"] }
@@ -24,7 +24,6 @@ human-panic = "1.0"
 chrono = "0.4"
 ring = "0.16"
 rust-argon2 = "1.0"
-rscam = "0.5"
 gstreamer = "0.18"
 
 [dev-dependencies]
@@ -34,6 +33,7 @@ predicates = "2.1"
 proptest = "1.0"
 
 [profile.release]
+opt-level = "s"
 codegen-units = 1
 lto = true
 strip = true
