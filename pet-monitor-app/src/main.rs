@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 use config::Context;
 use human_panic::setup_panic;
 use ring::rand::SystemRandom;
