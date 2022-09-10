@@ -15,6 +15,9 @@ fi
 echo "Building server container..."
 docker build ./pet-monitor-app -t pet-monitor-app:test-$tag --target base
 echo "Testing server..."
-docker run --workdir /usr/local/src/pet-monitor-app pet-monitor-app:test-$tag "cargo test"
+docker run \
+--workdir /usr/local/src/pet-monitor-app pet-monitor-app:test-$tag \
+--mount type=bind,src=./pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
+"cargo test"
 
 echo "Tests complete!"

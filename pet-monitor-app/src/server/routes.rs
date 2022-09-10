@@ -1,8 +1,8 @@
 //! This module provides Rocket routes for the server.
 
-use crate::auth::{self, Token};
+use super::auth::{self, Token};
 use crate::config::{Config, Context};
-use crate::provider::{get_provider, set_provider, Provider};
+use super::provider::{get_provider, set_provider, Provider};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 #[cfg(not(debug_assertions))]

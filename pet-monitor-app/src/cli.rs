@@ -1,13 +1,13 @@
 use clap::{arg, builder::Command, value_parser};
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Cmd {
     pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SubCmd {
     Start,
     Configure {
@@ -68,9 +68,26 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn verify_cmd() {
         cmd().debug_assert();
+    }
+
+    proptest! {
+        #[test]
+        fn test_cmd_configure(regen_secret: bool, password: Option<String>) {
+            let cmd = SubCmd::Configure { regen_secret, password: password.clone() };
+            let mut args = vec!["pet-monitor-app".to_string(), "configure".to_string()];
+            if regen_secret {
+                args.push("--regen-secret".to_string());
+            }
+            if let Some(password) = password {
+                args.push("--password".to_string());
+                args.push(password);
+            }
+            assert_eq!(cmd, parse_args(args).command);
+        }
     }
 }
