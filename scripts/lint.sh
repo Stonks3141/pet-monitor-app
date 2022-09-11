@@ -10,7 +10,7 @@ info() {
   fi
 }
 
-git update-index --refresh
+$(git update-index --refresh)
 if [ $(git diff-index --quiet HEAD --) = 0 ]; then
   tag=$(git log -1 --pretty=%H)
 else
@@ -22,7 +22,7 @@ docker build ./pet-monitor-app -t pet-monitor-app:test-$tag --target base
 info "Linting server..."
 docker run \
 --workdir /usr/local/src/pet-monitor-app \
---mount type=bind,src=./pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
+--mount type=bind,src=$(pwd)/pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
 pet-monitor-app:test-$tag \
 "cargo clippy"
 
