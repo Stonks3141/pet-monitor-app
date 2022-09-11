@@ -5,7 +5,7 @@
 //! password against a hash.
 
 use crate::config::Context;
-use super::provider::{get_provider, Provider};
+use super::provider::Provider;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
@@ -106,7 +106,7 @@ impl<'r> FromRequest<'r> for Token {
                 }
             }
             let ctx = req.rocket().state::<Provider<Context>>().unwrap();
-            let ctx = get_provider(&ctx).await;
+            let ctx = ctx.get().await;
 
             match Self::from_str(token, &ctx.jwt_secret) {
                 Ok(token) => {

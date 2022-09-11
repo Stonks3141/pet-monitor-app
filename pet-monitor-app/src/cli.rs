@@ -111,13 +111,13 @@ mod tests {
 
     proptest! {
         #[test]
-        fn proptest_cmd_configure(regen_secret: bool, password: Option<String>, conf_path: Option<PathBuf>) {
+        fn proptest_cmd_configure(regen_secret: bool, password: Option<String>, conf_path: Option<String>) {
             let cmd = Cmd {
                 command: SubCmd::Configure { regen_secret, password: password.clone() },
-                conf_path,
+                conf_path: conf_path.map(|p| PathBuf::from(p)),
             };
             let args = make_args(&cmd);
-            assert_eq!(cmd, parse_args(args));
+            assert_eq!(cmd, parse_args(args.split(' ')));
         }
     }
 }

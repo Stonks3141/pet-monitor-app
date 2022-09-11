@@ -8,7 +8,7 @@ mod auth;
 use routes::*;
 
 pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
-    let cfg_tx = provider::new_provider(ctx.clone(), move |ctx| {
+    let cfg_tx = provider::Provider::new(ctx.clone(), move |ctx| {
         if let Some(path) = &conf_path {
             confy::store_path(&path, &ctx).expect("Failed to save to configuration file")
         } else {
@@ -95,38 +95,41 @@ mod provider {
     use rocket::tokio::sync::{mpsc, oneshot};
     use std::fmt::Debug;
 
-    pub type Provider<T> = mpsc::Sender<(Option<T>, oneshot::Sender<T>)>;
+    #[derive(Debug, Clone)]
+    pub struct Provider<T>(mpsc::Sender<(Option<T>, oneshot::Sender<T>)>);
 
-    pub async fn get_provider<T: Debug>(provider: &Provider<T>) -> T {
-        let (tx, rx) = oneshot::channel();
-        provider.send((None, tx)).await.unwrap();
-        rx.await.unwrap()
-    }
-
-    pub async fn set_provider<T: Debug>(provider: &Provider<T>, new: T) {
-        let (tx, rx) = oneshot::channel();
-        provider.send((Some(new), tx)).await.unwrap();
-        rx.await.unwrap();
-    }
-
-    pub fn new_provider<T, F>(mut val: T, mut on_set: F) -> Provider<T>
-    where
-        T: Clone + Debug + Send + 'static,
-        F: FnMut(&T) + Send + 'static,
-    {
-        let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
-        rocket::tokio::spawn(async move {
-            while let Some((new, response)) = rx.recv().await {
-                if let Some(new) = new {
-                    let prev = val.clone();
-                    val = new;
-                    on_set(&val);
-                    response.send(prev).unwrap();
-                } else {
-                    response.send(val.clone()).unwrap();
+    impl<T: Debug> Provider<T> {
+        pub fn new<F>(mut val: T, mut on_set: F) -> Self
+        where
+            T: Clone + Debug + Send + 'static,
+            F: FnMut(&T) + Send + 'static,
+        {
+            let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
+            rocket::tokio::spawn(async move {
+                while let Some((new, response)) = rx.recv().await {
+                    if let Some(new) = new {
+                        let prev = val.clone();
+                        val = new;
+                        on_set(&val);
+                        response.send(prev).unwrap();
+                    } else {
+                        response.send(val.clone()).unwrap();
+                    }
                 }
-            }
-        });
-        tx
+            });
+            Self(tx)
+        }
+
+        pub async fn get(&self) -> T {
+            let (tx, rx) = oneshot::channel();
+            self.0.send((None, tx)).await.unwrap();
+            rx.await.unwrap()
+        }
+
+        pub async fn set(&self, new: T) {
+            let (tx, rx) = oneshot::channel();
+            self.0.send((Some(new), tx)).await.unwrap();
+            rx.await.unwrap();
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 use super::auth::{self, Token};
 use crate::config::{Config, Context};
-use super::provider::{get_provider, set_provider, Provider};
+use super::provider::Provider;
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 #[cfg(not(debug_assertions))]
@@ -16,7 +16,7 @@ use std::path::PathBuf;
 #[get("/<path..>")]
 pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
     println!("{}", path.as_path().to_string_lossy());
-    let ctx = get_provider(&**ctx).await;
+    let ctx = ctx.get().await;
 
     Redirect::permanent(format!(
         "https://{}/{}",
@@ -68,7 +68,7 @@ pub async fn login(
     cookies: &CookieJar<'_>,
     ctx: &State<Provider<Context>>,
 ) -> Status {
-    let ctx = get_provider(&**ctx).await;
+    let ctx = ctx.get().await;
 
     if let Ok(b) = auth::validate(&password, &ctx.password_hash) {
         if b {
@@ -100,7 +100,7 @@ pub async fn get_config(
     _token: Token,
     ctx: &State<Provider<Context>>,
 ) -> Result<Json<Config>, Status> {
-    let ctx = get_provider(&**ctx).await;
+    let ctx = ctx.get().await;
     Ok(Json(ctx.config))
 }
 
@@ -110,13 +110,13 @@ pub async fn put_config(
     ctx: &State<Provider<Context>>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
-    let ctx_read = get_provider(&**ctx).await;
+    let ctx_read = ctx.get().await;
 
     let new_ctx = Context {
         config: new_config.into_inner(),
         ..ctx_read
     };
 
-    set_provider(&**ctx, new_ctx).await;
+    ctx.set(new_ctx).await;
     Ok(())
 }
