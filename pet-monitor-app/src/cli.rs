@@ -69,6 +69,40 @@ where
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    
+    fn make_args(cmd: &Cmd) -> String {
+        format!(
+            "pet-monitor-app{}{}",
+            if let Some(conf_path) = &cmd.conf_path {
+                format!(
+                    " --config {}",
+                    conf_path.clone().into_os_string().into_string().unwrap(),
+                )
+            } else {
+                String::new()
+            },
+            match &cmd.command {
+                SubCmd::Configure {
+                    password,
+                    regen_secret,
+                } => format!(
+                    " configure{}{}",
+                    if *regen_secret {
+                        " --regen-secret"
+                    } else {
+                        ""
+                    },
+                    if let Some(password) = password {
+                        format!(" --password {}", password)
+                    } else {
+                        String::new()
+                    },
+                ),
+                SubCmd::Start => " start".to_string(),
+            },
+        )
+        .to_string()
+    }
 
     #[test]
     fn verify_cmd() {
@@ -77,17 +111,13 @@ mod tests {
 
     proptest! {
         #[test]
-        fn test_cmd_configure(regen_secret: bool, password: Option<String>) {
-            let cmd = SubCmd::Configure { regen_secret, password: password.clone() };
-            let mut args = vec!["pet-monitor-app".to_string(), "configure".to_string()];
-            if regen_secret {
-                args.push("--regen-secret".to_string());
-            }
-            if let Some(password) = password {
-                args.push("--password".to_string());
-                args.push(password);
-            }
-            assert_eq!(cmd, parse_args(args).command);
+        fn proptest_cmd_configure(regen_secret: bool, password: Option<String>, conf_path: Option<PathBuf>) {
+            let cmd = Cmd {
+                command: SubCmd::Configure { regen_secret, password: password.clone() },
+                conf_path,
+            };
+            let args = make_args(&cmd);
+            assert_eq!(cmd, parse_args(args));
         }
     }
 }
