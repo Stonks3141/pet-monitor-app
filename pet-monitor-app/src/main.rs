@@ -1,8 +1,7 @@
 #![deny(unsafe_code)]
 
-use config::Context;
-use human_panic::setup_panic;
 use ring::rand::SystemRandom;
+use anyhow::Context;
 
 mod cli;
 mod config;
@@ -13,15 +12,13 @@ mod stream;
 mod tests;
 
 #[rocket::main]
-async fn main() {
-    setup_panic!();
-
+async fn main() -> anyhow::Result<()> {
     let cmd = cli::parse_args(std::env::args());
 
-    let mut ctx: Context = if let Some(path) = &cmd.conf_path {
-        confy::load_path(&path).expect("Failed to load configuration file")
+    let mut ctx: config::Context = if let Some(path) = &cmd.conf_path {
+        confy::load_path(&path).context("Failed to load configuration file")?
     } else {
-        confy::load("pet-monitor-app").expect("Failed to load configuration file")
+        confy::load("pet-monitor-app").context("Failed to load configuration file")?
     };
 
     match cmd.command {
@@ -32,21 +29,22 @@ async fn main() {
             let rng = SystemRandom::new();
 
             if let Some(pwd) = password {
-                ctx.password_hash = secrets::init_password(&rng, &pwd).unwrap();
+                ctx.password_hash = secrets::init_password(&rng, &pwd)?;
                 println!("Hashed new password");
             }
 
             if regen_secret {
-                ctx.jwt_secret = secrets::new_secret(&rng).unwrap();
+                ctx.jwt_secret = secrets::new_secret(&rng)?;
                 println!("Regenerated JWT signing secret");
             }
 
             if let Some(path) = &cmd.conf_path {
-                confy::store_path(&path, &ctx).expect("Failed to load configuration file")
+                confy::store_path(&path, &ctx).context("Failed to load configuration file")?;
             } else {
-                confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
-            };
+                confy::store("pet-monitor-app", &ctx).context("Failed to load configuration file")?;
+            }
         }
         cli::SubCmd::Start => server::rocket(cmd.conf_path, ctx).await,
     }
+    Ok(())
 }

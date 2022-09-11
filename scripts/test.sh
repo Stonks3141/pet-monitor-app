@@ -29,6 +29,6 @@ docker run \
 --workdir /usr/local/src/pet-monitor-app \
 --mount type=bind,src=$(pwd)/pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
 pet-monitor-app:test-$tag \
-"cargo test"
+cargo test
 
 info "Tests complete!"

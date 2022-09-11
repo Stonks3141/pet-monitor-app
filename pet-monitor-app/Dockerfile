@@ -15,24 +15,24 @@ RUN apt-get install -y libv4l-0 libv4l-dev
 RUN apt-get install -y pkg-config
 
 FROM base as build
-# optional target triple argument for cross-compilation
-ARG target=""
+# target triple argument for cross-compilation
+ARG target="x86_64-unknown-linux-gnu"
 WORKDIR /usr/local/src/pet-monitor-app
+
+RUN rustup toolchain install nightly
+RUN rustup component add rust-src --toolchain nightly
 
 # only recompile dependencies if Cargo.toml or Cargo.lock change
 COPY ./Cargo.toml ./Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN [ "$target" = "" ] && cargo build --release || cargo build --release --target $target
-COPY ./src ./dist ./
+RUN cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target $target --release
+COPY . .
 # update modification time so cargo recompiles main.rs
 RUN touch -m src/main.rs
-RUN [ "$target" = "" ] && cargo build --release || cargo build --release --target $target
-
-# copy binary to target/release so the COPY in the last stage works when cross-compiling
-RUN [ "$target" = "" ] || cp ./target/$target/release/pet-monitor-app ./target/release
+RUN cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target $target --release
 
 FROM base
-COPY --from=build /usr/local/src/pet-monitor-app/target/release/pet-monitor-app /usr/local/bin
+COPY --from=build /usr/local/src/pet-monitor-app/target/$target/release/pet-monitor-app /usr/local/bin
 COPY ./pet-monitor-app.toml /usr/local/etc/pet-monitor-app
 
 EXPOSE 80 443

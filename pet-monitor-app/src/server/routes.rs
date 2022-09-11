@@ -50,9 +50,9 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
                 ContentType::HTML,
                 STATIC_FILES
                     .get_file("index.html")
-                    .map_err(|_| Status::InternalServerError)?
+                    .ok_or(Status::InternalServerError)?
                     .contents_utf8()
-                    .map_err(|_| Status::InternalServerError)?
+                    .ok_or(Status::InternalServerError)?
                     .to_string(),
             )
         },
