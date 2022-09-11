@@ -10,15 +10,7 @@ info() {
   fi
 }
 
-error() {
-  if [ -t 1 ]; then
-    echo -e "\e[31mERROR: $1\e[0m"
-  else
-    echo -e "ERROR: $1"
-  fi
-}
-
-$(git update-index --refresh)
+git update-index --refresh
 if git diff-index --quiet HEAD --; then
   tag=$(git log -1 --pretty=%H)
 else
