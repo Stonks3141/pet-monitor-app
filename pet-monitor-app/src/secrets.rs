@@ -26,7 +26,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
-    rng.fill(&mut buf).map_err(|e| e.into())?;
+    rng.fill(&mut buf).map_err(Into::<Error>::into)?;
     let config = argon2::Config {
         mem_cost: 8192, // KiB
         time_cost: 3,
@@ -40,22 +40,20 @@ pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> 
 
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
-    rng.fill(&mut buf).map_err(|e| e.into())?;
+    rng.fill(&mut buf).map_err(Into::<Error>::into)?;
     Ok(buf)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
     use ring::rand::SystemRandom;
     
-    proptest! {
-        #[test]
-        fn test_hash(password: String) {
-            let rng = SystemRandom::new();
-            let hash = init_password(&rng, &password).unwrap();
-            assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
-        }
+    #[test]
+    fn test_hash() {
+        let password = "password";
+        let rng = SystemRandom::new();
+        let hash = init_password(&rng, &password).unwrap();
+        assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
     }
 }

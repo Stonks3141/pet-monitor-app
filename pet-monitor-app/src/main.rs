@@ -6,8 +6,8 @@ use ring::rand::SystemRandom;
 
 mod cli;
 mod config;
-mod server;
 mod secrets;
+mod server;
 mod stream;
 #[cfg(test)]
 mod tests;
@@ -25,7 +25,10 @@ async fn main() {
     };
 
     match cmd.command {
-        cli::SubCmd::Configure { password, regen_secret } => {
+        cli::SubCmd::Configure {
+            password,
+            regen_secret,
+        } => {
             let rng = SystemRandom::new();
 
             if let Some(pwd) = password {
@@ -44,6 +47,6 @@ async fn main() {
                 confy::store("pet-monitor-app", &ctx).expect("Failed to load configuration file")
             };
         }
-        cli::SubCmd::Start => server::rocket(cmd.conf_path, ctx).await
+        cli::SubCmd::Start => server::rocket(cmd.conf_path, ctx).await,
     }
 }

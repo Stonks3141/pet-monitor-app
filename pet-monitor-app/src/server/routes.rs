@@ -1,8 +1,8 @@
 //! This module provides Rocket routes for the server.
 
 use super::auth::{self, Token};
-use crate::config::{Config, Context};
 use super::provider::Provider;
+use crate::config::{Config, Context};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 #[cfg(not(debug_assertions))]
@@ -32,13 +32,14 @@ const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 #[get("/<path..>", rank = 2)]
 pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
     Ok(
-        if let Some(s) = STATIC_FILES
-            .get_file(&path)
-            .map(|f| f.contents_utf8().expect("All HTML/CSS/JS should be valid UTF-8"))
-        {
+        if let Some(s) = STATIC_FILES.get_file(&path).map(|f| {
+            f.contents_utf8()
+                .expect("All HTML/CSS/JS should be valid UTF-8")
+        }) {
             (
                 if let Some(ext) = path.extension() {
-                    ContentType::from_extension(&ext.to_string_lossy()).unwrap_or(ContentType::Plain)
+                    ContentType::from_extension(&ext.to_string_lossy())
+                        .unwrap_or(ContentType::Plain)
                 } else {
                     ContentType::Plain
                 },
@@ -54,7 +55,7 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
                     .map_err(|_| Status::InternalServerError)?
                     .to_string(),
             )
-        }
+        },
     )
 }
 

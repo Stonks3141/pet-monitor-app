@@ -4,8 +4,8 @@
 //! and represents a JWT, and the [`validate()`] function, which verifies a
 //! password against a hash.
 
-use crate::config::Context;
 use super::provider::Provider;
+use crate::config::Context;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
@@ -90,19 +90,22 @@ impl<'r> FromRequest<'r> for Token {
     type Error = Error;
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         if let Some(token) = req.cookies().get("token").map(Cookie::value) {
-            if req.method() != Method::Get && req.method() != Method::Head {
-                if let Some(csrf_token) = req.headers().get_one("x-csrf-token") {
-                    if token != csrf_token {
+            match req.method() {
+                Method::Get | Method::Head | Method::Options | Method::Trace => (),
+                _ => {
+                    if let Some(csrf_token) = req.headers().get_one("x-csrf-token") {
+                        if token != csrf_token {
+                            return Outcome::Failure((
+                                Status::Unauthorized,
+                                Error::from(ErrorKind::InvalidToken),
+                            ));
+                        }
+                    } else {
                         return Outcome::Failure((
                             Status::Unauthorized,
                             Error::from(ErrorKind::InvalidToken),
                         ));
                     }
-                } else {
-                    return Outcome::Failure((
-                        Status::Unauthorized,
-                        Error::from(ErrorKind::InvalidToken),
-                    ));
                 }
             }
             let ctx = req.rocket().state::<Provider<Context>>().unwrap();

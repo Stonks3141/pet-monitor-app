@@ -68,8 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
-    
+
     fn make_args(cmd: &Cmd) -> String {
         format!(
             "pet-monitor-app{}{}",
@@ -87,11 +86,7 @@ mod tests {
                     regen_secret,
                 } => format!(
                     " configure{}{}",
-                    if *regen_secret {
-                        " --regen-secret"
-                    } else {
-                        ""
-                    },
+                    if *regen_secret { " --regen-secret" } else { "" },
                     if let Some(password) = password {
                         format!(" --password {}", password)
                     } else {
@@ -109,15 +104,16 @@ mod tests {
         cmd().debug_assert();
     }
 
-    proptest! {
-        #[test]
-        fn proptest_cmd_configure(regen_secret: bool, password: Option<String>, conf_path: Option<String>) {
-            let cmd = Cmd {
-                command: SubCmd::Configure { regen_secret, password: password.clone() },
-                conf_path: conf_path.map(|p| PathBuf::from(p)),
-            };
-            let args = make_args(&cmd);
-            assert_eq!(cmd, parse_args(args.split(' ')));
-        }
+    #[test]
+    fn cmd_configure() {
+        let cmd = Cmd {
+            command: SubCmd::Configure {
+                regen_secret: true,
+                password: Some("password".to_string()),
+            },
+            conf_path: Some(PathBuf::from("./pet-monitor-app.toml")),
+        };
+        let args = make_args(&cmd);
+        assert_eq!(cmd, parse_args(args.split(' ')));
     }
 }
