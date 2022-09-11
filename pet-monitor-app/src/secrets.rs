@@ -19,9 +19,6 @@ quick_error! {
             display("Hashing error: {}", err)
             from()
         }
-        Other {
-            display("Other error")
-        }
     }
 }
 
@@ -29,7 +26,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
-    rng.fill(&mut buf).map_err(Into::<Error>::into)?;
+    rng.fill(&mut buf).map_err(|e| e.into())?;
     let config = argon2::Config {
         mem_cost: 8192, // KiB
         time_cost: 3,
@@ -38,11 +35,27 @@ pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> 
         ..Default::default()
     };
 
-    argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(Into::into)
+    argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
 }
 
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
-    rng.fill(&mut buf).map_err(Into::<Error>::into)?;
+    rng.fill(&mut buf).map_err(|e| e.into())?;
     Ok(buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use ring::rand::SystemRandom;
+    
+    proptest! {
+        #[test]
+        fn test_hash(password: String) {
+            let rng = SystemRandom::new();
+            let hash = init_password(&rng, &password).unwrap();
+            assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
+        }
+    }
 }
