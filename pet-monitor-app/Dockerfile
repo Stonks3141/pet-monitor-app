@@ -31,8 +31,10 @@ COPY . .
 RUN touch -m src/main.rs
 RUN cargo +nightly build -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target $target --release
 
+RUN cp target/$target/release/pet-monitor-app /usr/local/bin
+
 FROM base
-COPY --from=build /usr/local/src/pet-monitor-app/target/$target/release/pet-monitor-app /usr/local/bin
+COPY --from=build /usr/local/bin/pet-monitor-app /usr/local/bin
 COPY ./pet-monitor-app.toml /usr/local/etc/pet-monitor-app
 
 EXPOSE 80 443

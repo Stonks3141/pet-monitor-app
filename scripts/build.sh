@@ -28,8 +28,4 @@ docker rm -v $id
 info "Building server..."
 docker build ./pet-monitor-app -t pet-monitor-app:$tag
 
-if [ -t 1 ]; then
-  info "Build complete! Run with \`docker run -it -p 80:80 -p 443:443 pet-monitor-app:$tag\`."
-else
-  echo "pet-monitor-app:$tag"
-fi
+info "Build complete! Run with \`docker run -it -p 80:80 -p 443:443 pet-monitor-app:$tag\`."
