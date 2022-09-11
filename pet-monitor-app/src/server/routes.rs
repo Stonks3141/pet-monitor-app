@@ -30,30 +30,32 @@ const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 
 #[cfg(not(debug_assertions))]
 #[get("/<path..>", rank = 2)]
-pub fn files(path: PathBuf) -> (ContentType, String) {
-    if let Some(s) = STATIC_FILES
-        .get_file(&path)
-        .map(|f| f.contents_utf8().unwrap())
-    {
-        (
-            if let Some(ext) = path.extension() {
-                ContentType::from_extension(&ext.to_string_lossy()).unwrap_or(ContentType::Plain)
-            } else {
-                ContentType::Plain
-            },
-            s.to_string(),
-        )
-    } else {
-        (
-            ContentType::HTML,
-            STATIC_FILES
-                .get_file("index.html")
-                .unwrap()
-                .contents_utf8()
-                .unwrap()
-                .to_string(),
-        )
-    }
+pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
+    Ok(
+        if let Some(s) = STATIC_FILES
+            .get_file(&path)
+            .map(|f| f.contents_utf8().expect("All HTML/CSS/JS should be valid UTF-8"))
+        {
+            (
+                if let Some(ext) = path.extension() {
+                    ContentType::from_extension(&ext.to_string_lossy()).unwrap_or(ContentType::Plain)
+                } else {
+                    ContentType::Plain
+                },
+                s.to_string(),
+            )
+        } else {
+            (
+                ContentType::HTML,
+                STATIC_FILES
+                    .get_file("index.html")
+                    .map_err(|_| Status::InternalServerError)?
+                    .contents_utf8()
+                    .map_err(|_| Status::InternalServerError)?
+                    .to_string(),
+            )
+        }
+    )
 }
 
 /// Validates a password and issues tokens.
