@@ -1,4 +1,7 @@
 FROM rust:1.63-slim-bullseye as base
+
+RUN rustup component add clippy
+
 RUN apt-get update
 # install glib
 RUN apt-get install -y libgtk-3.0
