@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app?category=code)](https://github.com/XAMPPRocky/tokei)
+[![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
