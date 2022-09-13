@@ -117,16 +117,46 @@ mod provider {
             Self(tx)
         }
 
+        #[inline]
         pub async fn get(&self) -> T {
             let (tx, rx) = oneshot::channel();
             self.0.send((None, tx)).await.unwrap();
             rx.await.unwrap()
         }
 
+        #[inline]
         pub async fn set(&self, new: T) {
             let (tx, rx) = oneshot::channel();
             self.0.send((Some(new), tx)).await.unwrap();
             rx.await.unwrap();
+        }
+
+        #[cfg(test)]
+        mod tests {
+            use super::*;
+            use rocket::tokio;
+            use std::sync::Arc;
+            use tokio::sync::Mutex;
+
+            #[tokio::test]
+            async fn test_provider() {
+                let val = "foo".to_string();
+                let mutex = Arc::new(Mutex::new(false));
+                let mutex_clone = mutex.clone();
+
+                let prov = Provider::new(val, move || {
+                    *mutex_clone.lock().await = true;
+                });
+
+                assert_eq!(val, prov.get().await);
+                assert_eq!(false, *mutex.lock().await);
+
+                let val = "bar".to_string();
+                prov.set(val.clone());
+
+                assert_eq!(val, prov.get().await);
+                assert_eq!(true, *mutex.lock().await);
+            }
         }
     }
 }
