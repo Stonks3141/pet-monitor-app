@@ -30,7 +30,7 @@ docker build ./pet-monitor-app -t stonks3141/pet-monitor-app:$tag
 
 push=0
 for arg in "$@"; do
-  if [ "$arg" = "--push" ]; do
+  if [ "$arg" = "--push" ]; then
     push=1
     break
   fi
