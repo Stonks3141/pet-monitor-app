@@ -145,7 +145,7 @@ mod provider {
             let mutex = Arc::new(Mutex::new(false));
             let mutex_clone = mutex.clone();
 
-            let prov = Provider::new(val, move || {
+            let prov = Provider::new(val, move |_| {
                 *mutex_clone.lock().await = true;
             });
 
