@@ -96,12 +96,13 @@ mod provider {
     pub struct Provider<T>(mpsc::Sender<(Option<T>, oneshot::Sender<T>)>);
 
     impl<T: Debug> Provider<T> {
-        pub fn new<F>(mut val: T, mut on_set: F) -> Self
+        pub fn new<F>(val: T, mut on_set: F) -> Self
         where
-            T: Clone + Debug + Send + 'static,
+            T: Clone + Send + 'static,
             F: FnMut(&T) + Send + 'static,
         {
             let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
+            let mut val = val.clone();
             rocket::tokio::spawn(async move {
                 while let Some((new, response)) = rx.recv().await {
                     if let Some(new) = new {
@@ -136,8 +137,7 @@ mod provider {
     mod tests {
         use super::*;
         use rocket::tokio;
-        use std::sync::Arc;
-        use tokio::sync::Mutex;
+        use std::sync::{Arc, Mutex};
 
         #[tokio::test]
         async fn test_provider() {
@@ -146,17 +146,17 @@ mod provider {
             let mutex_clone = mutex.clone();
 
             let prov = Provider::new(val, move |_| {
-                *mutex_clone.lock().await = true;
+                *mutex_clone.lock().unwrap() = true;
             });
 
             assert_eq!(val, prov.get().await);
-            assert_eq!(false, *mutex.lock().await);
+            assert_eq!(false, *mutex.lock().unwrap());
 
             let val = "bar".to_string();
             prov.set(val.clone());
 
             assert_eq!(val, prov.get().await);
-            assert_eq!(true, *mutex.lock().await);
+            assert_eq!(true, *mutex.lock().unwrap());
         }
     }
 }
