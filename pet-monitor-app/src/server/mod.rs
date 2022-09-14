@@ -92,10 +92,16 @@ mod provider {
     use rocket::tokio::sync::{mpsc, oneshot};
     use std::fmt::Debug;
 
+    /// The `Provider` type uses async channels to implement thread-safe interior
+    /// mutability.
     #[derive(Debug, Clone)]
     pub struct Provider<T>(mpsc::Sender<(Option<T>, oneshot::Sender<T>)>);
 
     impl<T: Debug> Provider<T> {
+        /// Creates a new `Provider`.
+        /// 
+        /// The `on_set` callback will be run with the new value whenever
+        /// `Provider::set` is called.
         pub fn new<F>(val: T, mut on_set: F) -> Self
         where
             T: Clone + Send + 'static,
@@ -145,7 +151,7 @@ mod provider {
             let mutex = Arc::new(Mutex::new(false));
             let mutex_clone = mutex.clone();
 
-            let prov = Provider::new(val, move |_| {
+            let prov = Provider::new(val.clone(), move |_| {
                 *mutex_clone.lock().unwrap() = true;
             });
 
