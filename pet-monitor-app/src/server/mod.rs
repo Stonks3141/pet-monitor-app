@@ -87,7 +87,7 @@ pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
 }
 
 mod provider {
-    //! Async mutable globals with channels
+    //! Async interior mutability with channels
 
     use rocket::tokio::sync::{mpsc, oneshot};
     use std::fmt::Debug;
@@ -124,6 +124,7 @@ mod provider {
             Self(tx)
         }
 
+        /// Gets the value stored in the `Provider`.
         #[inline]
         pub async fn get(&self) -> T {
             let (tx, rx) = oneshot::channel();
@@ -131,6 +132,7 @@ mod provider {
             rx.await.unwrap()
         }
 
+        /// Replaces the value in the `Provider` with a new value.
         #[inline]
         pub async fn set(&self, new: T) {
             let (tx, rx) = oneshot::channel();
@@ -159,7 +161,7 @@ mod provider {
             assert_eq!(false, *mutex.lock().unwrap());
 
             let val = "bar".to_string();
-            prov.set(val.clone());
+            prov.set(val.clone()).await;
 
             assert_eq!(val, prov.get().await);
             assert_eq!(true, *mutex.lock().unwrap());
