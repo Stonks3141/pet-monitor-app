@@ -35,7 +35,7 @@ for arg in "$@"; do
     break
   fi
 done
-if [ "$DOCKER_TOKEN" != "" && push -eq 1 ]; then
+if [ "$DOCKER_TOKEN" != "" ] && [ $push -eq 1 ]; then
   docker login -u stonks3141 -p $DOCKER_TOKEN
   docker push stonks3141/pet-monitor-app:$tag
 fi
