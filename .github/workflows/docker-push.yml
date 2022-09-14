@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Docker CD
 
 on:
   workflow_run:
@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
+    - name: Build and push
       env:
         credentials: ${{ secrets.DOCKER_TOKEN }}
-      run: sudo sh ./scripts/build.sh
+      run: sudo ./scripts/build.sh --push
