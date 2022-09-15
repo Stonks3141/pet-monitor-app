@@ -1,0 +1,21 @@
+name: Docker CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: CD
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and push
+      env:
+        credentials: ${{ secrets.DOCKER_TOKEN }}
+      run: sudo ./scripts/build.sh --push

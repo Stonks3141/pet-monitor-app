@@ -2,17 +2,10 @@
 
 [![CI](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![loc](https://tokei.rs/github/Stonks3141/pet-monitor-app?category=code)](https://github.com/XAMPPRocky/tokei)
-
-This project is currently pre-alpha.
-Meant to run on a Raspberry Pi.
-[v4l2](https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/v4l2.html) will be
-used for video, but I'm also considering libcamera since it's intended to
-replace v4l2 for high-level usage.
+[![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
-    - [Docker](#docker)
   - [Development](#development)
   - [Motivation](#motivation)
   - [Goals](#goals)
@@ -24,10 +17,11 @@ replace v4l2 for high-level usage.
 
 Download the binary for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
-move it into your `$PATH`. Run this command to start the server:
+move it into your `$PATH`. Run these commands to start the server:
 
 ```sh
-pet-monitor-app --regen-secret --password MY_PASSWORD
+pet-monitor-app configure --password MY_PASSWORD
+pet-monitor-app start
 ```
 
 The `regen-secret` flag generates a new secret for JWT signing, and the
@@ -36,7 +30,7 @@ The `regen-secret` flag generates a new secret for JWT signing, and the
 necessary. To reset your password, run
 
 ```sh
-pet-monitor-app --password NEW_PASSWORD
+pet-monitor-app configure --password NEW_PASSWORD
 ```
 
 For a full list of command-line options, run with the `--help` flag.
@@ -58,7 +52,7 @@ You can now view the page at [https://localhost](https://localhost).
 To run with Docker, clone the repository and run the build script.
 
 ```sh
-sudo sh ./scripts/build.sh
+sudo ./scripts/build.sh
 ```
 
 You can now run the container with

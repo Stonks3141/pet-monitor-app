@@ -24,6 +24,7 @@ quick_error! {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[inline]
 pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
@@ -38,6 +39,7 @@ pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> 
     argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
 }
 
+#[inline]
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
@@ -55,5 +57,13 @@ mod tests {
         let rng = SystemRandom::new();
         let hash = init_password(&rng, &password).unwrap();
         assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
+    }
+    
+    #[test]
+    fn test_hash_invalid() {
+        let password = "password";
+        let rng = SystemRandom::new();
+        let hash = init_password(&rng, &password).unwrap();
+        assert!(!argon2::verify_encoded(&hash, "paswurd".as_bytes()).unwrap());
     }
 }

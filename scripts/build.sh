@@ -28,6 +28,18 @@ docker rm -v $id
 arch=$(rustc -vV | sed -rn "s/^host: ([^-]*).*\$/\1/p")
 target=$arch-unknown-linux-gnu
 info "Building server..."
-docker build --build-arg target=$target ./pet-monitor-app -t pet-monitor-app:$tag
+docker build --build-arg target=$target ./pet-monitor-app -t stonks3141/pet-monitor-app:$tag
 
-info "Build complete! Run with \`docker run -it -p 80:80 -p 443:443 pet-monitor-app:$tag\`."
+push=0
+for arg in "$@"; do
+  if [ "$arg" = "--push" ]; then
+    push=1
+    break
+  fi
+done
+if [ "$DOCKER_TOKEN" != "" ] && [ $push -eq 1 ]; then
+  docker login -u stonks3141 -p $DOCKER_TOKEN
+  docker push stonks3141/pet-monitor-app:$tag
+fi
+
+info "Build complete! Run with \`docker run -it -p 80:80 -p 443:443 stonks3141/pet-monitor-app:$tag\`."
