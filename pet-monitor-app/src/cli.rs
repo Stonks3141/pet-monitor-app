@@ -1,3 +1,4 @@
+use crate::config::Tls;
 use clap::{arg, builder::Command, value_parser};
 use std::path::PathBuf;
 
@@ -9,7 +10,10 @@ pub struct Cmd {
 
 #[derive(Debug, PartialEq)]
 pub enum SubCmd {
-    Start,
+    Start {
+        tls: Option<Tls>,
+        port: Option<u16>,
+    },
     Configure {
         password: Option<String>,
         regen_secret: bool,
@@ -32,11 +36,20 @@ pub fn cmd() -> Command<'static> {
                 .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")),
         )
         .subcommand(
-            Command::new("start").about("Starts the server").arg(
-                arg!(-p --port <PORT> "Set the port to listen on")
+            Command::new("start").about("Starts the server")
+                .arg(arg!(-p --port <PORT> ... "Set the port to listen on")
                     .value_parser(value_parser!(u16))
-                    .required(false),
-            ),
+                    .max_values(2)
+                    .required(false))
+                .arg(arg!(--tls <ENABLED> "Enable or disable TLS. Overrides the config file.")
+                    .required(false)
+                    .value_parser(value_parser!(bool)))
+                .arg(arg!(-c --cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one mus be specified in the CLI.")
+                    .required(false)
+                    .value_parser(value_parser!(PathBuf)))
+                .arg(arg!(-k --key <KEY_PATH> "Path to an SSL certificate key. Overrides the value in the config file.")
+                    .required(false)
+                    .value_parser(value_parser!(PathBuf)))
         )
         .subcommand_required(true)
         .arg(
@@ -58,8 +71,11 @@ where
                 password: matches.get_one::<String>("password").map(|s| s.to_owned()),
                 regen_secret: matches.is_present("regen-secret"),
             },
-            Some(("start", _)) => SubCmd::Start,
-            _ => panic!("subcommand required"),
+            Some(("start", matches)) => SubCmd::Start {
+                tls: None,
+                port: None,
+            },
+            _ => unreachable!("clap `subcommand_required`"),
         },
         conf_path: matches.get_one::<PathBuf>("config").map(|s| s.to_owned()),
     }
@@ -93,7 +109,7 @@ mod tests {
                         String::new()
                     },
                 ),
-                SubCmd::Start => " start".to_string(),
+                SubCmd::Start { tls, port } => " start".to_string(),
             },
         )
         .to_string()

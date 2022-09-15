@@ -13,6 +13,7 @@ pub struct Context {
     pub jwt_timeout: Duration,
     pub domain: String,
     pub host: Option<IpAddr>,
+    pub port: u16,
     #[serde(flatten)]
     pub config: Config,
     pub tls: Option<Tls>,
@@ -26,6 +27,10 @@ impl Default for Context {
             jwt_timeout: Duration::days(4),
             domain: "localhost".to_string(),
             host: Some(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            #[cfg(not(debug_assertions))]
+            port: 80,
+            #[cfg(debug_assertions)]
+            port: 8080,
             config: Config::default(),
             tls: None,
         }
@@ -52,8 +57,9 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tls {
+    pub port: u16,
     pub cert: String,
     pub key: String,
 }
@@ -61,6 +67,10 @@ pub struct Tls {
 impl Default for Tls {
     fn default() -> Self {
         Self {
+            #[cfg(not(debug_assertions))]
+            port: 443,
+            #[cfg(debug_assertions)]
+            port: 8443,
             cert: "path/to/cert.pem".to_string(),
             key: "path/to/key.key".to_string(),
         }

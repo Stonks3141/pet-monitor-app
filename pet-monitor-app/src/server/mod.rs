@@ -1,13 +1,15 @@
 use crate::config::Context;
+use provider::Provider;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
+use rocket::{Build, Rocket};
 use std::net::{IpAddr, Ipv4Addr};
 
 mod auth;
 mod routes;
 use routes::*;
 
-pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
+pub async fn launch(conf_path: Option<std::path::PathBuf>, ctx: Context) {
     let cfg_tx = provider::Provider::new(ctx.clone(), move |ctx| {
         if let Some(path) = &conf_path {
             confy::store_path(&path, &ctx).expect("Failed to save to configuration file")
@@ -16,42 +18,45 @@ pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
         };
     });
 
-    #[cfg(debug_assertions)]
-    const PORT: u16 = 8080;
-    #[cfg(not(debug_assertions))]
-    const PORT: u16 = 80;
-
-    #[cfg(debug_assertions)]
-    const TLS_PORT: u16 = 8443;
-    #[cfg(not(debug_assertions))]
-    const TLS_PORT: u16 = 443;
-
     let http_rocket = if ctx.tls.is_some() {
-        let rocket_cfg = rocket::Config {
-            port: PORT,
-            address: ctx
-                .host
-                .clone()
-                .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
-            ..rocket::Config::figment()
-                .extract::<rocket::Config>()
-                .unwrap()
-        };
-
-        Some(
-            rocket::custom(&rocket_cfg)
-                .mount("/", rocket::routes![redirect])
-                .manage(cfg_tx.clone())
-                .launch(),
-        )
+        Some(http_rocket(&ctx, cfg_tx.clone()).launch())
     } else {
         None
     };
 
+    let rocket = rocket(&ctx, cfg_tx).launch();
+
+    if let Some(http_rocket) = http_rocket {
+        let result = future::join(http_rocket, rocket).await;
+        let _ = result.0.unwrap();
+        let _ = result.1.unwrap();
+    } else {
+        let _ = rocket.await.unwrap();
+    }
+}
+
+fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
+    let rocket_cfg = rocket::Config {
+        port: ctx.port,
+        address: ctx
+            .host
+            .clone()
+            .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        ..rocket::Config::figment()
+            .extract::<rocket::Config>()
+            .unwrap()
+    };
+
+    rocket::custom(&rocket_cfg)
+        .mount("/", rocket::routes![redirect])
+        .manage(ctx_provider)
+}
+
+fn rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
     let rocket_cfg = if let Some(tls) = &ctx.tls {
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
-            port: TLS_PORT,
+            port: tls.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
@@ -59,7 +64,7 @@ pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
         }
     } else {
         rocket::Config {
-            port: PORT,
+            port: ctx.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
@@ -69,21 +74,12 @@ pub async fn rocket(conf_path: Option<std::path::PathBuf>, ctx: Context) {
 
     let rocket = rocket::custom(&rocket_cfg)
         .mount("/", rocket::routes![login, get_config, put_config])
-        .manage(cfg_tx);
+        .manage(ctx_provider);
 
     #[cfg(not(debug_assertions))]
     let rocket = rocket.mount("/", rocket::routes![files]);
 
-    let rocket = rocket.launch();
-
-    if let Some(http_rocket) = http_rocket {
-        let result = future::join(http_rocket, rocket).await;
-        let _ = result.0.unwrap();
-        let _ = result.1.unwrap();
-    } else {
-        let result = rocket.await;
-        let _ = result.unwrap();
-    }
+    rocket
 }
 
 mod provider {

@@ -48,7 +48,7 @@ pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
 mod tests {
     use super::*;
     use ring::rand::SystemRandom;
-    
+
     #[test]
     fn test_hash() {
         let password = "password";

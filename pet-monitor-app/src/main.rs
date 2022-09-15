@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
-use ring::rand::SystemRandom;
 use anyhow::Context;
+use ring::rand::SystemRandom;
 
 mod cli;
 mod config;
@@ -41,10 +41,17 @@ async fn main() -> anyhow::Result<()> {
             if let Some(path) = &cmd.conf_path {
                 confy::store_path(&path, &ctx).context("Failed to load configuration file")?;
             } else {
-                confy::store("pet-monitor-app", &ctx).context("Failed to load configuration file")?;
+                confy::store("pet-monitor-app", &ctx)
+                    .context("Failed to load configuration file")?;
             }
         }
-        cli::SubCmd::Start => server::rocket(cmd.conf_path, ctx).await,
+        cli::SubCmd::Start { tls, port } => {
+            server::launch(
+                cmd.conf_path,
+                ctx,
+            )
+            .await
+        }
     }
     Ok(())
 }
