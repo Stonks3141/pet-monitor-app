@@ -17,6 +17,8 @@ RUN apt-get install -y libv4l-0 libv4l-dev
 # install pkg-config (for gstreamer)
 RUN apt-get install -y pkg-config
 
+WORKDIR /usr/local/src/pet-monitor-app
+
 FROM base as build
 # target triple argument for cross-compilation
 ARG target="x86_64-unknown-linux-gnu"

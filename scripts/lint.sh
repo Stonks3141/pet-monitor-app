@@ -21,7 +21,6 @@ info "Building server container..."
 docker build ./pet-monitor-app -t pet-monitor-app:test-$tag --target base
 info "Linting server..."
 docker run \
---workdir /usr/local/src/pet-monitor-app \
 --mount type=bind,src=$(pwd)/pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
 pet-monitor-app:test-$tag \
 cargo clippy

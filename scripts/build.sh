@@ -25,7 +25,9 @@ id=$(docker container create pet-monitor-app-client:$tag)
 docker cp $id:/usr/local/src/pet-monitor-app/dist ./pet-monitor-app
 docker rm -v $id
 
+arch=$(rustc -vV | sed -rn "s/^host: ([^-]*).*\$/\1/p")
+target=$arch-unknown-linux-gnu
 info "Building server..."
-docker build ./pet-monitor-app -t pet-monitor-app:$tag
+docker build --build-arg target=$target ./pet-monitor-app -t pet-monitor-app:$tag
 
 info "Build complete! Run with \`docker run -it -p 80:80 -p 443:443 pet-monitor-app:$tag\`."
