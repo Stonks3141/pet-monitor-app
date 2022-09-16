@@ -1,6 +1,6 @@
-use predicates::prelude::*;
-use assert_fs::{prelude::*, NamedTempFile};
 use assert_cmd::{prelude::*, Command};
+use assert_fs::{prelude::*, NamedTempFile};
+use predicates::prelude::*;
 
 #[test]
 fn configure_subcmd() {

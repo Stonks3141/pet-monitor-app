@@ -1,6 +1,7 @@
 FROM rust:1.63-slim-bullseye as base
 
 RUN rustup component add clippy
+RUN rustup component add rustfmt
 
 RUN apt-get update
 # install glib

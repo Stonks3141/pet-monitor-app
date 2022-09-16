@@ -58,7 +58,7 @@ mod tests {
         let hash = init_password(&rng, &password).unwrap();
         assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
     }
-    
+
     #[test]
     fn test_hash_invalid() {
         let password = "password";

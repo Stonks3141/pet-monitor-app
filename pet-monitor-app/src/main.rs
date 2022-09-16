@@ -45,13 +45,7 @@ async fn main() -> anyhow::Result<()> {
                     .context("Failed to load configuration file")?;
             }
         }
-        cli::SubCmd::Start { tls, port } => {
-            server::launch(
-                cmd.conf_path,
-                ctx,
-            )
-            .await
-        }
+        cli::SubCmd::Start { tls, port } => server::launch(cmd.conf_path, ctx).await,
     }
     Ok(())
 }

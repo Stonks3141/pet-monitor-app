@@ -95,7 +95,7 @@ mod provider {
 
     impl<T: Debug> Provider<T> {
         /// Creates a new `Provider`.
-        /// 
+        ///
         /// The `on_set` callback will be run with the new value whenever
         /// `Provider::set` is called.
         pub fn new<F>(val: T, mut on_set: F) -> Self

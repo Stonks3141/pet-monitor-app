@@ -19,6 +19,11 @@ fi
 
 info "Building server container..."
 docker build ./pet-monitor-app -t pet-monitor-app:test-$tag --target base
+info "Checking formatting..."
+docker run \
+--mount type=bind,src=$(pwd)/pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
+pet-monitor-app:test-$tag \
+cargo fmt --all -- --check
 info "Linting server..."
 docker run \
 --mount type=bind,src=$(pwd)/pet-monitor-app,dst=/usr/local/src/pet-monitor-app \
