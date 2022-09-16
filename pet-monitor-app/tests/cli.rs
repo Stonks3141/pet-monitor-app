@@ -1,9 +1,9 @@
 use predicates::prelude::*;
 use assert_fs::{prelude::*, NamedTempFile};
-use assert_cmd::prelude::*;
+use assert_cmd::{prelude::*, Command};
 
 #[test]
-fn create_config() {
+fn configure_subcmd() {
     let tmp = NamedTempFile::new("pet-monitor-app.toml").unwrap();
     Command::cargo_bin("pet-monitor-app")
         .unwrap()
