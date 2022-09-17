@@ -101,7 +101,7 @@ fn method_strategy() -> impl Strategy<Value = Method> {
     ]
 }
 
-async fn req_guard_no_csrf(method: &Method, is_valid: bool) -> bool {
+async fn client() -> Client {
     let rocket = rocket::build()
         .mount(
             "/",
@@ -116,8 +116,11 @@ async fn req_guard_no_csrf(method: &Method, is_valid: bool) -> bool {
             ],
         )
         .manage(Provider::new(Context::default(), |_| {}));
-    let client = Client::tracked(rocket).await.unwrap();
+    Client::tracked(rocket).await.unwrap()
+}
 
+#[inline]
+async fn req_guard_no_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
         .req(*method, "/")
@@ -131,23 +134,8 @@ async fn req_guard_no_csrf(method: &Method, is_valid: bool) -> bool {
     res.status() == expected
 }
 
-async fn req_guard_invalid_csrf(method: &Method, is_valid: bool) -> bool {
-    let rocket = rocket::build()
-        .mount(
-            "/",
-            rocket::routes![
-                get_route,
-                post_route,
-                put_route,
-                delete_route,
-                patch_route,
-                head_route,
-                options_route
-            ],
-        )
-        .manage(Provider::new(Context::default(), |_| {}));
-    let client = Client::tracked(rocket).await.unwrap();
-
+#[inline]
+async fn req_guard_invalid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
         .req(*method, "/")
@@ -162,23 +150,8 @@ async fn req_guard_invalid_csrf(method: &Method, is_valid: bool) -> bool {
     res.status() == expected
 }
 
-async fn req_guard_valid_csrf(method: &Method, is_valid: bool) -> bool {
-    let rocket = rocket::build()
-        .mount(
-            "/",
-            rocket::routes![
-                get_route,
-                post_route,
-                put_route,
-                delete_route,
-                patch_route,
-                head_route,
-                options_route
-            ],
-        )
-        .manage(Provider::new(Context::default(), |_| {}));
-    let client = Client::tracked(rocket).await.unwrap();
-
+#[inline]
+async fn req_guard_valid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
         .req(*method, "/")
@@ -215,65 +188,77 @@ fn invalid_token() {
 
 #[tokio::test]
 async fn valid_token_get() {
-    assert!(req_guard_no_csrf(&Method::Get, true).await);
+    let client = client().await;
+    assert!(req_guard_no_csrf(&client, &Method::Get, true).await);
 }
 
 #[tokio::test]
 async fn invalid_token_get() {
-    assert!(req_guard_no_csrf(&Method::Get, false).await);
+    let client = client().await;
+    assert!(req_guard_no_csrf(&client, &Method::Get, false).await);
 }
 
 #[tokio::test]
 async fn invalid_token_get_csrf() {
-    assert!(req_guard_valid_csrf(&Method::Get, false).await);
+    let client = client().await;
+    assert!(req_guard_valid_csrf(&client, &Method::Get, false).await);
 }
 
 #[tokio::test]
 async fn valid_token_post_no_csrf() {
-    assert!(req_guard_no_csrf(&Method::Post, true).await);
+    let client = client().await;
+    assert!(req_guard_no_csrf(&client, &Method::Post, true).await);
 }
 
 #[tokio::test]
 async fn valid_token_post_csrf() {
-    assert!(req_guard_valid_csrf(&Method::Post, true).await);
+    let client = client().await;
+    assert!(req_guard_valid_csrf(&client, &Method::Post, true).await);
 }
 
 #[tokio::test]
 async fn valid_token_post_invalid_csrf() {
-    assert!(req_guard_invalid_csrf(&Method::Post, true).await);
+    let client = client().await;
+    assert!(req_guard_invalid_csrf(&client, &Method::Post, true).await);
 }
 
 proptest! {
     #[test]
     fn prop_req_guard_invalid_csrf(method in method_strategy(), is_valid: bool) {
-        assert!(tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            req_guard_invalid_csrf(&method, is_valid).await
-        }));
+        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
+            assert!(req_guard_invalid_csrf(&client().await, &method, is_valid).await);
+        });
     }
 }
 
 proptest! {
     #[test]
     fn prop_req_guard_no_csrf(method in method_strategy(), is_valid: bool) {
-        assert!(tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            req_guard_no_csrf(&method, is_valid).await
-        }));
+        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
+            assert!(req_guard_no_csrf(&client().await, &method, is_valid).await);
+        });
     }
 }
 
 proptest! {
     #[test]
     fn prop_req_guard_valid_csrf(method in method_strategy(), is_valid: bool) {
-        assert!(tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            req_guard_valid_csrf(&method, is_valid).await
-        }));
+        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
+            assert!(req_guard_valid_csrf(&client().await, &method, is_valid).await);
+        });
     }
 }
 
 #[test]
 fn validate_correct_password() {
     let password = "password";
-    let config = argon2::Config::default();
+    let config = argon2::Config {
+        mem_cost: 128, // KiB
+        time_cost: 1,
+        lanes: 1,
+        variant: argon2::Variant::Argon2id,
+        ..Default::default()
+    };
     let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
     assert!(validate(password, &hash).unwrap());
@@ -282,7 +267,13 @@ fn validate_correct_password() {
 #[test]
 fn validate_incorrect_password() {
     let password = "password";
-    let config = argon2::Config::default();
+    let config = argon2::Config {
+        mem_cost: 128, // KiB
+        time_cost: 1,
+        lanes: 1,
+        variant: argon2::Variant::Argon2id,
+        ..Default::default()
+    };
     let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
     assert!(!validate("paswurd", &hash).unwrap());

@@ -38,6 +38,7 @@ for arg in "$@"; do
   fi
 done
 if [ "$DOCKER_TOKEN" != "" ] && [ $push -eq 1 ]; then
+  info "Pushing image to Docker Hub..."
   docker login -u stonks3141 -p $DOCKER_TOKEN
   docker push stonks3141/pet-monitor-app:$tag
 fi

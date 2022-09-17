@@ -3,6 +3,7 @@ use std::time::Instant;
 
 /// used for finding good argon2 params
 #[test]
+#[ignore]
 fn argon2_time() {
     let now = Instant::now();
     {

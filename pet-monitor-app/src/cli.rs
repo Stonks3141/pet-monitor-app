@@ -36,12 +36,13 @@ pub fn cmd() -> Command<'static> {
                 .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")),
         )
         .subcommand(
-            Command::new("start").about("Starts the server")
+            Command::new("start")
+                .about("Starts the server")
                 .arg(arg!(-p --port <PORT> ... "Set the port to listen on")
+                    .required(false)
                     .value_parser(value_parser!(u16))
-                    .max_values(2)
-                    .required(false))
-                .arg(arg!(--tls <ENABLED> "Enable or disable TLS. Overrides the config file.")
+                    .max_values(2))
+                .arg(arg!(--tls [ENABLED] "Enable or disable TLS. Overrides the config file.")
                     .required(false)
                     .value_parser(value_parser!(bool)))
                 .arg(arg!(-c --cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one mus be specified in the CLI.")
@@ -75,7 +76,7 @@ where
                 tls: None,
                 port: None,
             },
-            _ => unreachable!("clap `subcommand_required`"),
+            _ => unreachable!("`Command::subcommand_required` guarantees this"),
         },
         conf_path: matches.get_one::<PathBuf>("config").map(|s| s.to_owned()),
     }

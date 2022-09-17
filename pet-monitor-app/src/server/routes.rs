@@ -121,3 +121,74 @@ pub async fn put_config(
     ctx.set(new_ctx).await;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ring::rand::SystemRandom;
+    use rocket::local::asynchronous::Client;
+    use rocket::tokio;
+
+    #[tokio::test]
+    async fn redirect() {
+        let ctx = Context {
+            domain: "localhost".to_string(),
+            ..Default::default()
+        };
+        let rocket = rocket::build()
+            .mount("/", rocket::routes![redirect])
+            .manage(Provider::new(ctx, |_| {}));
+
+        let client = Client::tracked(rocket).await.unwrap();
+
+        let res = client.get("/").dispatch().await;
+        assert_eq!(res.status(), Status::PermanentRedirect);
+        assert_eq!(
+            res.headers().get_one("Location").unwrap(),
+            "https://localhost/"
+        );
+
+        let res = client.get("/index.html").dispatch().await;
+        assert_eq!(res.status(), Status::PermanentRedirect);
+        assert_eq!(
+            res.headers().get_one("Location").unwrap(),
+            "https://localhost/index.html"
+        );
+    }
+
+    #[tokio::test]
+    async fn login_valid() {
+        let password = "foo";
+        let rng = SystemRandom::new();
+        let ctx = Context {
+            password_hash: crate::secrets::init_password(&rng, password).unwrap(),
+            ..Default::default()
+        };
+        let rocket = rocket::build()
+            .mount("/", rocket::routes![login])
+            .manage(Provider::new(ctx, |_| {}));
+
+        let client = Client::tracked(rocket).await.unwrap();
+
+        let res = client.post("/api/login").body(password).dispatch().await;
+        assert_eq!(res.status(), Status::Ok);
+    }
+
+    #[tokio::test]
+    async fn login_invalid() {
+        let password = "foo";
+        let rng = SystemRandom::new();
+        let ctx = Context {
+            password_hash: crate::secrets::init_password(&rng, password).unwrap(),
+            ..Default::default()
+        };
+        let rocket = rocket::build()
+            .mount("/", rocket::routes![login])
+            .manage(Provider::new(ctx, |_| {}));
+
+        let client = Client::tracked(rocket).await.unwrap();
+
+        let res = client.post("/api/login").body("bar").dispatch().await;
+        assert_eq!(res.status(), Status::Unauthorized);
+    }
+}
