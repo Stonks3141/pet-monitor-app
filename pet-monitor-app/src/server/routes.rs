@@ -71,7 +71,7 @@ pub async fn login(
 ) -> Status {
     let ctx = ctx.get().await;
 
-    if let Ok(b) = auth::validate(&password, &ctx.password_hash) {
+    if let Ok(b) = auth::validate(&password, &ctx.password_hash).await {
         if b {
             match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
                 Ok(token) => {
@@ -161,7 +161,7 @@ mod tests {
         let password = "foo";
         let rng = SystemRandom::new();
         let ctx = Context {
-            password_hash: crate::secrets::init_password(&rng, password).unwrap(),
+            password_hash: crate::secrets::init_password(&rng, password).await.unwrap(),
             ..Default::default()
         };
         let rocket = rocket::build()
@@ -179,7 +179,7 @@ mod tests {
         let password = "foo";
         let rng = SystemRandom::new();
         let ctx = Context {
-            password_hash: crate::secrets::init_password(&rng, password).unwrap(),
+            password_hash: crate::secrets::init_password(&rng, password).await.unwrap(),
             ..Default::default()
         };
         let rocket = rocket::build()

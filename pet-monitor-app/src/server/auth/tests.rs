@@ -119,7 +119,6 @@ async fn client() -> Client {
     Client::tracked(rocket).await.unwrap()
 }
 
-#[inline]
 async fn req_guard_no_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
@@ -134,7 +133,6 @@ async fn req_guard_no_csrf(client: &Client, method: &Method, is_valid: bool) -> 
     res.status() == expected
 }
 
-#[inline]
 async fn req_guard_invalid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
@@ -150,7 +148,6 @@ async fn req_guard_invalid_csrf(client: &Client, method: &Method, is_valid: bool
     res.status() == expected
 }
 
-#[inline]
 async fn req_guard_valid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
     let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
     let res = client
@@ -249,8 +246,8 @@ proptest! {
     }
 }
 
-#[test]
-fn validate_correct_password() {
+#[tokio::test]
+async fn validate_correct_password() {
     let password = "password";
     let config = argon2::Config {
         mem_cost: 128, // KiB
@@ -261,11 +258,11 @@ fn validate_correct_password() {
     };
     let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
-    assert!(validate(password, &hash).unwrap());
+    assert!(validate(password, &hash).await.unwrap());
 }
 
-#[test]
-fn validate_incorrect_password() {
+#[tokio::test]
+async fn validate_incorrect_password() {
     let password = "password";
     let config = argon2::Config {
         mem_cost: 128, // KiB
@@ -276,5 +273,5 @@ fn validate_incorrect_password() {
     };
     let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
 
-    assert!(!validate("paswurd", &hash).unwrap());
+    assert!(!validate("paswurd", &hash).await.unwrap());
 }

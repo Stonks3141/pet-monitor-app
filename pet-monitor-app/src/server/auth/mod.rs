@@ -11,6 +11,7 @@ use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
 use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
+use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -27,7 +28,6 @@ struct Claims {
 
 impl Claims {
     /// Creates new JWT claims that expire in `expires_in` time.
-    #[inline]
     fn new(expires_in: Duration) -> Self {
         let utc = Utc::now();
         Self {
@@ -49,7 +49,6 @@ pub struct Token {
 
 impl Token {
     /// Creates a new token that expires in `expires_in` time.
-    #[inline]
     pub fn new(expires_in: Duration) -> Self {
         Self {
             header: jwt::Header::new(ALG),
@@ -58,7 +57,6 @@ impl Token {
     }
 
     /// Verifies the validity of a `Token`.
-    #[inline]
     pub fn verify(&self) -> bool {
         let utc = Utc::now();
         let exp = DateTime::<Utc>::from_utc(
@@ -70,7 +68,6 @@ impl Token {
     }
 
     /// Parses a JWT into a `Token`.
-    #[inline]
     pub fn from_str(s: &str, secret: &[u8; 32]) -> Result<Self> {
         let dec_key = jwt::DecodingKey::from_secret(secret);
         let val = jwt::Validation::new(ALG);
@@ -82,7 +79,6 @@ impl Token {
     }
 
     /// Creates a JWT from a `Token`.
-    #[inline]
     pub fn to_string(&self, secret: &[u8; 32]) -> Result<String> {
         let enc_key = jwt::EncodingKey::from_secret(secret);
 
@@ -142,7 +138,10 @@ impl<'r> FromRequest<'r> for Token {
 }
 
 /// Validates a password against a hash.
-#[inline]
-pub fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
-    argon2::verify_encoded(hash, password.as_bytes())
+pub async fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
+    let password = password.to_string();
+    let hash = password.to_string();
+    spawn_blocking(move || {
+        argon2::verify_encoded(&hash, password.as_bytes())
+    }).await.unwrap()
 }

@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
             let rng = SystemRandom::new();
 
             if let Some(pwd) = password {
-                ctx.password_hash = secrets::init_password(&rng, &pwd)?;
+                ctx.password_hash = secrets::init_password(&rng, &pwd).await?;
                 println!("Hashed new password");
             }
 

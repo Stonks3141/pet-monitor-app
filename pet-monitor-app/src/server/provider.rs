@@ -8,14 +8,14 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 pub struct Provider<T>(mpsc::Sender<(Option<T>, oneshot::Sender<T>)>);
 
-impl<T: Debug> Provider<T> {
+impl<T> Provider<T> {
     /// Creates a new `Provider`.
     ///
     /// The `on_set` callback will be run with the new value whenever
     /// `Provider::set` is called.
     pub fn new<F>(val: T, mut on_set: F) -> Self
     where
-        T: Clone + Send + 'static,
+        T: Clone + Send + Debug + 'static,
         F: FnMut(&T) + Send + 'static,
     {
         let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
@@ -37,7 +37,10 @@ impl<T: Debug> Provider<T> {
 
     /// Gets the value stored in the `Provider`.
     #[inline]
-    pub async fn get(&self) -> T {
+    pub async fn get(&self) -> T
+    where
+        T: Debug
+    {
         let (tx, rx) = oneshot::channel();
         self.0.send((None, tx)).await.unwrap();
         rx.await.unwrap()
@@ -45,7 +48,10 @@ impl<T: Debug> Provider<T> {
 
     /// Replaces the value in the `Provider` with a new value.
     #[inline]
-    pub async fn set(&self, new: T) {
+    pub async fn set(&self, new: T)
+    where
+        T: Debug
+    {
         let (tx, rx) = oneshot::channel();
         self.0.send((Some(new), tx)).await.unwrap();
         rx.await.unwrap();

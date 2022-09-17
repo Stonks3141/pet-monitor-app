@@ -6,6 +6,7 @@
 
 use quick_error::quick_error;
 use ring::rand::SecureRandom;
+use rocket::tokio::task::spawn_blocking;
 
 quick_error! {
     #[derive(Debug)]
@@ -24,9 +25,9 @@ quick_error! {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[inline]
-pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
+pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
+     // benched at 3.2 μs, don't need to `spawn_blocking`
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
     let config = argon2::Config {
         mem_cost: 8192, // KiB
@@ -36,10 +37,13 @@ pub fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> 
         ..Default::default()
     };
 
-    argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
+    let password = password.to_string();
+
+    spawn_blocking(move || {
+        argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
+    }).await.unwrap()
 }
 
-#[inline]
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
@@ -50,20 +54,21 @@ pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
 mod tests {
     use super::*;
     use ring::rand::SystemRandom;
+    use rocket::tokio;
 
-    #[test]
-    fn test_hash() {
+    #[tokio::test]
+    async fn test_hash() {
         let password = "password";
         let rng = SystemRandom::new();
-        let hash = init_password(&rng, &password).unwrap();
+        let hash = init_password(&rng, &password).await.unwrap();
         assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
     }
 
-    #[test]
-    fn test_hash_invalid() {
+    #[tokio::test]
+    async fn test_hash_invalid() {
         let password = "password";
         let rng = SystemRandom::new();
-        let hash = init_password(&rng, &password).unwrap();
+        let hash = init_password(&rng, &password).await.unwrap();
         assert!(!argon2::verify_encoded(&hash, "paswurd".as_bytes()).unwrap());
     }
 }
