@@ -123,7 +123,40 @@ mod tests {
                     tls_port,
                     cert,
                     key,
-                } => " start".to_string(),
+                } => format!(
+                    " start{}{}{}{}{}",
+                    if let Some(tls) = tls {
+                        format!(" --tls {}", tls)
+                    } else {
+                        String::new()
+                    },
+                    if let Some(port) = port {
+                        format!(" --port {}", port)
+                    } else {
+                        String::new()
+                    },
+                    if let Some(tls_port) = tls_port {
+                        format!(" --tls-port {}", tls_port)
+                    } else {
+                        String::new()
+                    },
+                    if let Some(cert) = cert {
+                        format!(
+                            " --cert {}",
+                            cert.to_owned().into_os_string().into_string().unwrap()
+                        )
+                    } else {
+                        String::new()
+                    },
+                    if let Some(key) = key {
+                        format!(
+                            " --key {}",
+                            key.to_owned().into_os_string().into_string().unwrap()
+                        )
+                    } else {
+                        String::new()
+                    },
+                ),
             },
         )
         .to_string()

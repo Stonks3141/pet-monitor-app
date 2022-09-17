@@ -1,7 +1,9 @@
-password_hash = '$argon2id$v=19$m=8192,t=3,p=4$BO1St77ggzWXbXcbFWNGCw$8eD2geYn0m9AIsqTYv5QheJuRIgTfc55RyHoexjygCQ'
-jwt_secret = '7SriZgV8Hx43eFX26SGXVm5MTbjInhLa1e8LurotwzA='
-jwt_timeout = 86400
+password_hash = '$argon2id$v=19$m=8192,t=3,p=4$q3iiSL2miJBqzrucyO+9Og$/L9Pg0ncrj+XbbZ1aGD4RajCOBMK0MsCnohMfeG6PHs'
+jwt_secret = 'uMqJ0hbP1OBZwutJgs3FT2PGUcwJI/h6aCaa0wzGXkI='
+jwt_timeout = 345600
 domain = 'localhost'
+host = '0.0.0.0'
+port = 8080
 resolution = [
     1280,
     720,
