@@ -86,6 +86,9 @@ impl Token {
     }
 }
 
+/// This request guard extracts a token from a request. It also checks the
+/// validity of the token and checks the "x-csrf-token" header for
+/// state-changing request methods.
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Token {
     type Error = Error;
@@ -140,7 +143,7 @@ impl<'r> FromRequest<'r> for Token {
 /// Validates a password against a hash.
 pub async fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
     let password = password.to_string();
-    let hash = password.to_string();
+    let hash = hash.to_string();
     spawn_blocking(move || {
         argon2::verify_encoded(&hash, password.as_bytes())
     }).await.unwrap()

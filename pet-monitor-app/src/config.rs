@@ -2,20 +2,28 @@ use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 
+/// Application state and configuration
 #[serde_with::serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Context {
+    /// argon2 hash of the current password
     pub password_hash: String,
+    /// The secret used for signing JWTs
     #[serde_as(as = "serde_with::base64::Base64")]
     pub jwt_secret: [u8; 32],
-    /// days
+    /// The JWT timeout, serialized as seconds
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub jwt_timeout: Duration,
+    /// The domain to serve from (used by HTTPS redirect route)
     pub domain: String,
+    /// The IP address to listen on
     pub host: Option<IpAddr>,
+    /// The port to listen on
     pub port: u16,
+    /// Configuration accessed by the browser
     #[serde(flatten)]
     pub config: Config,
+    /// TLS settings
     pub tls: Option<Tls>,
 }
 
@@ -37,12 +45,16 @@ impl Default for Context {
     }
 }
 
+/// The config accessible by the browser
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// width, height
+    /// Pixel resolution (width, height)
     pub resolution: (u32, u32),
+    /// Rotation in degrees (0, 90, 180, or 270)
     pub rotation: u32,
+    /// Framerate in frames per second
     pub framerate: u32,
+    /// The v4l2 device to capture video with (eg. "/dev/video0")
     pub device: String,
 }
 
@@ -57,10 +69,14 @@ impl Default for Config {
     }
 }
 
+/// TLS config options
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tls {
+    /// The port to use for HTTPS
     pub port: u16,
+    // Path to the SSL certificate to use
     pub cert: String,
+    /// Path to the SSL certificate key
     pub key: String,
 }
 

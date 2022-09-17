@@ -1,13 +1,17 @@
+//! This module handles command-line interactions with the application.
+
 use crate::config::Tls;
 use clap::{arg, builder::Command, value_parser};
 use std::path::PathBuf;
 
+/// A struct for command-line args
 #[derive(Debug, PartialEq)]
 pub struct Cmd {
     pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
 }
 
+/// The CLI subcommand
 #[derive(Debug, PartialEq)]
 pub enum SubCmd {
     Start {
@@ -20,6 +24,7 @@ pub enum SubCmd {
     },
 }
 
+/// Returns the application's clap [`Command`](clap::builder::Command).
 pub fn cmd() -> Command<'static> {
     Command::new("pet-monitor-app")
         .about("A simple and secure pet monitor")
@@ -60,6 +65,7 @@ pub fn cmd() -> Command<'static> {
         )
 }
 
+/// Parses an iterator over CLI args into a [`Cmd`] struct.
 pub fn parse_args<I, T>(args: I) -> Cmd
 where
     I: IntoIterator<Item = T>,

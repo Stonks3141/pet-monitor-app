@@ -1,10 +1,11 @@
 //! Async interior mutability with channels
 
 use rocket::tokio::sync::{mpsc, oneshot};
+use rocket::tokio;
 use std::fmt::Debug;
 
 /// The `Provider` type uses async channels to implement thread-safe interior
-/// mutability.
+/// mutability. It executes a callback every time the inner value is mutated.
 #[derive(Debug, Clone)]
 pub struct Provider<T>(mpsc::Sender<(Option<T>, oneshot::Sender<T>)>);
 
@@ -20,7 +21,7 @@ impl<T> Provider<T> {
     {
         let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
         let mut val = val.clone();
-        rocket::tokio::spawn(async move {
+        tokio::spawn(async move {
             while let Some((new, response)) = rx.recv().await {
                 if let Some(new) = new {
                     let prev = val.clone();

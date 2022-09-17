@@ -1,3 +1,5 @@
+//! This module contains all server-related logic.
+
 use crate::config::Context;
 use provider::Provider;
 use rocket::config::TlsConfig;
@@ -10,6 +12,7 @@ mod provider;
 mod routes;
 use routes::*;
 
+/// Launches the server
 pub async fn launch(conf_path: Option<std::path::PathBuf>, ctx: Context) {
     let cfg_tx = provider::Provider::new(ctx.clone(), move |ctx| {
         if let Some(path) = &conf_path {
@@ -36,6 +39,7 @@ pub async fn launch(conf_path: Option<std::path::PathBuf>, ctx: Context) {
     }
 }
 
+/// Returns a rocket that redirects to HTTPS
 fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
     let rocket_cfg = rocket::Config {
         port: ctx.port,
@@ -53,6 +57,7 @@ fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> 
         .manage(ctx_provider)
 }
 
+/// Returns the main server rocket
 fn rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
     let rocket_cfg = if let Some(tls) = &ctx.tls {
         rocket::Config {

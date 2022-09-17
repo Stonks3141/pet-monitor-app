@@ -13,6 +13,8 @@ use rocket::serde::json::Json;
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
+/// Redirects any request to HTTPS. It preserves the original path and uses
+/// Context.domain to construct the new URL.
 #[get("/<path..>")]
 pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
     println!("{}", path.as_path().to_string_lossy());
@@ -25,9 +27,11 @@ pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect
     ))
 }
 
+/// Static HTML/CSS/JS frontend files
 #[cfg(not(debug_assertions))]
 const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 
+/// A file server route that uses the static files compiled into the binary. 
 #[cfg(not(debug_assertions))]
 #[get("/<path..>", rank = 2)]
 pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
@@ -61,7 +65,7 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
 
 /// Validates a password and issues tokens.
 ///
-/// It accepts POSTs to the `/api/auth` path with the password as plain text.
+/// It accepts POSTs to the `/api/login` path with the password as plain text.
 /// If the password is correct, it adds a `token` cookie containing a JWT.
 #[post("/api/login", data = "<password>")]
 pub async fn login(
@@ -96,6 +100,7 @@ pub async fn login(
     }
 }
 
+/// Retrieves the current configuration. The request must have a valid JWT.
 #[get("/api/config")]
 pub async fn get_config(
     _token: Token,
@@ -105,6 +110,7 @@ pub async fn get_config(
     Ok(Json(ctx.config))
 }
 
+/// Updates the current configuration. The request must have a valid JWT.
 #[put("/api/config", format = "json", data = "<new_config>")]
 pub async fn put_config(
     _token: Token,

@@ -1,14 +1,12 @@
-//! This module provides structs for the password hash and JWT
-//! signing secret.
-//!
-//! The structs are initialized in the `main` function and managed by Rocket
-//! [`State`](rocket::State). This is why wrapper types are necessary.
+//! This module provides functions for initializing the password hash and JWT
+//! secret.
 
 use quick_error::quick_error;
 use ring::rand::SecureRandom;
 use rocket::tokio::task::spawn_blocking;
 
 quick_error! {
+    /// Error type for this module
     #[derive(Debug)]
     pub enum Error {
         Rng {
@@ -25,6 +23,7 @@ quick_error! {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Hashes a password with argon2 and a random 128-bit salt
 pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
      // benched at 3.2 μs, don't need to `spawn_blocking`
@@ -44,6 +43,7 @@ pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<St
     }).await.unwrap()
 }
 
+/// Returns a randomly generated JWT secret
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
