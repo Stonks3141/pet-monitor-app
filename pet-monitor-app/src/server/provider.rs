@@ -1,8 +1,9 @@
 //! Async interior mutability with channels
 
-use rocket::tokio::sync::{mpsc, oneshot};
 use rocket::tokio;
+use rocket::tokio::sync::{mpsc, oneshot};
 use std::fmt::Debug;
+use std::future::Future;
 
 /// The `Provider` type uses async channels to implement thread-safe interior
 /// mutability. It executes a callback every time the inner value is mutated.
@@ -14,10 +15,11 @@ impl<T> Provider<T> {
     ///
     /// The `on_set` callback will be run with the new value whenever
     /// `Provider::set` is called.
-    pub fn new<F>(val: T, mut on_set: F) -> Self
+    pub fn new<F, Fut>(val: T, mut on_set: F) -> Self
     where
-        T: Clone + Send + Debug + 'static,
-        F: FnMut(&T) + Send + 'static,
+        T: Clone + Send + Sync + Debug + 'static,
+        F: FnMut(T) -> Fut + Send + 'static,
+        Fut: Future<Output = ()> + Send,
     {
         let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
         let mut val = val.clone();
@@ -26,7 +28,7 @@ impl<T> Provider<T> {
                 if let Some(new) = new {
                     let prev = val.clone();
                     val = new;
-                    on_set(&val);
+                    on_set(val.clone()).await;
                     response.send(prev).unwrap();
                 } else {
                     response.send(val.clone()).unwrap();
@@ -40,7 +42,7 @@ impl<T> Provider<T> {
     #[inline]
     pub async fn get(&self) -> T
     where
-        T: Debug
+        T: Debug,
     {
         let (tx, rx) = oneshot::channel();
         self.0.send((None, tx)).await.unwrap();
@@ -51,7 +53,7 @@ impl<T> Provider<T> {
     #[inline]
     pub async fn set(&self, new: T)
     where
-        T: Debug
+        T: Debug,
     {
         let (tx, rx) = oneshot::channel();
         self.0.send((Some(new), tx)).await.unwrap();
@@ -72,7 +74,10 @@ mod tests {
         let mutex_clone = mutex.clone();
 
         let prov = Provider::new(val.clone(), move |_| {
-            *mutex_clone.lock().unwrap() = true;
+            let mutex_clone = mutex_clone.clone();
+            async move {
+                *mutex_clone.lock().unwrap() = true;
+            }
         });
 
         assert_eq!(val, prov.get().await);

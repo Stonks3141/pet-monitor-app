@@ -23,7 +23,7 @@ anyhow = "1.0"
 chrono = "0.4"
 ring = "0.16"
 rust-argon2 = "1.0"
-gstreamer = "0.18"
+# gstreamer = "0.18"
 
 [dev-dependencies]
 assert_cmd = "2.0"

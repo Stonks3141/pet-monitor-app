@@ -26,7 +26,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Hashes a password with argon2 and a random 128-bit salt
 pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<String> {
     let mut buf = [0u8; 16];
-     // benched at 3.2 μs, don't need to `spawn_blocking`
+    // benched at 3.2 μs, don't need to `spawn_blocking`
     rng.fill(&mut buf).map_err(Into::<Error>::into)?;
     let config = argon2::Config {
         mem_cost: 8192, // KiB
@@ -40,7 +40,9 @@ pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<St
 
     spawn_blocking(move || {
         argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
-    }).await.unwrap()
+    })
+    .await
+    .unwrap()
 }
 
 /// Returns a randomly generated JWT secret

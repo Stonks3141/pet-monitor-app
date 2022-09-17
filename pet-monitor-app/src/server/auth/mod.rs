@@ -144,7 +144,7 @@ impl<'r> FromRequest<'r> for Token {
 pub async fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
     let password = password.to_string();
     let hash = hash.to_string();
-    spawn_blocking(move || {
-        argon2::verify_encoded(&hash, password.as_bytes())
-    }).await.unwrap()
+    spawn_blocking(move || argon2::verify_encoded(&hash, password.as_bytes()))
+        .await
+        .unwrap()
 }

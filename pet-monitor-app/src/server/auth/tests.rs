@@ -115,7 +115,7 @@ async fn client() -> Client {
                 options_route
             ],
         )
-        .manage(Provider::new(Context::default(), |_| {}));
+        .manage(Provider::new(Context::default(), |_| async {}));
     Client::tracked(rocket).await.unwrap()
 }
 

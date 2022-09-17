@@ -1,10 +1,12 @@
 use chrono::Duration;
+use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::{Path, PathBuf};
 
 /// Application state and configuration
 #[serde_with::serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Context {
     /// argon2 hash of the current password
     pub password_hash: String,
@@ -46,7 +48,7 @@ impl Default for Context {
 }
 
 /// The config accessible by the browser
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     /// Pixel resolution (width, height)
     pub resolution: (u32, u32),
@@ -75,9 +77,9 @@ pub struct Tls {
     /// The port to use for HTTPS
     pub port: u16,
     // Path to the SSL certificate to use
-    pub cert: String,
+    pub cert: PathBuf,
     /// Path to the SSL certificate key
-    pub key: String,
+    pub key: PathBuf,
 }
 
 impl Default for Tls {
@@ -87,8 +89,67 @@ impl Default for Tls {
             port: 443,
             #[cfg(debug_assertions)]
             port: 8443,
-            cert: "path/to/cert.pem".to_string(),
-            key: "path/to/key.key".to_string(),
+            cert: PathBuf::from("path/to/cert.pem"),
+            key: PathBuf::from("path/to/key.key"),
         }
+    }
+}
+
+/// Writes out a [`Context`] to the config file.
+pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::Result<()> {
+    use anyhow::Context;
+    let ctx = ctx.to_owned();
+    if let Some(path) = path {
+        let path = path.as_ref().to_owned();
+        spawn_blocking(move || {
+            confy::store_path(path, ctx).context("Failed to store configuration file")
+        })
+        .await
+        .unwrap()
+    } else {
+        spawn_blocking(move || {
+            confy::store("pet-monitor-app", ctx).context("Failed to store configuration file")
+        })
+        .await
+        .unwrap()
+    }
+}
+
+/// Loads the config file.
+pub async fn load<P: AsRef<Path>>(path: &Option<P>) -> anyhow::Result<Context> {
+    use anyhow::Context;
+    if let Some(path) = path {
+        let path = path.as_ref().to_owned();
+        spawn_blocking(move || confy::load_path(path).context("Failed to load configuration file"))
+            .await
+            .unwrap()
+    } else {
+        spawn_blocking(move || {
+            confy::load("pet-monitor-app").context("Failed to load configuration file")
+        })
+        .await
+        .unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assert_fs::NamedTempFile;
+    use rocket::tokio;
+
+    #[tokio::test]
+    async fn config_load_store() {
+        let tmp = NamedTempFile::new("pet-monitor-app.toml").unwrap();
+
+        let ctx = Context::default();
+
+        store(&Some(tmp.path()), &ctx).await.unwrap();
+        assert!(tmp.exists());
+
+        let ctx_file = load(&Some(tmp.path())).await.unwrap();
+        assert_eq!(ctx, ctx_file);
+
+        tmp.close().unwrap();
     }
 }

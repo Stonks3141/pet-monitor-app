@@ -31,7 +31,7 @@ pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect
 #[cfg(not(debug_assertions))]
 const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 
-/// A file server route that uses the static files compiled into the binary. 
+/// A file server route that uses the static files compiled into the binary.
 #[cfg(not(debug_assertions))]
 #[get("/<path..>", rank = 2)]
 pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
@@ -143,7 +143,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![redirect])
-            .manage(Provider::new(ctx, |_| {}));
+            .manage(Provider::new(ctx, |_| async {}));
 
         let client = Client::tracked(rocket).await.unwrap();
 
@@ -172,7 +172,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx, |_| {}));
+            .manage(Provider::new(ctx, |_| async {}));
 
         let client = Client::tracked(rocket).await.unwrap();
 
@@ -190,7 +190,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx, |_| {}));
+            .manage(Provider::new(ctx, |_| async {}));
 
         let client = Client::tracked(rocket).await.unwrap();
 

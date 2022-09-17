@@ -1,6 +1,5 @@
 //! This module handles command-line interactions with the application.
 
-use crate::config::Tls;
 use clap::{arg, builder::Command, value_parser};
 use std::path::PathBuf;
 
@@ -15,7 +14,10 @@ pub struct Cmd {
 #[derive(Debug, PartialEq)]
 pub enum SubCmd {
     Start {
-        tls: Option<Tls>,
+        tls: Option<bool>,
+        tls_port: Option<u16>,
+        cert: Option<PathBuf>,
+        key: Option<PathBuf>,
         port: Option<u16>,
     },
     Configure {
@@ -27,11 +29,7 @@ pub enum SubCmd {
 /// Returns the application's clap [`Command`](clap::builder::Command).
 pub fn cmd() -> Command<'static> {
     Command::new("pet-monitor-app")
-        .about("A simple and secure pet monitor")
-        .long_about(
-            "A simple and secure pet monitor. This program is a web \
-        server that handles authentication and media streaming.",
-        )
+        .about("A simple and secure pet monitor for Linux")
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
         .subcommand(
@@ -43,26 +41,26 @@ pub fn cmd() -> Command<'static> {
         .subcommand(
             Command::new("start")
                 .about("Starts the server")
-                .arg(arg!(-p --port <PORT> ... "Set the port to listen on")
+                .arg(arg!(-p --port <PORT> "Set the port to listen on")
                     .required(false)
-                    .value_parser(value_parser!(u16))
-                    .max_values(2))
-                .arg(arg!(--tls [ENABLED] "Enable or disable TLS. Overrides the config file.")
+                    .value_parser(value_parser!(u16)))
+                .arg(arg!(--"tls-port" <PORT> "Set the port to listen on for HTTPS")
+                    .required(false)
+                    .value_parser(value_parser!(u16)))
+                .arg(arg!(--tls <ENABLED> "Enable or disable TLS. Overrides the config file.")
                     .required(false)
                     .value_parser(value_parser!(bool)))
-                .arg(arg!(-c --cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one mus be specified in the CLI.")
+                .arg(arg!(--cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one must be specified in the CLI.")
                     .required(false)
                     .value_parser(value_parser!(PathBuf)))
-                .arg(arg!(-k --key <KEY_PATH> "Path to an SSL certificate key. Overrides the value in the config file.")
+                .arg(arg!(--key <KEY_PATH> "Path to an SSL certificate key. Overrides the value in the config file.")
                     .required(false)
                     .value_parser(value_parser!(PathBuf)))
         )
         .subcommand_required(true)
-        .arg(
-            arg!(-c --config <CONFIG> "Path to configuration file")
-                .value_parser(value_parser!(PathBuf))
-                .required(false),
-        )
+        .arg(arg!(-c --config <CONFIG> "Path to configuration file")
+            .value_parser(value_parser!(PathBuf))
+            .required(false))
 }
 
 /// Parses an iterator over CLI args into a [`Cmd`] struct.
@@ -79,8 +77,11 @@ where
                 regen_secret: matches.is_present("regen-secret"),
             },
             Some(("start", matches)) => SubCmd::Start {
-                tls: None,
-                port: None,
+                tls: matches.get_one::<bool>("tls").map(|x| x.to_owned()),
+                tls_port: matches.get_one::<u16>("tls-port").map(|x| x.to_owned()),
+                cert: matches.get_one::<PathBuf>("cert").map(|x| x.to_owned()),
+                key: matches.get_one::<PathBuf>("key").map(|x| x.to_owned()),
+                port: matches.get_one::<u16>("port").map(|x| x.to_owned()),
             },
             _ => unreachable!("`Command::subcommand_required` guarantees this"),
         },
@@ -116,7 +117,13 @@ mod tests {
                         String::new()
                     },
                 ),
-                SubCmd::Start { tls, port } => " start".to_string(),
+                SubCmd::Start {
+                    tls,
+                    port,
+                    tls_port,
+                    cert,
+                    key,
+                } => " start".to_string(),
             },
         )
         .to_string()

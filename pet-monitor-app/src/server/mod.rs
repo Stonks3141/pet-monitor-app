@@ -6,6 +6,7 @@ use rocket::config::TlsConfig;
 use rocket::futures::future;
 use rocket::{Build, Rocket};
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 
 mod auth;
 mod provider;
@@ -13,13 +14,12 @@ mod routes;
 use routes::*;
 
 /// Launches the server
-pub async fn launch(conf_path: Option<std::path::PathBuf>, ctx: Context) {
-    let cfg_tx = provider::Provider::new(ctx.clone(), move |ctx| {
-        if let Some(path) = &conf_path {
-            confy::store_path(&path, &ctx).expect("Failed to save to configuration file")
-        } else {
-            confy::store("pet-monitor-app", &ctx).expect("Failed to save to configuration file")
-        };
+pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) {
+    let cfg_tx = Provider::new(ctx.clone(), move |ctx| {
+        let conf_path = conf_path.clone();
+        async move {
+            crate::config::store(&conf_path, &ctx).await.unwrap();
+        }
     });
 
     let http_rocket = if ctx.tls.is_some() {
