@@ -66,7 +66,6 @@ const setupLogin = () => {
     } else if (res.status == 500) {
       alert('Server error. Please try again.');
     } else {
-      model = update(model, Msg.Incorrect);
       passwordInput.classList.add('input-error');
     }
 

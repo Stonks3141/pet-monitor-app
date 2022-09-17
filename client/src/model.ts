@@ -3,18 +3,15 @@ enum Msg {
   CloseConfig,
   LogIn,
   LogOut,
-  Incorrect,
 }
 
 interface Model {
   loggedIn: boolean;
-  incorrect: boolean;
   page: 'config' | 'camera';
 }
 
 const init = (): Model => ({
   loggedIn: false,
-  incorrect: false,
   page: 'camera',
 });
 
@@ -23,13 +20,9 @@ const update = (model: Model, msg: Msg): Model => {
   switch (msg) {
     case Msg.LogIn:
       newModel.loggedIn = true;
-      newModel.incorrect = false;
       break;
     case Msg.LogOut:
       newModel.loggedIn = false;
-      break;
-    case Msg.Incorrect:
-      newModel.incorrect = true;
       break;
     case Msg.OpenConfig:
       newModel.page = 'config';
