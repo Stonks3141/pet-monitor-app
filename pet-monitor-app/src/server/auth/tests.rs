@@ -245,33 +245,3 @@ proptest! {
         });
     }
 }
-
-#[tokio::test]
-async fn validate_correct_password() {
-    let password = "password";
-    let config = argon2::Config {
-        mem_cost: 128, // KiB
-        time_cost: 1,
-        lanes: 1,
-        variant: argon2::Variant::Argon2id,
-        ..Default::default()
-    };
-    let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
-
-    assert!(validate(password, &hash).await.unwrap());
-}
-
-#[tokio::test]
-async fn validate_incorrect_password() {
-    let password = "password";
-    let config = argon2::Config {
-        mem_cost: 128, // KiB
-        time_cost: 1,
-        lanes: 1,
-        variant: argon2::Variant::Argon2id,
-        ..Default::default()
-    };
-    let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
-
-    assert!(!validate("paswurd", &hash).await.unwrap());
-}

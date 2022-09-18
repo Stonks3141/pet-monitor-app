@@ -45,6 +45,15 @@ pub async fn init_password(rng: &impl SecureRandom, password: &str) -> Result<St
     .unwrap()
 }
 
+/// Validates a password against a hash.
+pub async fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
+    let password = password.to_string();
+    let hash = hash.to_string();
+    spawn_blocking(move || argon2::verify_encoded(&hash, password.as_bytes()))
+        .await
+        .unwrap()
+}
+
 /// Returns a randomly generated JWT secret
 pub fn new_secret(rng: &impl SecureRandom) -> Result<[u8; 32]> {
     let mut buf = [0u8; 32];
@@ -72,5 +81,35 @@ mod tests {
         let rng = SystemRandom::new();
         let hash = init_password(&rng, &password).await.unwrap();
         assert!(!argon2::verify_encoded(&hash, "paswurd".as_bytes()).unwrap());
+    }
+
+    #[tokio::test]
+    async fn validate_correct_password() {
+        let password = "password";
+        let config = argon2::Config {
+            mem_cost: 128, // KiB
+            time_cost: 1,
+            lanes: 1,
+            variant: argon2::Variant::Argon2id,
+            ..Default::default()
+        };
+        let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
+
+        assert!(validate(password, &hash).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn validate_incorrect_password() {
+        let password = "password";
+        let config = argon2::Config {
+            mem_cost: 128, // KiB
+            time_cost: 1,
+            lanes: 1,
+            variant: argon2::Variant::Argon2id,
+            ..Default::default()
+        };
+        let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
+
+        assert!(!validate("paswurd", &hash).await.unwrap());
     }
 }

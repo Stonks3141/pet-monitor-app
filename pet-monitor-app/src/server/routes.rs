@@ -1,6 +1,6 @@
 //! This module provides Rocket routes for the server.
 
-use super::auth::{self, Token};
+use super::auth::Token;
 use super::provider::Provider;
 use crate::config::{Config, Context};
 #[cfg(not(debug_assertions))]
@@ -75,7 +75,7 @@ pub async fn login(
 ) -> Status {
     let ctx = ctx.get().await;
 
-    if let Ok(b) = auth::validate(&password, &ctx.password_hash).await {
+    if let Ok(b) = crate::secrets::validate(&password, &ctx.password_hash).await {
         if b {
             match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
                 Ok(token) => {

@@ -11,7 +11,6 @@ use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
 use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -138,13 +137,4 @@ impl<'r> FromRequest<'r> for Token {
             Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))
         }
     }
-}
-
-/// Validates a password against a hash.
-pub async fn validate(password: &str, hash: &str) -> argon2::Result<bool> {
-    let password = password.to_string();
-    let hash = hash.to_string();
-    spawn_blocking(move || argon2::verify_encoded(&hash, password.as_bytes()))
-        .await
-        .unwrap()
 }

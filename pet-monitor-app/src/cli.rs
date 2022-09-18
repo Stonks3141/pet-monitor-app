@@ -1,6 +1,9 @@
 //! This module handles command-line interactions with the application.
 
+use crate::config::{Context, Tls};
+use crate::secrets;
 use clap::{arg, builder::Command, value_parser};
+use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
 /// A struct for command-line args
@@ -89,9 +92,67 @@ where
     }
 }
 
+pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
+    match &cmd.command {
+        SubCmd::Configure {
+            password,
+            regen_secret,
+        } => {
+            let rng = SystemRandom::new();
+
+            if let Some(pwd) = password {
+                ctx.password_hash = secrets::init_password(&rng, &pwd).await?;
+            }
+
+            if *regen_secret {
+                ctx.jwt_secret = secrets::new_secret(&rng)?;
+            }
+        }
+        SubCmd::Start {
+            tls,
+            port,
+            tls_port,
+            cert,
+            key,
+        } => {
+            if let Some(port) = port {
+                ctx.port = *port;
+            }
+            match &mut ctx.tls {
+                Some(ctx_tls) if *tls != Some(false) => {
+                    if let Some(tls_port) = tls_port {
+                        ctx_tls.port = *tls_port;
+                    }
+                    if let Some(cert) = cert {
+                        ctx_tls.cert = cert.clone();
+                    }
+                    if let Some(key) = key {
+                        ctx_tls.key = key.clone();
+                    }
+                }
+                Some(_) if *tls == Some(false) => ctx.tls = None,
+                Some(_) => unreachable!(),
+                None => match (tls, cert, key) {
+                    (Some(tls), Some(cert), Some(key)) if *tls => {
+                        ctx.tls = Some(Tls {
+                            port: tls_port.unwrap_or_else(|| Tls::default().port),
+                            cert: cert.clone(),
+                            key: key.clone(),
+                        });
+                    }
+                    (None, Some(_), Some(_)) => (),
+                    _ => anyhow::bail!("Since the config file does not set up TLS, both a cert and key path must be specified."),
+                },
+            }
+        }
+    }
+    Ok(ctx)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rocket::tokio;
 
     fn make_args(cmd: &Cmd) -> String {
         format!(
@@ -178,5 +239,123 @@ mod tests {
         };
         let args = make_args(&cmd);
         assert_eq!(cmd, parse_args(args.split(' ')));
+    }
+
+    #[tokio::test]
+    async fn merge_tls_cfg() -> anyhow::Result<()> {
+        let cmd = Cmd {
+            command: SubCmd::Start {
+                tls: Some(true),
+                tls_port: Some(8443),
+                cert: Some(PathBuf::from("cert.pem")),
+                key: Some(PathBuf::from("key.key")),
+                port: None,
+            },
+            conf_path: None,
+        };
+
+        let ctx = Context::default();
+        let ctx = merge_ctx(&cmd, ctx).await?;
+
+        let expected = Context {
+            tls: Some(Tls {
+                port: 8443,
+                cert: PathBuf::from("cert.pem"),
+                key: PathBuf::from("key.key"),
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(ctx, expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn merge_no_tls() -> anyhow::Result<()> {
+        let cmd = Cmd {
+            command: SubCmd::Start {
+                tls: Some(false),
+                tls_port: Some(8443),
+                cert: None,
+                key: None,
+                port: None,
+            },
+            conf_path: None,
+        };
+
+        let ctx = Context {
+            tls: Some(Tls {
+                port: 8443,
+                cert: PathBuf::from("cert.pem"),
+                key: PathBuf::from("key.key"),
+            }),
+            ..Default::default()
+        };
+        let ctx = merge_ctx(&cmd, ctx).await?;
+
+        let expected = Context::default();
+
+        assert_eq!(ctx, expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn merge_invalid_tls() {
+        let cmd = Cmd {
+            command: SubCmd::Start {
+                tls: Some(true),
+                tls_port: Some(8443),
+                cert: Some(PathBuf::from("cert.pem")),
+                key: None,
+                port: None,
+            },
+            conf_path: None,
+        };
+
+        let ctx = Context::default();
+        let res = merge_ctx(&cmd, ctx).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn merge_jwt_regen() -> anyhow::Result<()> {
+        let cmd = Cmd {
+            command: SubCmd::Configure {
+                password: None,
+                regen_secret: true,
+            },
+            conf_path: None,
+        };
+
+        let ctx = Context::default();
+        let new_ctx = merge_ctx(&cmd, ctx.clone()).await?;
+
+        assert_ne!(ctx.jwt_secret, new_ctx.jwt_secret);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn merge_new_password() -> anyhow::Result<()> {
+        let password = "foo";
+
+        let cmd = Cmd {
+            command: SubCmd::Configure {
+                password: Some(password.to_string()),
+                regen_secret: false,
+            },
+            conf_path: None,
+        };
+
+        let ctx = Context::default();
+        let ctx = merge_ctx(&cmd, ctx.clone()).await?;
+
+        assert!(crate::secrets::validate(password, &ctx.password_hash)
+            .await
+            .unwrap());
+
+        Ok(())
     }
 }
