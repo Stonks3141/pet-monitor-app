@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 /// Application state and configuration
 #[serde_with::serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Context {
     /// argon2 hash of the current password
@@ -49,7 +49,7 @@ impl Default for Context {
 }
 
 /// The config accessible by the browser
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
     /// Pixel resolution (width, height)
     pub resolution: (u32, u32),
@@ -73,7 +73,7 @@ impl Default for Config {
 }
 
 /// TLS config options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tls {
     /// The port to use for HTTPS
     pub port: u16,

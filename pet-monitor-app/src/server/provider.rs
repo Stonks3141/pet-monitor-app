@@ -15,14 +15,13 @@ impl<T> Provider<T> {
     ///
     /// The `on_set` callback will be run with the new value whenever
     /// `Provider::set` is called.
-    pub fn new<F, Fut>(val: T, mut on_set: F) -> Self
+    pub fn new<F, Fut>(mut val: T, mut on_set: F) -> Self
     where
         T: Clone + Send + Sync + Debug + 'static,
         F: FnMut(T) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send,
     {
         let (tx, mut rx) = mpsc::channel::<(Option<T>, oneshot::Sender<T>)>(100);
-        let mut val = val.clone();
         tokio::spawn(async move {
             while let Some((new, response)) = rx.recv().await {
                 if let Some(new) = new {

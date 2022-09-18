@@ -7,14 +7,14 @@ use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
 /// A struct for command-line args
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Cmd {
     pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
 }
 
 /// The CLI subcommand
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SubCmd {
     Start {
         tls: Option<bool>,
@@ -101,7 +101,7 @@ pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
             let rng = SystemRandom::new();
 
             if let Some(pwd) = password {
-                ctx.password_hash = secrets::init_password(&rng, &pwd).await?;
+                ctx.password_hash = secrets::init_password(&rng, pwd).await?;
             }
 
             if *regen_secret {

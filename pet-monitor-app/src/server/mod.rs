@@ -44,9 +44,7 @@ fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> 
     let rocket_cfg = rocket::Config {
         port: ctx.port,
         address: ctx
-            .host
-            .clone()
-            .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            .host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
         ..rocket::Config::figment()
             .extract::<rocket::Config>()
             .unwrap()
