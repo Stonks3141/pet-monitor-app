@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 /// Application state and configuration
 #[serde_with::serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Context {
     /// argon2 hash of the current password
     pub password_hash: String,
@@ -76,7 +77,7 @@ impl Default for Config {
 pub struct Tls {
     /// The port to use for HTTPS
     pub port: u16,
-    // Path to the SSL certificate to use
+    /// Path to the SSL certificate to use
     pub cert: PathBuf,
     /// Path to the SSL certificate key
     pub key: PathBuf,
