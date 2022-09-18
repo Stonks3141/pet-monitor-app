@@ -39,7 +39,7 @@ paths:
       summary: Get config
       description: Retrieves user-facing configuration.
       security:
-        - bearer: []
+        - token: []
       requestBody:
         description: new config
         content: {}
@@ -59,7 +59,7 @@ paths:
       summary: Udate config
       description: Updates video configuration.
       security:
-        - bearer: []
+        - token: []
       requestBody:
         description: new config
         content:
@@ -82,7 +82,7 @@ paths:
       summary: Get stream
       description: Returns an infinite fragmented MP4 video stream.
       security:
-        - bearer: []
+        - token: []
       responses:
         '200':
           description: OK
@@ -93,10 +93,11 @@ paths:
 
 components:
   securitySchemes:
-    bearer:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    token:
+      type: apiKey
+      description: JSON web token
+      in: cookie
+      name: token
 
   schemas:
     Config:

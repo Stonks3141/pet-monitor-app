@@ -1,8 +1,10 @@
 # pet-monitor-app
 
 [![CI](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
-[![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://opensource.org/licenses/MIT)
 [![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
+
+This project is a combination of several components: a browser client, a backend, and a command-line interface. It provides a locally hosted, authenticated, and configurable video streaming application.
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
@@ -15,19 +17,21 @@
 
 ## Quickstart
 
+The only component needed to run pet-monitor-app is the binary. It handles
+config file management, static file serving, and TLS/HTTPS. There is no need
+for a reverse proxy.
+
 Download the binary for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
 move it into your `$PATH`. Run these commands to start the server:
 
 ```sh
-pet-monitor-app configure --password MY_PASSWORD
-pet-monitor-app start
+pet-monitor-app configure --password MY_PASSWORD && pet-monitor-app start
 ```
 
-The `regen-secret` flag generates a new secret for JWT signing, and the
-`password` flag sets your password. You can view the page at
-[http://localhost](http://localhost). On subsequent runs, these flags are not
-necessary. To reset your password, run
+This first sets the password with the `configure` subcommand, and then starts
+the server. You can view the page at [http://localhost](http://localhost).
+To reset your password, run
 
 ```sh
 pet-monitor-app configure --password NEW_PASSWORD
@@ -41,6 +45,7 @@ the config file:
 
 ```toml
 [tls]
+port = 443
 cert = "path/to/cert.pem"
 key = "path/to/key.key"
 ```
@@ -58,30 +63,50 @@ sudo ./scripts/build.sh
 You can now run the container with
 
 ```sh
-docker run -it -p 80:80 -p 443:443 pet-monitor-app
+docker run -it -p 80:80 -p 443:443 stonks3141/pet-monitor-app
 ```
 
 ## Development
 
-Clone the repo. Install Docker and Docker Compose and run `sudo docker compose up`
+This project uses shell scripts to manage development and CI. To develop without Docker, you will need
+a [Rust toolchain](https://www.rust-lang.org/tools/install) and
+[pnpm](https://pnpm.io/)/[node](https://nodejs.org/).
+
+Clone the repo. Install [Docker Desktop](https://www.docker.com/get-started/) and run `sudo docker compose up`
 in the base directory. View the development server at [http://localhost:5173](http://localhost:5173).
 The frontend will reload automatically as you make changes, but you will need
-to restart the backend container.
+to restart the backend container. To run the development server, run `pnpm dev` in the `client/`
+directory. In another shell, run `cargo run -- --config ./pet-monitor-app.toml` in the `pet-monitor-app/`
+directory. The current password set in `pet-monitor-app/pet-monitor-app.toml` is "123".
+
+To build a binary, run `sudo ./scripts/build.sh` in the base directory. This will build the frontend
+in a Docker container, copy out the static files, and build the backend. Alternatively, run these
+commands:
+
+```sh
+cd client
+pnpm build
+cd ../pet-monitor-app
+rm -rf dist
+cp -r ../client/dist .
+cargo build --release
+```
 
 ## Motivation
 
 I wanted to make a pet monitor without paying for one, so I used
 [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was
 unsatisfied with the lack of security and features (It wasn't designed for this
-anyway). This project aims to fix that, with support for TLS/HTTPS, secure
-authentication, reverse proxy and containerization, and secure password storage
-with argon2. In the future, I hope to expand it with additional features, such
-as audio and video recording.
+anyway, not their fault). This project aims to fix that, with support for
+TLS/HTTPS, secure authentication, reverse proxy and containerization, and
+secure password storage with argon2. In the future, I hope to expand it with
+additional features, such as audio support and video recording.
 
 ## Goals
 
 - Secure
 - Simple to install/use/configure
+- Locally hosted
 - Featureful and attractive
 - Tested
 - Documented
@@ -104,7 +129,24 @@ as audio and video recording.
 
 ## Contributing
 
-PRs are welcome. Look at Github issues for some ideas.
+PRs are welcome. Look at [Github issues](https://github.com/Stonks3141/pet-monitor-app/issues)
+for some ideas. If you contribute code, try to add unit/prop/integration tests for
+any new functionality.
+
+## Testing
+
+pet-monitor-app uses [proptest](https://crates.io/crates/proptest) as well as Rust's built-in
+unit and integration testing framework. To run tests, clone the repo and run
+
+```sh
+sudo ./scripts/test.sh
+```
+
+or
+
+```sh
+cd pet-monitor-app && cargo test
+```
 
 ## Inspiration
 

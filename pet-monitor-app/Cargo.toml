@@ -1,14 +1,18 @@
 [package]
 name = "pet-monitor-app"
-description = "Simple and secure pet monitor for Raspberry Pi"
-license = "MIT"
-repository = "https://github.com/Stonks3141/pet-monitor-app"
-homepage = "https://github.com/Stonks3141/pet-monitor-app"
-authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
-readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
 version = "0.1.0"
+authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
 edition = "2021"
 rust-version = "1.63"
+description = "Simple and secure pet monitor for Raspberry Pi"
+documentation = "https://github.com/Stonks3141/pet-monitor-app"
+readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
+homepage = "https://github.com/Stonks3141/pet-monitor-app"
+repository = "https://github.com/Stonks3141/pet-monitor-app"
+license = "MIT"
+license-file = "../LICENSE"
+keywords = ["cli", "video", "server", "streaming", "media"]
+categories = ["command-line-utilities", "multimedia"]
 
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = ["json", "tls"] }
