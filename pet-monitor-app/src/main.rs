@@ -1,5 +1,6 @@
 #![deny(unsafe_code)]
 
+mod bmff;
 mod cli;
 mod config;
 mod secrets;

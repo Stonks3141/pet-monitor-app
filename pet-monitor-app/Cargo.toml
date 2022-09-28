@@ -10,7 +10,6 @@ readme = "https://github.com/Stonks3141/pet-monitor-app#readme"
 homepage = "https://github.com/Stonks3141/pet-monitor-app"
 repository = "https://github.com/Stonks3141/pet-monitor-app"
 license = "MIT"
-license-file = "../LICENSE"
 keywords = ["cli", "video", "server", "streaming", "media"]
 categories = ["command-line-utilities", "multimedia"]
 

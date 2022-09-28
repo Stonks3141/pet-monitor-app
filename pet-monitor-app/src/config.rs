@@ -58,7 +58,7 @@ pub struct Config {
     /// Framerate in frames per second
     pub framerate: u32,
     /// The v4l2 device to capture video with (eg. "/dev/video0")
-    pub device: String,
+    pub device: PathBuf,
 }
 
 impl Default for Config {
@@ -67,7 +67,7 @@ impl Default for Config {
             resolution: (1280, 720),
             rotation: 0,
             framerate: 30,
-            device: "/dev/video0".to_string(),
+            device: PathBuf::from("/dev/video0"),
         }
     }
 }

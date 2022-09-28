@@ -43,8 +43,7 @@ pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) {
 fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
     let rocket_cfg = rocket::Config {
         port: ctx.port,
-        address: ctx
-            .host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
         ..rocket::Config::figment()
             .extract::<rocket::Config>()
             .unwrap()
@@ -76,12 +75,12 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
         }
     };
 
-    let rocket = rocket::custom(&rocket_cfg)
-        .mount("/", rocket::routes![login, get_config, put_config])
-        .manage(ctx_provider);
-
+    #[cfg(debug_assertions)]
+    let routes = rocket::routes![login, get_config, put_config];
     #[cfg(not(debug_assertions))]
-    let rocket = rocket.mount("/", rocket::routes![files]);
+    let routes = rocket::routes![files, login, get_config, put_config];
 
-    rocket
+    rocket::custom(&rocket_cfg)
+        .mount("/", routes)
+        .manage(ctx_provider)
 }

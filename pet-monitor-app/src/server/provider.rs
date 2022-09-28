@@ -1,6 +1,6 @@
 //! Async interior mutability with channels
 
-use tokio::sync::{mpsc, oneshot, watch};
+use rocket::tokio::sync::{mpsc, oneshot, watch};
 use std::fmt::Debug;
 use std::future::Future;
 
@@ -28,7 +28,7 @@ impl<T> Provider<T> {
         let (get, mut get_rx) = mpsc::channel::<oneshot::Sender<T>>(100);
         let (sub_tx, sub) = watch::channel::<T>(val.clone());
 
-        tokio::spawn(async move {
+        rocket::tokio::spawn(async move {
             loop {
                 if let Some(response) = get_rx.recv().await {
                     response.send(val.clone()).unwrap();
@@ -42,15 +42,10 @@ impl<T> Provider<T> {
                 }
             }
         });
-        Self {
-            get,
-            set,
-            sub,
-        }
+        Self { get, set, sub }
     }
 
     /// Gets the value stored in the `Provider`.
-    #[inline]
     pub async fn get(&self) -> T
     where
         T: Debug,
@@ -61,7 +56,6 @@ impl<T> Provider<T> {
     }
 
     /// Replaces the value in the `Provider` with a new value.
-    #[inline]
     pub async fn set(&self, new: T)
     where
         T: Debug,
@@ -73,7 +67,6 @@ impl<T> Provider<T> {
 
     /// Returns `Some` if the inner value has changed since the last call to
     /// `poll` or `changed`. Does not block.
-    #[inline]
     pub fn poll(&mut self) -> Option<T>
     where
         T: Clone,
@@ -86,10 +79,9 @@ impl<T> Provider<T> {
     }
 
     /// Awaits for the inner value to change, then returns the new value.
-    #[inline]
     pub async fn changed(&mut self) -> T
     where
-        T: Clone
+        T: Clone,
     {
         self.sub.changed().await.unwrap();
         (*self.sub.borrow()).clone()
@@ -99,6 +91,7 @@ impl<T> Provider<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rocket::tokio;
     use std::sync::{Arc, Mutex};
 
     #[tokio::test]
