@@ -24,68 +24,22 @@ fn make_token(is_valid: bool) -> Token {
     }
 }
 
-#[get("/")]
-fn get_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
+macro_rules! make_route {
+    ($method:ident, $name:ident) => {
+        #[$method("/")]
+        fn $name(token: Token) -> Status {
+            if token.verify() { Status::Ok } else { Status::Unauthorized }
+        }
     }
 }
 
-#[post("/")]
-fn post_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
-
-#[put("/")]
-fn put_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
-
-#[delete("/")]
-fn delete_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
-
-#[patch("/")]
-fn patch_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
-
-#[head("/")]
-fn head_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
-
-#[options("/")]
-fn options_route(token: Token) -> Status {
-    if token.verify() {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    }
-}
+make_route!(get, get_route);
+make_route!(post, post_route);
+make_route!(put, put_route);
+make_route!(delete, delete_route);
+make_route!(patch, patch_route);
+make_route!(head, head_route);
+make_route!(options, options_route);
 
 fn method_strategy() -> impl Strategy<Value = Method> {
     prop_oneof![
@@ -96,8 +50,6 @@ fn method_strategy() -> impl Strategy<Value = Method> {
         Just(Method::Patch),
         Just(Method::Head),
         Just(Method::Options),
-        // Just(Method::Trace),
-        // Just(Method::Connect),
     ]
 }
 
@@ -112,7 +64,7 @@ async fn client() -> Client {
                 delete_route,
                 patch_route,
                 head_route,
-                options_route
+                options_route,
             ],
         )
         .manage(Provider::new(Context::default(), |_| async {}));
