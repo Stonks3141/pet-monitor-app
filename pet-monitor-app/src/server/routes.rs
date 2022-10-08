@@ -17,14 +17,11 @@ use std::path::PathBuf;
 /// Context.domain to construct the new URL.
 #[get("/<path..>")]
 pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
-    println!("{}", path.as_path().to_string_lossy());
+    let path = path.as_path().to_string_lossy();
+    println!("{}", path);
     let ctx = ctx.get().await;
 
-    Redirect::permanent(format!(
-        "https://{}/{}",
-        ctx.domain,
-        path.as_path().to_string_lossy()
-    ))
+    Redirect::permanent(format!("https://{}/{}", ctx.domain, path))
 }
 
 /// Static HTML/CSS/JS frontend files
@@ -141,9 +138,10 @@ mod tests {
             domain: "localhost".to_string(),
             ..Default::default()
         };
+
         let rocket = rocket::build()
             .mount("/", rocket::routes![redirect])
-            .manage(Provider::new(ctx, |_| async {}));
+            .manage(Provider::new(ctx));
 
         let client = Client::tracked(rocket).await.unwrap();
 
@@ -172,7 +170,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx, |_| async {}));
+            .manage(Provider::new(ctx));
 
         let client = Client::tracked(rocket).await.unwrap();
 
@@ -190,7 +188,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx, |_| async {}));
+            .manage(Provider::new(ctx));
 
         let client = Client::tracked(rocket).await.unwrap();
 

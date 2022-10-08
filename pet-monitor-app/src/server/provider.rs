@@ -1,90 +1,49 @@
-//! Async interior mutability with channels
+//! Async interior mutability
 
-use rocket::tokio::sync::{mpsc, oneshot, watch};
+use rocket::tokio::sync::{broadcast, Mutex};
 use std::fmt::Debug;
-use std::future::Future;
+use std::sync::Arc;
 
-/// The `Provider` type uses async channels to implement thread-safe interior
-/// mutability. It executes a callback every time the inner value is mutated.
+/// The `Provider` type implements thread-safe async interior mutability. It
+/// broadcasts on an MPMC channel each time the inner value is mutated.
 #[derive(Debug, Clone)]
 pub struct Provider<T> {
-    get: mpsc::Sender<oneshot::Sender<T>>,
-    set: mpsc::Sender<(T, oneshot::Sender<()>)>,
-    sub: watch::Receiver<T>,
+    inner: Arc<Mutex<T>>,
+    sub: broadcast::Sender<T>,
 }
 
 impl<T> Provider<T> {
     /// Creates a new `Provider`.
-    ///
-    /// The `on_set` callback will be run with the new value whenever
-    /// `Provider::set` is called.
-    pub fn new<F, Fut>(mut val: T, mut on_set: F) -> Self
+    pub fn new(val: T) -> Self
     where
-        T: Clone + Send + Sync + Debug + 'static,
-        F: FnMut(T) -> Fut + Send + 'static,
-        Fut: Future<Output = ()> + Send,
+        T: Clone,
     {
-        let (set, mut set_rx) = mpsc::channel::<(T, oneshot::Sender<()>)>(100);
-        let (get, mut get_rx) = mpsc::channel::<oneshot::Sender<T>>(100);
-        let (sub_tx, sub) = watch::channel::<T>(val.clone());
-
-        rocket::tokio::spawn(async move {
-            loop {
-                if let Some(response) = get_rx.recv().await {
-                    response.send(val.clone()).unwrap();
-                }
-                if let Some((new, sender)) = set_rx.recv().await {
-                    val = new;
-                    on_set(val.clone()).await;
-                    sub_tx.send(val.clone()).unwrap();
-                    // needed to drive this future forward and eagerly execute on_set and broadcast update
-                    sender.send(()).unwrap();
-                }
-            }
-        });
-        Self { get, set, sub }
+        let (sub, _) = broadcast::channel::<T>(100);
+        let inner = Arc::new(Mutex::new(val));
+        Self { inner, sub }
     }
 
     /// Gets the value stored in the `Provider`.
     pub async fn get(&self) -> T
     where
-        T: Debug,
+        T: Clone,
     {
-        let (tx, rx) = oneshot::channel();
-        self.get.send(tx).await.unwrap();
-        rx.await.unwrap()
+        let lock = &*self.inner.lock().await;
+        lock.clone()
     }
 
     /// Replaces the value in the `Provider` with a new value.
     pub async fn set(&self, new: T)
     where
-        T: Debug,
+        T: Debug + Clone,
     {
-        let (tx, rx) = oneshot::channel();
-        self.set.send((new, tx)).await.unwrap();
-        rx.await.unwrap();
+        *self.inner.lock().await = new.clone();
+        self.sub.send(new).unwrap();
     }
 
-    /// Returns `Some` if the inner value has changed since the last call to
-    /// `poll` or `changed`. Does not block.
-    pub fn poll(&mut self) -> Option<T>
-    where
-        T: Clone,
-    {
-        if self.sub.has_changed().unwrap() {
-            Some((*self.sub.borrow_and_update()).clone())
-        } else {
-            None
-        }
-    }
-
-    /// Awaits for the inner value to change, then returns the new value.
-    pub async fn changed(&mut self) -> T
-    where
-        T: Clone,
-    {
-        self.sub.changed().await.unwrap();
-        (*self.sub.borrow()).clone()
+    /// Returns a `Receiver` that will send every time the inner value is mutated.
+    pub fn subscribe(&self) -> broadcast::Receiver<T> {
+        self.sub.subscribe()
     }
 }
 
@@ -92,28 +51,19 @@ impl<T> Provider<T> {
 mod tests {
     use super::*;
     use rocket::tokio;
-    use std::sync::{Arc, Mutex};
 
     #[tokio::test]
     async fn test_provider() {
         let val = "foo".to_string();
-        let mutex = Arc::new(Mutex::new(false));
-        let mutex_clone = mutex.clone();
-
-        let prov = Provider::new(val.clone(), move |_| {
-            let mutex_clone = mutex_clone.clone();
-            async move {
-                *mutex_clone.lock().unwrap() = true;
-            }
-        });
+        let prov = Provider::new(val.clone());
+        let mut sub = prov.subscribe();
 
         assert_eq!(val, prov.get().await);
-        assert!(!*mutex.lock().unwrap());
 
         let val = "bar".to_string();
         prov.set(val.clone()).await;
-        assert!(*mutex.lock().unwrap());
 
         assert_eq!(val, prov.get().await);
+        assert_eq!(val, sub.recv().await.unwrap());
     }
 }

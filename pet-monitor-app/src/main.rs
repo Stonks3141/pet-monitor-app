@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
             config::store(&cmd.conf_path, &ctx).await?;
         }
         cli::SubCmd::Start { .. } => {
-            server::launch(cmd.conf_path, ctx).await;
+            server::launch(cmd.conf_path, ctx).await?;
         }
     }
     Ok(())

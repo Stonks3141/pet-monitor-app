@@ -28,9 +28,13 @@ macro_rules! make_route {
     ($method:ident, $name:ident) => {
         #[$method("/")]
         fn $name(token: Token) -> Status {
-            if token.verify() { Status::Ok } else { Status::Unauthorized }
+            if token.verify() {
+                Status::Ok
+            } else {
+                Status::Unauthorized
+            }
         }
-    }
+    };
 }
 
 make_route!(get, get_route);
@@ -67,7 +71,7 @@ async fn client() -> Client {
                 options_route,
             ],
         )
-        .manage(Provider::new(Context::default(), |_| async {}));
+        .manage(Provider::new(Context::default()));
     Client::tracked(rocket).await.unwrap()
 }
 

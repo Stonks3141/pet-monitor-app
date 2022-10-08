@@ -14,29 +14,32 @@ mod routes;
 use routes::*;
 
 /// Launches the server
-pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) {
-    let cfg_tx = Provider::new(ctx.clone(), move |ctx| {
-        let conf_path = conf_path.clone();
-        async move {
+pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<()> {
+    let ctx_prov = Provider::new(ctx.clone());
+    let mut sub = ctx_prov.subscribe();
+    rocket::tokio::spawn(async move {
+        loop {
+            let ctx = sub.recv().await.unwrap();
             crate::config::store(&conf_path, &ctx).await.unwrap();
         }
     });
 
     let http_rocket = if ctx.tls.is_some() {
-        Some(http_rocket(&ctx, cfg_tx.clone()).launch())
+        Some(http_rocket(&ctx, ctx_prov.clone()).launch())
     } else {
         None
     };
 
-    let rocket = rocket(&ctx, cfg_tx).launch();
+    let rocket = rocket(&ctx, ctx_prov).launch();
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
-        let _ = result.0.unwrap();
-        let _ = result.1.unwrap();
+        let _ = result.0?;
+        let _ = result.1?;
     } else {
-        let _ = rocket.await.unwrap();
+        let _ = rocket.await?;
     }
+    Ok(())
 }
 
 /// Returns a rocket that redirects to HTTPS
