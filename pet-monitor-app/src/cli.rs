@@ -2,7 +2,8 @@
 
 use crate::config::{Context, Tls};
 use crate::secrets;
-use clap::{arg, builder::Command, value_parser};
+use clap::builder::{ArgAction, Command};
+use clap::{arg, value_parser};
 use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
@@ -30,7 +31,7 @@ pub enum SubCmd {
 }
 
 /// Returns the application's clap [`Command`](clap::builder::Command).
-pub fn cmd() -> Command<'static> {
+pub fn cmd() -> Command {
     Command::new("pet-monitor-app")
         .about("A simple and secure pet monitor for Linux")
         .author(env!("CARGO_PKG_AUTHORS"))
@@ -39,7 +40,8 @@ pub fn cmd() -> Command<'static> {
             Command::new("configure")
                 .about("Set configuration options")
                 .arg(arg!(--password <PASSWORD> "The new password to set").required(false))
-                .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")),
+                .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")
+                    .action(ArgAction::SetTrue)),
         )
         .subcommand(
             Command::new("start")
@@ -77,7 +79,7 @@ where
         command: match matches.subcommand() {
             Some(("configure", matches)) => SubCmd::Configure {
                 password: matches.get_one::<String>("password").map(|s| s.to_owned()),
-                regen_secret: matches.is_present("regen-secret"),
+                regen_secret: matches.get_flag("regen-secret"),
             },
             Some(("start", matches)) => SubCmd::Start {
                 tls: matches.get_one::<bool>("tls").map(|x| x.to_owned()),
@@ -140,8 +142,8 @@ pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
                             key: key.clone(),
                         });
                     }
-                    (None, Some(_), Some(_)) => (),
-                    _ => anyhow::bail!("Since the config file does not set up TLS, both a cert and key path must be specified."),
+                    (Some(true), _, _) => anyhow::bail!("Since the config file does not set up TLS, both a cert and key path must be specified."),
+                    _ => (),
                 },
             }
         }
