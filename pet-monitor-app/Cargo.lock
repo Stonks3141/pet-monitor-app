@@ -1183,7 +1183,6 @@ dependencies = [
  "jsonwebtoken",
  "predicates",
  "proptest",
- "quick-error 2.0.1",
  "ring",
  "rocket",
  "rust-argon2",

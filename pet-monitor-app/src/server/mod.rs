@@ -18,9 +18,8 @@ pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<
     let ctx_prov = Provider::new(ctx.clone());
     let mut sub = ctx_prov.subscribe();
     rocket::tokio::spawn(async move {
-        loop {
-            let ctx = sub.recv().await.unwrap();
-            crate::config::store(&conf_path, &ctx).await.unwrap();
+        while let Ok(ctx) = sub.recv().await {
+            crate::config::store(&conf_path, &ctx).await.unwrap_or(()); // do nothing if `store` fails
         }
     });
 

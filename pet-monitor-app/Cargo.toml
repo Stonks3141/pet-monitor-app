@@ -18,7 +18,6 @@ rocket = { version = "0.5.0-rc.2", features = ["json", "tls"] }
 jsonwebtoken = "8.1"
 clap = "3.2"
 include_dir = "0.7"
-quick-error = "2.0"
 confy = "0.4"
 serde = "1.0"
 serde_with = { version = "2.0", features = ["base64", "chrono_0_4"] }
@@ -26,7 +25,6 @@ anyhow = "1.0"
 chrono = "0.4"
 ring = "0.16"
 rust-argon2 = "1.0"
-# gstreamer = "0.18"
 
 [dev-dependencies]
 assert_cmd = "2.0"

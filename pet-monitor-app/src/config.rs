@@ -105,14 +105,12 @@ pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::R
         spawn_blocking(move || {
             confy::store_path(path, ctx).context("Failed to store configuration file")
         })
-        .await
-        .unwrap()
+        .await?
     } else {
         spawn_blocking(move || {
             confy::store("pet-monitor-app", ctx).context("Failed to store configuration file")
         })
-        .await
-        .unwrap()
+        .await?
     }
 }
 
@@ -122,14 +120,12 @@ pub async fn load<P: AsRef<Path>>(path: &Option<P>) -> anyhow::Result<Context> {
     if let Some(path) = path {
         let path = path.as_ref().to_owned();
         spawn_blocking(move || confy::load_path(path).context("Failed to load configuration file"))
-            .await
-            .unwrap()
+            .await?
     } else {
         spawn_blocking(move || {
             confy::load("pet-monitor-app").context("Failed to load configuration file")
         })
-        .await
-        .unwrap()
+        .await?
     }
 }
 

@@ -38,7 +38,7 @@ impl<T> Provider<T> {
         T: Debug + Clone,
     {
         *self.inner.lock().await = new.clone();
-        self.sub.send(new).unwrap();
+        self.sub.send(new).unwrap(); // This will never fail since self contains a receiver
     }
 
     /// Returns a `Receiver` that will send every time the inner value is mutated.

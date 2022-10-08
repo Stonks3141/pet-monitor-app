@@ -111,8 +111,17 @@ impl<'r> FromRequest<'r> for Token {
                     }
                 }
             }
-            let ctx = req.rocket().state::<Provider<Context>>().unwrap();
-            let ctx = ctx.get().await;
+            let ctx = match req.rocket().state::<Provider<Context>>() {
+                Some(v) => v,
+                None => {
+                    return Outcome::Failure((
+                        Status::InternalServerError,
+                        Error::from(ErrorKind::InvalidToken),
+                    ))
+                }
+            }
+            .get()
+            .await;
 
             match Self::from_str(token, &ctx.jwt_secret) {
                 Ok(token) => {
