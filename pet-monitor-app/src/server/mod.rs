@@ -31,6 +31,7 @@ pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<
 
     let rocket = rocket(&ctx, ctx_prov).launch();
 
+    println!("Starting server...");
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
         let _ = result.0?;

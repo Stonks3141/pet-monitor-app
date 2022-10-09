@@ -2,7 +2,7 @@
 
 use crate::config::{Context, Tls};
 use crate::secrets;
-use clap::builder::{ArgAction, Command};
+use clap::builder::{ArgAction, ValueHint, Command};
 use clap::{arg, value_parser};
 use ring::rand::SystemRandom;
 use std::path::PathBuf;
@@ -57,15 +57,18 @@ pub fn cmd() -> Command {
                     .value_parser(value_parser!(bool)))
                 .arg(arg!(--cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one must be specified in the CLI.")
                     .required(false)
-                    .value_parser(value_parser!(PathBuf)))
+                    .value_parser(value_parser!(PathBuf))
+                    .value_hint(ValueHint::FilePath))
                 .arg(arg!(--key <KEY_PATH> "Path to an SSL certificate key. Overrides the value in the config file.")
                     .required(false)
-                    .value_parser(value_parser!(PathBuf)))
+                    .value_parser(value_parser!(PathBuf))
+                    .value_hint(ValueHint::FilePath))
         )
         .subcommand_required(true)
         .arg(arg!(-c --config <CONFIG> "Path to configuration file")
+            .required(false)
             .value_parser(value_parser!(PathBuf))
-            .required(false))
+            .value_hint(ValueHint::FilePath))
 }
 
 /// Parses an iterator over CLI args into a [`Cmd`] struct.
