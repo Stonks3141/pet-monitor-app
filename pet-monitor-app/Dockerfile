@@ -1,4 +1,4 @@
-FROM rust:1.63-slim-bullseye as base
+FROM rust:1.64-slim-bullseye as base
 
 RUN rustup component add clippy
 RUN rustup component add rustfmt
