@@ -1,8 +1,13 @@
+use std::fmt::Write;
+
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::*;
 use rocket::async_trait;
 use rocket::futures::io::{self, AsyncWrite, AsyncWriteExt};
+
+#[cfg(test)]
+mod tests;
 
 #[async_trait]
 pub trait BmffBox {
@@ -75,9 +80,9 @@ where
 
 #[derive(Debug, Default)]
 pub struct FileTypeBox {
-    pub major_brand: u32,
+    pub major_brand: [u8; 4],
     pub minor_version: u32,
-    pub compatible_brands: Vec<u32>,
+    pub compatible_brands: Vec<[u8; 4]>,
 }
 
 #[async_trait]
@@ -93,10 +98,10 @@ impl BmffBox for FileTypeBox {
     where
         W: AsyncWrite + Unpin + Send,
     {
-        w.write_all(&self.major_brand.to_be_bytes()).await?;
+        w.write_all(&self.major_brand).await?;
         w.write_all(&self.minor_version.to_be_bytes()).await?;
         for i in self.compatible_brands.iter() {
-            w.write_all(&i.to_be_bytes()).await?;
+            w.write_all(i).await?;
         }
         Ok(())
     }
@@ -867,7 +872,7 @@ impl WriteTo for DataEntry {
 bitflags! {
     pub struct DataEntryFlags: u32 {
         /// media data in same file as containing MovieBox
-        const A = 0x000001;
+        const SELF_CONTAINED = 0x000001;
     }
 }
 
@@ -890,8 +895,10 @@ impl BmffBox for DataEntryUrlBox {
     where
         W: AsyncWrite + Unpin + Send,
     {
-        w.write_all(self.location.as_bytes()).await?;
-        w.write_all(&[0u8]).await?; // Null terminator
+        if self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
+            w.write_all(self.location.as_bytes()).await?;
+            w.write_all(&[0u8]).await?; // Null terminator
+        }
         Ok(())
     }
 }
@@ -1015,9 +1022,15 @@ impl FullBox for TimeToSampleBox {
     }
 }
 
+#[async_trait]
+pub trait SampleEntry: std::fmt::Debug + Send + Sync {
+    fn size(&self) -> u64;
+    async fn write_to(&self) -> Vec<u8>;
+}
+
 #[derive(Debug)]
 pub struct SampleDescriptionBox {
-    pub entries: SampleEntries,
+    pub entries: Vec<Box<dyn SampleEntry>>,
 }
 
 #[async_trait]
@@ -1026,69 +1039,16 @@ impl BmffBox for SampleDescriptionBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.entries.size()
+        self.entries.iter().map(|x| x.size()).sum::<u64>() + 4
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send,
     {
-        w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            .await?;
-        self.entries.write_to(&mut w).await?;
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub enum SampleEntries {
-    Audio(Vec<AudioSampleEntry>),
-    Visual(Vec<VisualSampleEntry>),
-    Hint(Vec<HintSampleEntry>),
-}
-
-impl SampleEntries {
-    #[inline]
-    pub fn size(&self) -> u64 {
-        match self {
-            Self::Audio(audio) => audio.iter().map(|x| x.size()).sum(),
-            Self::Visual(visual) => visual.iter().map(|x| x.size()).sum(),
-            Self::Hint(hint) => hint.iter().map(|x| x.size()).sum(),
-        }
-    }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Audio(audio) => audio.len(),
-            Self::Visual(visual) => visual.len(),
-            Self::Hint(hint) => hint.len(),
-        }
-    }
-}
-
-#[async_trait]
-impl WriteTo for SampleEntries {
-    async fn write_to<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        match self {
-            Self::Audio(audio) => {
-                for i in audio.iter() {
-                    write_to(i, &mut w).await?;
-                }
-            }
-            Self::Visual(visual) => {
-                for i in visual.iter() {
-                    write_to(i, &mut w).await?;
-                }
-            }
-            Self::Hint(hint) => {
-                for i in hint.iter() {
-                    write_to(i, &mut w).await?;
-                }
-            }
+        w.write_all(&(self.entries.len() as u32).to_be_bytes()).await?;
+        for entry in self.entries.iter() {
+        w.write_all(&entry.write_to().await).await?;
         }
         Ok(())
     }
@@ -1101,6 +1061,7 @@ pub struct VisualSampleEntry {
     pub height: u16,
     /// DPI
     pub horiz_resolution: U16F16,
+    /// DPI
     pub vert_resolution: U16F16,
     pub frame_count: u16,
     // must be less than 32 bytes
@@ -1145,6 +1106,18 @@ impl BmffBox for VisualSampleEntry {
     }
 }
 
+#[async_trait]
+impl SampleEntry for VisualSampleEntry {
+    fn size(&self) -> u64 {
+        <Self as BmffBox>::size(&self)
+    }
+    async fn write_to(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        write_to(self, &mut buf).await.unwrap();
+        buf
+    }
+}
+
 #[derive(Debug)]
 pub struct AudioSampleEntry {
     pub data_reference_index: u16,
@@ -1180,6 +1153,18 @@ impl BmffBox for AudioSampleEntry {
     }
 }
 
+#[async_trait]
+impl SampleEntry for AudioSampleEntry {
+    fn size(&self) -> u64 {
+        <Self as BmffBox>::size(&self)
+    }
+    async fn write_to(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        write_to(self, &mut buf).await.unwrap();
+        buf
+    }
+}
+
 #[derive(Debug)]
 pub struct HintSampleEntry {
     pub data_reference_index: u16,
@@ -1203,6 +1188,140 @@ impl BmffBox for HintSampleEntry {
         w.write_all(&self.data_reference_index.to_be_bytes())
             .await?;
         w.write_all(&self.data).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SampleEntry for HintSampleEntry {
+    #[inline]
+    fn size(&self) -> u64 {
+        <Self as BmffBox>::size(&self)
+    }
+
+    async fn write_to(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        write_to(self, &mut buf).await.unwrap();
+        buf
+    }
+}
+
+#[derive(Debug)]
+pub struct AvcSampleEntry {
+    pub data_reference_index: u16,
+    pub width: u16,
+    pub height: u16,
+    pub horiz_resolution: U16F16,
+    pub vert_resolution: U16F16,
+    pub frame_count: u16,
+    pub depth: u16,
+    pub avcc: AvcConfigurationBox,
+}
+
+#[async_trait]
+impl BmffBox for AvcSampleEntry {
+    const TYPE:[u8; 4] = *b"avc1";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        w.write_all(&[0u8; 6]).await?;
+        w.write_all(&self.data_reference_index.to_be_bytes()).await?;
+        w.write_all(&self.width.to_be_bytes()).await?;
+        w.write_all(&self.height.to_be_bytes()).await?;
+        w.write_all(&self.horiz_resolution.to_be_bytes()).await?;
+        w.write_all(&self.vert_resolution.to_be_bytes()).await?;
+        w.write_all(&0u32.to_be_bytes()).await?;
+        w.write_all(&self.frame_count.to_be_bytes()).await?;
+        w.write_all(&[0u8; 32]).await?;
+        w.write_all(&self.depth.to_be_bytes()).await?;
+        w.write_all(&0xffffu16.to_be_bytes()).await?; // pre_defined
+        write_to(&self.avcc, &mut w).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SampleEntry for AvcSampleEntry {
+    #[inline]
+    fn size(&self) -> u64 {
+        <Self as BmffBox>::size(&self)
+    }
+
+    async fn write_to(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        write_to(self, &mut buf).await.unwrap();
+        buf
+    }
+}
+
+#[derive(Debug)]
+pub struct AvcConfigurationBox {
+    pub configuration: AvcDecoderConfigurationRecord,
+}
+
+#[async_trait]
+impl BmffBox for AvcConfigurationBox {
+    const TYPE: [u8; 4] = *b"avcC";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        self.configuration.size()
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        self.configuration.write_to(&mut w).await?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct AvcDecoderConfigurationRecord {
+    pub profile_idc: u8,
+    pub constraint_set_flag: u8,
+    pub level_idc: u8,
+    pub sequence_parameter_set: Vec<u8>,
+    pub picture_parameter_set: Vec<u8>,
+}
+
+impl AvcDecoderConfigurationRecord {
+    fn size(&self) -> u64 {
+        1 + 1 + 1
+        + self.sequence_parameter_set.len() as u64
+        + self.picture_parameter_set.len() as u64
+    }
+}
+
+#[async_trait]
+impl WriteTo for AvcDecoderConfigurationRecord {
+    async fn write_to<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        w.write_all(&1u8.to_be_bytes()).await?;
+        w.write_all(&self.profile_idc.to_be_bytes()).await?;
+        w.write_all(&self.constraint_set_flag.to_be_bytes()).await?;
+        w.write_all(&self.level_idc.to_be_bytes()).await?;
+        w.write_all(&(0xfau8 | 0x03u8).to_be_bytes()).await?;
+        w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes()).await?;
+        w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes()).await?;
+        for i in self.sequence_parameter_set.iter() {
+            w.write_all(&i.to_be_bytes()).await?;
+        }
+        w.write_all(&0x01u8.to_be_bytes()).await?;
+        w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes()).await?;
+        for i in self.picture_parameter_set.iter() {
+            w.write_all(&i.to_be_bytes()).await?;
+        }
         Ok(())
     }
 }
