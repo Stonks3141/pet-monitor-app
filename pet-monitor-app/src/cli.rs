@@ -2,7 +2,7 @@
 
 use crate::config::{Context, Tls};
 use crate::secrets;
-use clap::builder::{ArgAction, ValueHint, Command};
+use clap::builder::{ArgAction, Command, ValueHint};
 use clap::{arg, value_parser};
 use ring::rand::SystemRandom;
 use std::path::PathBuf;
