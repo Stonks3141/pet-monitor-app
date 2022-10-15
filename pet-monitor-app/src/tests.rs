@@ -1,25 +1,19 @@
 use ring::rand::{SecureRandom, SystemRandom};
 use std::time::Instant;
 
-/// used for finding good argon2 params
+use crate::secrets::ARGON2_CONFIG;
+
+/// used for finding good argon2 params, make sure to add the `--release` flag
+/// when running.
+//#[ignore]
 #[test]
-#[ignore]
 fn argon2_time() {
     let now = Instant::now();
     {
         let rand = SystemRandom::new();
-        let mut buf = [0u8; 16];
-        rand.fill(&mut buf).unwrap();
-
-        let config = argon2::Config {
-            mem_cost: 8192, // KiB
-            time_cost: 2,
-            lanes: 4,
-            variant: argon2::Variant::Argon2id,
-            ..Default::default()
-        };
-
-        argon2::hash_encoded("password".as_bytes(), &buf, &config).unwrap();
+        let mut salt = [0u8; 16];
+        rand.fill(&mut salt).unwrap();
+        argon2::hash_encoded("password".as_bytes(), &salt, &ARGON2_CONFIG).unwrap();
     }
     let elapsed = now.elapsed();
     println!("{:?}", elapsed);

@@ -4,23 +4,28 @@
 use ring::rand::SecureRandom;
 use rocket::tokio::task::spawn_blocking;
 
+pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
+    ad: &[],
+    hash_length: 32, // bytes
+    lanes: 4,
+    mem_cost: 8192, // KiB
+    secret: &[],
+    thread_mode: argon2::ThreadMode::Parallel,
+    time_cost: 3,
+    variant: argon2::Variant::Argon2id,
+    version: argon2::Version::Version13,
+};
+
 /// Hashes a password with argon2 and a random 128-bit salt
 pub async fn init_password(rng: &impl SecureRandom, password: &str) -> anyhow::Result<String> {
     let mut buf = [0u8; 16];
     // benched at 3.2 μs, don't need to `spawn_blocking`
     rng.fill(&mut buf)?;
-    let config = argon2::Config {
-        mem_cost: 8192, // KiB
-        time_cost: 3,
-        lanes: 4,
-        variant: argon2::Variant::Argon2id,
-        ..Default::default()
-    };
 
     let password = password.to_string();
 
     spawn_blocking(move || {
-        argon2::hash_encoded(password.as_bytes(), &buf, &config).map_err(|e| e.into())
+        argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG).map_err(|e| e.into())
     })
     .await?
 }
