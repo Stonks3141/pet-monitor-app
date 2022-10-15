@@ -1,0 +1,3 @@
+[workspace]
+members = ["pet-monitor-app"]
+default-members = ["pet-monitor-app"]

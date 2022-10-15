@@ -4,3 +4,6 @@
 *.pem-chain
 *.cert
 *.crt
+
+# Build artifacts
+target/
