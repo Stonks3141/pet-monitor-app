@@ -7,3 +7,8 @@
 
 # Build artifacts
 target/
+
+# Sample video files
+*.mp4
+*.h264
+*.m4s
