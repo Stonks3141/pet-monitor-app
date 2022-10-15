@@ -246,12 +246,8 @@ mod tests {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
                 command: SubCmd::arbitrary(g),
-                conf_path: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
-                log_level: match bool::arbitrary(g) as u32
-                    + bool::arbitrary(g) as u32
-                    + bool::arbitrary(g) as u32
-                    + bool::arbitrary(g) as u32
-                {
+                conf_path: Option::<PathBuf>::arbitrary(g),
+                log_level: match u32::arbitrary(g) % 5 {
                     0 => Level::Trace,
                     1 => Level::Debug,
                     2 => Level::Info,
@@ -267,16 +263,16 @@ mod tests {
         fn arbitrary(g: &mut Gen) -> Self {
             if bool::arbitrary(g) {
                 Self::Configure {
-                    password: bool::arbitrary(g).then(|| String::arbitrary(g)),
+                    password: Option::<String>::arbitrary(g),
                     regen_secret: bool::arbitrary(g),
                 }
             } else {
                 Self::Start {
-                    tls: bool::arbitrary(g).then(|| bool::arbitrary(g)),
-                    tls_port: bool::arbitrary(g).then(|| u16::arbitrary(g)),
-                    cert: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
-                    key: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
-                    port: bool::arbitrary(g).then(|| u16::arbitrary(g)),
+                    tls: Option::<bool>::arbitrary(g),
+                    tls_port: Option::<u16>::arbitrary(g),
+                    cert: Option::<PathBuf>::arbitrary(g),
+                    key: Option::<PathBuf>::arbitrary(g),
+                    port: Option::<u16>::arbitrary(g),
                 }
             }
         }
