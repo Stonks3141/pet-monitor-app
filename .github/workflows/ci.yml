@@ -82,4 +82,5 @@ jobs:
       - name: Build bundle
         run: |
           cd client
+          pnpm install
           pnpm build
