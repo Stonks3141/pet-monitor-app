@@ -26,12 +26,13 @@ Download the binary for your OS/architecture from the
 move it into your `$PATH`. Run these commands to start the server:
 
 ```sh
-pet-monitor-app configure --password MY_PASSWORD && pet-monitor-app start
+pet-monitor-app configure --password MY_PASSWORD
+sudo pet-monitor-app start
 ```
 
 This first sets the password with the `configure` subcommand, and then starts
-the server. You can view the page at [http://localhost](http://localhost).
-To reset your password, run
+the server. Sudo is needed to listen on port 80. You can view the page at
+[http://localhost](http://localhost). To reset your password, run
 
 ```sh
 pet-monitor-app configure --password NEW_PASSWORD
@@ -40,7 +41,7 @@ pet-monitor-app configure --password NEW_PASSWORD
 For a full list of command-line options, run with the `--help` flag.
 
 The configuration file is located at
-`~/.config/pet-monitor-app/pet-monitor-app.toml`. To enable TLS, add this to
+`~/.config/pet-monitor-app/config.toml`. To enable TLS, add this to
 the config file:
 
 ```toml
@@ -52,35 +53,16 @@ key = "path/to/key.key"
 
 You can now view the page at [https://localhost](https://localhost).
 
-### Docker
-
-To run with Docker, clone the repository and run the build script.
-
-```sh
-sudo ./scripts/build.sh
-```
-
-You can now run the container with
-
-```sh
-docker run -it -p 80:80 -p 443:443 stonks3141/pet-monitor-app
-```
-
 ## Development
 
-This project uses shell scripts to manage development and CI. To develop without Docker, you will need
-a [Rust toolchain](https://www.rust-lang.org/tools/install) and
-[pnpm](https://pnpm.io/)/[node](https://nodejs.org/).
+You will need to install [rustup](https://www.rust-lang.org/learn/get-started), [node](https://nodejs.org),
+and [pnpm](https://pnpm.io/installation). To install dependencies, run `pnpm install` in the `client/`
+directory. To start the frontend development server, run `pnpm dev` in the `client/` directory. While the
+frontend is running, you can run `cargo run -- start` in the `pet-monitor-app/` directory to start the
+backend. Vite should proxy to the backend automatically. The client bundle is not included in the binary
+unless you build in release mode.
 
-Clone the repo. Install [Docker Desktop](https://www.docker.com/get-started/) and run `sudo docker compose up`
-in the base directory. View the development server at [http://localhost:5173](http://localhost:5173).
-The frontend will reload automatically as you make changes, but you will need
-to restart the backend container. To run the development server, run `pnpm dev` in the `client/`
-directory. In another shell, run `cargo run -- --config ./pet-monitor-app.toml` in the `pet-monitor-app/`
-directory. The current password set in `pet-monitor-app/pet-monitor-app.toml` is "123".
-
-To build a binary, run `sudo ./scripts/build.sh` in the base directory. This will build the frontend
-in a Docker container, copy out the static files, and build the backend. Alternatively, run these
+To build a binary, run these
 commands:
 
 ```sh
@@ -92,15 +74,18 @@ cp -r ../client/dist .
 cargo build --release
 ```
 
+This builds the frontend bundle, copies it into the `pet-monitor-app/` directory, and builds the binary.
+The binary should be located at `pet-monitor-app/target/release/pet-monitor-app`.
+
 ## Motivation
 
-I wanted to make a pet monitor without paying for one, so I used
-[fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was
+I wanted to have a pet monitor without buying one, so I used my Raspberry Pi Zero
+and [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was
 unsatisfied with the lack of security and features (It wasn't designed for this
-anyway, not their fault). This project aims to fix that, with support for
-TLS/HTTPS, secure authentication, reverse proxy and containerization, and
-secure password storage with argon2. In the future, I hope to expand it with
-additional features, such as audio support and video recording.
+anyway, not their fault). This project aims to remedy that, with support for
+TLS/HTTPS, secure authentication, and secure password storage with argon2. In the
+future, I hope to expand it with additional features, such as audio support and
+video recording.
 
 ## Goals
 
@@ -124,28 +109,24 @@ additional features, such as audio support and video recording.
 - [ ] Rust v4l2 (libcamera?) streaming
 - [ ] Audio support
 - [ ] Recording video/audio to view later
-- [ ] Documentation
+- [x] Documentation
 - [x] In-browser configuration/server management
 
 ## Contributing
 
 PRs are welcome. Look at [Github issues](https://github.com/Stonks3141/pet-monitor-app/issues)
-for some ideas. If you contribute code, try to add unit/prop/integration tests for
+for some ideas. If you contribute code, try to add unit/property/integration tests for
 any new functionality.
 
 ## Testing
 
-pet-monitor-app uses [proptest](https://crates.io/crates/proptest) as well as Rust's built-in
-unit and integration testing framework. To run tests, clone the repo and run
+pet-monitor-app uses [proptest](https://crates.io/crates/proptest),
+[quickcheck](https://crates.io/crates/quickcheck), and Rust's built-in unit and integration
+testing framework. To run tests, clone the repo and run
 
 ```sh
-sudo ./scripts/test.sh
-```
-
-or
-
-```sh
-cd pet-monitor-app && cargo test
+cd pet-monitor-app
+cargo test
 ```
 
 ## Inspiration
