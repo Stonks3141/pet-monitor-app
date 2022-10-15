@@ -17,6 +17,8 @@ categories = ["command-line-utilities", "multimedia"]
 rocket = { version = "0.5.0-rc.2", features = ["json", "tls"] }
 jsonwebtoken = "8.1"
 clap = "4.0"
+log = "0.4"
+simple_logger = "2.3"
 include_dir = "0.7"
 confy = "0.5"
 serde = "1.0"
@@ -33,11 +35,6 @@ assert_cmd = "2.0"
 assert_fs = "1.0"
 predicates = "2.1"
 proptest = "1.0"
-
-[profile.release]
-codegen-units = 1
-lto = true
-strip = true
 
 [[bin]]
 name = "pet-monitor-app"

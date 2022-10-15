@@ -4,6 +4,7 @@ use crate::config::{Context, Tls};
 use crate::secrets;
 use clap::builder::{ArgAction, Command, ValueHint};
 use clap::{arg, value_parser};
+use log::Level;
 use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
@@ -12,6 +13,7 @@ use std::path::PathBuf;
 pub struct Cmd {
     pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
+    pub log_level: Level,
 }
 
 /// The CLI subcommand
@@ -65,10 +67,12 @@ pub fn cmd() -> Command {
                     .value_hint(ValueHint::FilePath))
         )
         .subcommand_required(true)
-        .arg(arg!(-c --config <CONFIG> "Path to configuration file")
+        .arg(arg!(-c --config <CONFIG> "Path to the configuration file to use.")
             .required(false)
             .value_parser(value_parser!(PathBuf))
             .value_hint(ValueHint::FilePath))
+        .arg(arg!(verbosity: -v... "Log verbosity level, use 0, 1, or 2 times to set the log level to `info`, `debug`, or `trace`, respectively. This flag is overrided by the `-q` flag."))
+        .arg(arg!(quiet: -q... "Silent mode, use 1 or 2 times to set the log level to `warn` or `error`, respectively. This flag overrides any use of the `-v` flag."))
 }
 
 /// Parses an iterator over CLI args into a [`Cmd`] struct.
@@ -94,6 +98,15 @@ where
             _ => unreachable!("`Command::subcommand_required` guarantees this"),
         },
         conf_path: matches.get_one::<PathBuf>("config").map(|s| s.to_owned()),
+        log_level: match matches.get_count("quiet") {
+            2.. => Level::Error,
+            1 => Level::Warn,
+            0 => match matches.get_count("verbosity") {
+                0 => Level::Info,
+                1 => Level::Debug,
+                2.. => Level::Trace,
+            },
+        },
     }
 }
 
@@ -228,6 +241,7 @@ mod tests {
                 password: Some("password".to_string()),
             },
             conf_path: Some(PathBuf::from("./pet-monitor-app.toml")),
+            log_level: Level::Info,
         };
         let args = make_args(&cmd);
         assert_eq!(cmd, parse_args(args));
@@ -244,6 +258,7 @@ mod tests {
                 port: None,
             },
             conf_path: None,
+            log_level: Level::Info,
         };
 
         let ctx = Context::default();
@@ -274,6 +289,7 @@ mod tests {
                 port: None,
             },
             conf_path: None,
+            log_level: Level::Info,
         };
 
         let ctx = Context {
@@ -304,6 +320,7 @@ mod tests {
                 port: None,
             },
             conf_path: None,
+            log_level: Level::Info,
         };
 
         let ctx = Context::default();
@@ -319,6 +336,7 @@ mod tests {
                 regen_secret: true,
             },
             conf_path: None,
+            log_level: Level::Info,
         };
 
         let ctx = Context::default();
@@ -339,6 +357,7 @@ mod tests {
                 regen_secret: false,
             },
             conf_path: None,
+            log_level: Level::Info,
         };
 
         let ctx = Context::default();

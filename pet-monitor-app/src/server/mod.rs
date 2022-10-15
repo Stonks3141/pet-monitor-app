@@ -2,6 +2,7 @@
 
 use crate::config::Context;
 use provider::Provider;
+use rocket::config::LogLevel;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
 use rocket::{Build, Rocket};
@@ -14,7 +15,11 @@ mod routes;
 use routes::*;
 
 /// Launches the server
-pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<()> {
+pub async fn launch(
+    conf_path: Option<PathBuf>,
+    ctx: Context,
+    log_level: LogLevel,
+) -> anyhow::Result<()> {
     let ctx_prov = Provider::new(ctx.clone());
     let mut sub = ctx_prov.subscribe();
     rocket::tokio::spawn(async move {
@@ -24,14 +29,13 @@ pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<
     });
 
     let http_rocket = if ctx.tls.is_some() {
-        Some(http_rocket(&ctx, ctx_prov.clone()).launch())
+        Some(http_rocket(&ctx, ctx_prov.clone(), log_level).launch())
     } else {
         None
     };
 
-    let rocket = rocket(&ctx, ctx_prov).launch();
+    let rocket = rocket(&ctx, ctx_prov, log_level).launch();
 
-    println!("Starting server...");
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
         let _ = result.0?;
@@ -43,10 +47,15 @@ pub async fn launch(conf_path: Option<PathBuf>, ctx: Context) -> anyhow::Result<
 }
 
 /// Returns a rocket that redirects to HTTPS
-fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
+fn http_rocket(
+    ctx: &Context,
+    ctx_provider: Provider<Context>,
+    log_level: LogLevel,
+) -> Rocket<Build> {
     let rocket_cfg = rocket::Config {
         port: ctx.port,
         address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        log_level,
         ..rocket::Config::figment()
             .extract::<rocket::Config>()
             .unwrap()
@@ -58,12 +67,13 @@ fn http_rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> 
 }
 
 /// Returns the main server rocket
-fn rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
+fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -> Rocket<Build> {
     let rocket_cfg = if let Some(tls) = &ctx.tls {
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: tls.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
@@ -72,6 +82,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>) -> Rocket<Build> {
         rocket::Config {
             port: ctx.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
