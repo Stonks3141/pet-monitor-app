@@ -1,13 +1,8 @@
-use std::fmt::Write;
-
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::*;
 use rocket::async_trait;
 use rocket::futures::io::{self, AsyncWrite, AsyncWriteExt};
-
-#[cfg(test)]
-mod tests;
 
 #[async_trait]
 pub trait BmffBox {
@@ -1046,9 +1041,10 @@ impl BmffBox for SampleDescriptionBox {
     where
         W: AsyncWrite + Unpin + Send,
     {
-        w.write_all(&(self.entries.len() as u32).to_be_bytes()).await?;
+        w.write_all(&(self.entries.len() as u32).to_be_bytes())
+            .await?;
         for entry in self.entries.iter() {
-        w.write_all(&entry.write_to().await).await?;
+            w.write_all(&entry.write_to().await).await?;
         }
         Ok(())
     }
@@ -1109,10 +1105,10 @@ impl BmffBox for VisualSampleEntry {
 #[async_trait]
 impl SampleEntry for VisualSampleEntry {
     fn size(&self) -> u64 {
-        <Self as BmffBox>::size(&self)
+        <Self as BmffBox>::size(self)
     }
     async fn write_to(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         write_to(self, &mut buf).await.unwrap();
         buf
     }
@@ -1156,10 +1152,10 @@ impl BmffBox for AudioSampleEntry {
 #[async_trait]
 impl SampleEntry for AudioSampleEntry {
     fn size(&self) -> u64 {
-        <Self as BmffBox>::size(&self)
+        <Self as BmffBox>::size(self)
     }
     async fn write_to(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         write_to(self, &mut buf).await.unwrap();
         buf
     }
@@ -1196,11 +1192,11 @@ impl BmffBox for HintSampleEntry {
 impl SampleEntry for HintSampleEntry {
     #[inline]
     fn size(&self) -> u64 {
-        <Self as BmffBox>::size(&self)
+        <Self as BmffBox>::size(self)
     }
 
     async fn write_to(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         write_to(self, &mut buf).await.unwrap();
         buf
     }
@@ -1220,7 +1216,7 @@ pub struct AvcSampleEntry {
 
 #[async_trait]
 impl BmffBox for AvcSampleEntry {
-    const TYPE:[u8; 4] = *b"avc1";
+    const TYPE: [u8; 4] = *b"avc1";
 
     #[inline]
     fn size(&self) -> u64 {
@@ -1232,7 +1228,8 @@ impl BmffBox for AvcSampleEntry {
         W: AsyncWrite + Unpin + Send,
     {
         w.write_all(&[0u8; 6]).await?;
-        w.write_all(&self.data_reference_index.to_be_bytes()).await?;
+        w.write_all(&self.data_reference_index.to_be_bytes())
+            .await?;
         w.write_all(&self.width.to_be_bytes()).await?;
         w.write_all(&self.height.to_be_bytes()).await?;
         w.write_all(&self.horiz_resolution.to_be_bytes()).await?;
@@ -1251,11 +1248,11 @@ impl BmffBox for AvcSampleEntry {
 impl SampleEntry for AvcSampleEntry {
     #[inline]
     fn size(&self) -> u64 {
-        <Self as BmffBox>::size(&self)
+        <Self as BmffBox>::size(self)
     }
 
     async fn write_to(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(&self) as usize);
+        let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         write_to(self, &mut buf).await.unwrap();
         buf
     }
@@ -1295,9 +1292,10 @@ pub struct AvcDecoderConfigurationRecord {
 
 impl AvcDecoderConfigurationRecord {
     fn size(&self) -> u64 {
-        1 + 1 + 1
-        + self.sequence_parameter_set.len() as u64
-        + self.picture_parameter_set.len() as u64
+        1 + 1
+            + 1
+            + self.sequence_parameter_set.len() as u64
+            + self.picture_parameter_set.len() as u64
     }
 }
 
@@ -1313,12 +1311,14 @@ impl WriteTo for AvcDecoderConfigurationRecord {
         w.write_all(&self.level_idc.to_be_bytes()).await?;
         w.write_all(&(0xfau8 | 0x03u8).to_be_bytes()).await?;
         w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes()).await?;
-        w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes()).await?;
+        w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes())
+            .await?;
         for i in self.sequence_parameter_set.iter() {
             w.write_all(&i.to_be_bytes()).await?;
         }
         w.write_all(&0x01u8.to_be_bytes()).await?;
-        w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes()).await?;
+        w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes())
+            .await?;
         for i in self.picture_parameter_set.iter() {
             w.write_all(&i.to_be_bytes()).await?;
         }

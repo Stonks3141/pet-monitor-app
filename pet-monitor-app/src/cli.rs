@@ -159,73 +159,60 @@ mod tests {
     use super::*;
     use rocket::tokio;
 
-    fn make_args(cmd: &Cmd) -> String {
-        format!(
-            "pet-monitor-app{}{}",
-            if let Some(conf_path) = &cmd.conf_path {
-                format!(
-                    " --config {}",
-                    conf_path.clone().into_os_string().into_string().unwrap(),
-                )
-            } else {
-                String::new()
-            },
-            match &cmd.command {
-                SubCmd::Configure {
-                    password,
-                    regen_secret,
-                } => format!(
-                    " configure{}{}",
-                    if *regen_secret { " --regen-secret" } else { "" },
-                    if let Some(password) = password {
-                        format!(" --password {}", password)
-                    } else {
-                        String::new()
-                    },
-                ),
-                SubCmd::Start {
-                    tls,
-                    port,
-                    tls_port,
-                    cert,
-                    key,
-                } => format!(
-                    " start{}{}{}{}{}",
-                    if let Some(tls) = tls {
-                        format!(" --tls {}", tls)
-                    } else {
-                        String::new()
-                    },
-                    if let Some(port) = port {
-                        format!(" --port {}", port)
-                    } else {
-                        String::new()
-                    },
-                    if let Some(tls_port) = tls_port {
-                        format!(" --tls-port {}", tls_port)
-                    } else {
-                        String::new()
-                    },
-                    if let Some(cert) = cert {
-                        format!(
-                            " --cert {}",
-                            cert.to_owned().into_os_string().into_string().unwrap()
-                        )
-                    } else {
-                        String::new()
-                    },
-                    if let Some(key) = key {
-                        format!(
-                            " --key {}",
-                            key.to_owned().into_os_string().into_string().unwrap()
-                        )
-                    } else {
-                        String::new()
-                    },
-                ),
-            },
-        )
-        .to_string()
+    fn make_args(cmd: &Cmd) -> Vec<String> {
+        let mut args = vec!["pet-monitor-app".to_string()];
+
+        if let Some(conf_path) = &cmd.conf_path {
+            args.push("--config".to_string());
+            args.push(conf_path.clone().into_os_string().into_string().unwrap());
+        }
+
+        match &cmd.command {
+            SubCmd::Configure {
+                password,
+                regen_secret,
+            } => {
+                args.push("configure".to_string());
+                if *regen_secret {
+                    args.push("--regen-secret".to_string());
+                }
+                if let Some(password) = password {
+                    args.push("--password".to_string());
+                    args.push(password.clone());
+                }
+            }
+            SubCmd::Start {
+                tls,
+                port,
+                tls_port,
+                cert,
+                key,
+            } => {
+                args.push("start".to_string());
+                if let Some(tls) = tls {
+                    args.push("--tls".to_string());
+                    args.push(tls.to_string());
+                }
+                if let Some(port) = port {
+                    args.push("--port".to_string());
+                    args.push(port.to_string());
+                }
+                if let Some(tls_port) = tls_port {
+                    args.push("--tls-port".to_string());
+                    args.push(tls_port.to_string());
+                }
+                if let Some(cert) = cert {
+                    args.push("--cert {}".to_string());
+                    args.push(cert.to_owned().into_os_string().into_string().unwrap());
+                }
+                if let Some(key) = key {
+                    args.push("--key".to_string());
+                    args.push(key.to_owned().into_os_string().into_string().unwrap());
+                }
+            }
+        }
+
+        args
     }
 
     #[test]
@@ -243,7 +230,7 @@ mod tests {
             conf_path: Some(PathBuf::from("./pet-monitor-app.toml")),
         };
         let args = make_args(&cmd);
-        assert_eq!(cmd, parse_args(args.split(' ')));
+        assert_eq!(cmd, parse_args(args));
     }
 
     #[tokio::test]
