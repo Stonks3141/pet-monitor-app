@@ -108,7 +108,8 @@ pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::R
         .await?
     } else {
         spawn_blocking(move || {
-            confy::store("pet-monitor-app", Some("config"), ctx).context("Failed to store configuration file")
+            confy::store("pet-monitor-app", Some("config"), ctx)
+                .context("Failed to store configuration file")
         })
         .await?
     }
@@ -123,7 +124,8 @@ pub async fn load<P: AsRef<Path>>(path: &Option<P>) -> anyhow::Result<Context> {
             .await?
     } else {
         spawn_blocking(move || {
-            confy::load("pet-monitor-app", Some("config")).context("Failed to load configuration file")
+            confy::load("pet-monitor-app", Some("config"))
+                .context("Failed to load configuration file")
         })
         .await?
     }
