@@ -9,7 +9,7 @@ use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
 /// A struct for command-line args
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cmd {
     pub command: SubCmd,
     pub conf_path: Option<PathBuf>,
@@ -17,7 +17,7 @@ pub struct Cmd {
 }
 
 /// The CLI subcommand
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubCmd {
     Start {
         tls: Option<bool>,
@@ -170,6 +170,7 @@ pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{quickcheck, Arbitrary, Gen};
     use rocket::tokio;
 
     fn make_args(cmd: &Cmd) -> Vec<String> {
@@ -178,6 +179,14 @@ mod tests {
         if let Some(conf_path) = &cmd.conf_path {
             args.push("--config".to_string());
             args.push(conf_path.clone().into_os_string().into_string().unwrap());
+        }
+
+        match cmd.log_level {
+            Level::Trace => args.push("-vv".to_string()),
+            Level::Debug => args.push("-v".to_string()),
+            Level::Info => (),
+            Level::Warn => args.push("-q".to_string()),
+            Level::Error => args.push("-qq".to_string()),
         }
 
         match &cmd.command {
@@ -215,7 +224,7 @@ mod tests {
                     args.push(tls_port.to_string());
                 }
                 if let Some(cert) = cert {
-                    args.push("--cert {}".to_string());
+                    args.push("--cert".to_string());
                     args.push(cert.to_owned().into_os_string().into_string().unwrap());
                 }
                 if let Some(key) = key {
@@ -233,18 +242,51 @@ mod tests {
         cmd().debug_assert();
     }
 
-    #[test]
-    fn cmd_configure() {
-        let cmd = Cmd {
-            command: SubCmd::Configure {
-                regen_secret: true,
-                password: Some("password".to_string()),
-            },
-            conf_path: Some(PathBuf::from("./pet-monitor-app.toml")),
-            log_level: Level::Info,
-        };
-        let args = make_args(&cmd);
-        assert_eq!(cmd, parse_args(args));
+    impl Arbitrary for Cmd {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                command: SubCmd::arbitrary(g),
+                conf_path: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
+                log_level: match bool::arbitrary(g) as u32
+                    + bool::arbitrary(g) as u32
+                    + bool::arbitrary(g) as u32
+                    + bool::arbitrary(g) as u32
+                {
+                    0 => Level::Trace,
+                    1 => Level::Debug,
+                    2 => Level::Info,
+                    3 => Level::Warn,
+                    4 => Level::Error,
+                    _ => panic!(),
+                },
+            }
+        }
+    }
+
+    impl Arbitrary for SubCmd {
+        fn arbitrary(g: &mut Gen) -> Self {
+            if bool::arbitrary(g) {
+                Self::Configure {
+                    password: bool::arbitrary(g).then(|| String::arbitrary(g)),
+                    regen_secret: bool::arbitrary(g),
+                }
+            } else {
+                Self::Start {
+                    tls: bool::arbitrary(g).then(|| bool::arbitrary(g)),
+                    tls_port: bool::arbitrary(g).then(|| u16::arbitrary(g)),
+                    cert: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
+                    key: bool::arbitrary(g).then(|| PathBuf::arbitrary(g)),
+                    port: bool::arbitrary(g).then(|| u16::arbitrary(g)),
+                }
+            }
+        }
+    }
+
+    quickcheck! {
+        fn qc_cmd(cmd: Cmd) -> bool {
+            let args = make_args(&cmd);
+            cmd == parse_args(args)
+        }
     }
 
     #[tokio::test]

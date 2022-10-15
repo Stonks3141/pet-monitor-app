@@ -1,4 +1,4 @@
-use assert_cmd::{prelude::*, Command};
+use assert_cmd::Command;
 use assert_fs::{prelude::*, NamedTempFile};
 use predicates::prelude::*;
 
