@@ -5,7 +5,7 @@ use crate::secrets::ARGON2_CONFIG;
 
 /// used for finding good argon2 params, make sure to add the `--release` flag
 /// when running.
-//#[ignore]
+#[ignore]
 #[test]
 fn argon2_time() {
     let now = Instant::now();
