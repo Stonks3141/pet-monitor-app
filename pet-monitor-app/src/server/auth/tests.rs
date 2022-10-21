@@ -1,10 +1,9 @@
 use super::*;
 use crate::config::Context;
 use crate::server::provider::Provider;
-use proptest::prelude::*;
+use quickcheck::{quickcheck, Arbitrary, Gen};
 use rocket::http::{Cookie, Header, Method, Status};
-use rocket::local::asynchronous::Client;
-use rocket::tokio;
+use rocket::local::blocking::Client;
 use rocket::{delete, get, head, options, patch, post, put};
 
 fn make_token(is_valid: bool) -> Token {
@@ -45,19 +44,25 @@ make_route!(patch, patch_route);
 make_route!(head, head_route);
 make_route!(options, options_route);
 
-fn method_strategy() -> impl Strategy<Value = Method> {
-    prop_oneof![
-        Just(Method::Get),
-        Just(Method::Put),
-        Just(Method::Post),
-        Just(Method::Delete),
-        Just(Method::Patch),
-        Just(Method::Head),
-        Just(Method::Options),
-    ]
+#[derive(Debug, Clone)]
+struct ArbMethod(Method);
+
+impl Arbitrary for ArbMethod {
+    fn arbitrary(g: &mut Gen) -> Self {
+        match u32::arbitrary(g) % 7 {
+            0 => Self(Method::Get),
+            1 => Self(Method::Put),
+            2 => Self(Method::Post),
+            3 => Self(Method::Delete),
+            4 => Self(Method::Patch),
+            5 => Self(Method::Head),
+            6 => Self(Method::Options),
+            _ => unreachable!(),
+        }
+    }
 }
 
-async fn client() -> Client {
+fn client() -> Client {
     let rocket = rocket::build()
         .mount(
             "/",
@@ -72,132 +77,74 @@ async fn client() -> Client {
             ],
         )
         .manage(Provider::new(Context::default()));
-    Client::tracked(rocket).await.unwrap()
+    Client::tracked(rocket).unwrap()
 }
 
-async fn req_guard_no_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
-    let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-    let res = client
-        .req(*method, "/")
-        .cookie(Cookie::new("token", &token))
-        .dispatch()
-        .await;
-    let expected = match *method {
-        Method::Get | Method::Head | Method::Options | Method::Trace if is_valid => Status::Ok,
-        _ => Status::Unauthorized,
-    };
-    res.status() == expected
-}
+quickcheck! {
+    fn qc_guard_no_csrf(method: ArbMethod, is_valid: bool) -> bool {
+        let client = client();
 
-async fn req_guard_invalid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
-    let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-    let res = client
-        .req(*method, "/")
-        .cookie(Cookie::new("token", &token))
-        .header(Header::new("x-csrf-token", "foo"))
-        .dispatch()
-        .await;
-    let expected = match *method {
-        Method::Get | Method::Head | Method::Options | Method::Trace if is_valid => Status::Ok,
-        _ => Status::Unauthorized,
-    };
-    res.status() == expected
-}
+        let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
+        let res = client
+            .req(method.0, "/")
+            .cookie(Cookie::new("token", &token))
+            .dispatch();
 
-async fn req_guard_valid_csrf(client: &Client, method: &Method, is_valid: bool) -> bool {
-    let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-    let res = client
-        .req(*method, "/")
-        .cookie(Cookie::new("token", &token))
-        .header(Header::new("x-csrf-token", token))
-        .dispatch()
-        .await;
-    let expected = if is_valid {
-        Status::Ok
-    } else {
-        Status::Unauthorized
-    };
-    res.status() == expected
-}
-
-#[test]
-fn valid_token() {
-    let secret = [0u8; 32];
-    let token = make_token(true);
-    let token = token.to_string(&secret).unwrap();
-
-    assert!(Token::from_str(&token, &secret).is_ok());
-}
-
-#[test]
-fn invalid_token() {
-    let secret = [0u8; 32];
-    let token = make_token(false);
-
-    let token = token.to_string(&secret).unwrap();
-
-    assert!(Token::from_str(&token, &secret).is_err());
-}
-
-#[tokio::test]
-async fn valid_token_get() {
-    let client = client().await;
-    assert!(req_guard_no_csrf(&client, &Method::Get, true).await);
-}
-
-#[tokio::test]
-async fn invalid_token_get() {
-    let client = client().await;
-    assert!(req_guard_no_csrf(&client, &Method::Get, false).await);
-}
-
-#[tokio::test]
-async fn invalid_token_get_csrf() {
-    let client = client().await;
-    assert!(req_guard_valid_csrf(&client, &Method::Get, false).await);
-}
-
-#[tokio::test]
-async fn valid_token_post_no_csrf() {
-    let client = client().await;
-    assert!(req_guard_no_csrf(&client, &Method::Post, true).await);
-}
-
-#[tokio::test]
-async fn valid_token_post_csrf() {
-    let client = client().await;
-    assert!(req_guard_valid_csrf(&client, &Method::Post, true).await);
-}
-
-#[tokio::test]
-async fn valid_token_post_invalid_csrf() {
-    let client = client().await;
-    assert!(req_guard_invalid_csrf(&client, &Method::Post, true).await);
-}
-
-proptest! {
-    #[test]
-    fn prop_req_guard_invalid_csrf(method in method_strategy(), is_valid: bool) {
-        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            assert!(req_guard_invalid_csrf(&client().await, &method, is_valid).await);
-        });
+        let expected = match method.0 {
+            Method::Get | Method::Head | Method::Options | Method::Trace if is_valid => Status::Ok,
+            _ => Status::Unauthorized,
+        };
+        res.status() == expected
     }
-}
 
-proptest! {
-    #[test]
-    fn prop_req_guard_no_csrf(method in method_strategy(), is_valid: bool) {
-        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            assert!(req_guard_no_csrf(&client().await, &method, is_valid).await);
-        });
+    fn qc_guard_invalid_csrf(method: ArbMethod, is_valid: bool) -> bool {
+        let client = client();
+
+        let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
+        let res = client
+            .req(method.0, "/")
+            .cookie(Cookie::new("token", &token))
+            .header(Header::new("x-csrf-token", "foo"))
+            .dispatch();
+
+        let expected = match method.0 {
+            Method::Get | Method::Head | Method::Options | Method::Trace if is_valid => Status::Ok,
+            _ => Status::Unauthorized,
+        };
+        res.status() == expected
     }
-}
 
-proptest! {
-    #[test]
-    fn prop_req_guard_valid_csrf(method in method_strategy(), is_valid: bool) {
-        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(async move {
-            assert!(req_guard_valid_csrf(&client().await, &method, is_valid).await);
-        });
+    fn qc_guard_valid_csrf(method: ArbMethod, is_valid: bool) -> bool {
+        let client = client();
+
+        let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
+        let res = client
+            .req(method.0, "/")
+            .cookie(Cookie::new("token", &token))
+            .header(Header::new("x-csrf-token", token))
+            .dispatch();
+
+        let expected = if is_valid {
+            Status::Ok
+        } else {
+            Status::Unauthorized
+        };
+        res.status() == expected
+    }
+
+    fn qc_token_validity(is_valid: bool) -> bool {
+        let token = make_token(is_valid);
+        token.verify() == is_valid
+    }
+
+    fn qc_token_parse_validity(is_valid: bool) -> bool {
+        let secret = [0u8; 32];
+        let token = make_token(is_valid);
+        let token = token.to_string(&secret).unwrap();
+
+        match Token::from_str(&token, &secret) {
+            Ok(token) => token.verify() == is_valid,
+            Err(_) => !is_valid,
+        }
     }
 }
