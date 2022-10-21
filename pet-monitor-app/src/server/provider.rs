@@ -1,44 +1,36 @@
-//! Async interior mutability
+//! Subscribable interior mutability
 
-use rocket::tokio::sync::{broadcast, Mutex};
+use parking_lot::RwLock;
+use rocket::tokio::sync::broadcast;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-/// The `Provider` type implements thread-safe async interior mutability. It
+/// The `Provider` type implements thread-safe interior mutability. It
 /// broadcasts on an MPMC channel each time the inner value is mutated.
 #[derive(Debug, Clone)]
 pub struct Provider<T> {
-    inner: Arc<Mutex<T>>,
+    inner: Arc<RwLock<T>>,
     sub: broadcast::Sender<T>,
 }
 
-impl<T> Provider<T> {
+impl<T: Clone> Provider<T> {
     /// Creates a new `Provider`.
-    pub fn new(val: T) -> Self
-    where
-        T: Clone,
-    {
-        let (sub, _) = broadcast::channel::<T>(100);
-        let inner = Arc::new(Mutex::new(val));
-        Self { inner, sub }
+    pub fn new(val: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(val)),
+            sub: broadcast::channel::<T>(100).0,
+        }
     }
 
     /// Gets the value stored in the `Provider`.
-    pub async fn get(&self) -> T
-    where
-        T: Clone,
-    {
-        let lock = &*self.inner.lock().await;
-        lock.clone()
+    pub fn get(&self) -> T {
+        self.inner.read().clone()
     }
 
     /// Replaces the value in the `Provider` with a new value.
-    pub async fn set(&self, new: T)
-    where
-        T: Debug + Clone,
-    {
-        *self.inner.lock().await = new.clone();
-        self.sub.send(new).unwrap(); // This will never fail since self contains a receiver
+    pub fn set(&self, new: T) {
+        *self.inner.write() = new.clone();
+        self.sub.send(new).unwrap_or(0); // Ignore error if there are no receivers
     }
 
     /// Returns a `Receiver` that will send every time the inner value is mutated.
@@ -58,12 +50,18 @@ mod tests {
         let prov = Provider::new(val.clone());
         let mut sub = prov.subscribe();
 
-        assert_eq!(val, prov.get().await);
+        assert_eq!(val, prov.get());
 
         let val = "bar".to_string();
-        prov.set(val.clone()).await;
+        prov.set(val.clone());
 
-        assert_eq!(val, prov.get().await);
+        assert_eq!(val, prov.get());
+        assert_eq!(val, sub.recv().await.unwrap());
+
+        let val = "baz".to_string();
+        prov.set(val.clone());
+
+        assert_eq!(val, prov.get());
         assert_eq!(val, sub.recv().await.unwrap());
     }
 }
