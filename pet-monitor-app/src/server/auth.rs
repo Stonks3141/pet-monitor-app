@@ -9,6 +9,7 @@ use crate::config::Context;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
+use log::warn;
 use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 use serde::{Deserialize, Serialize};
@@ -114,14 +115,14 @@ impl<'r> FromRequest<'r> for Token {
             let ctx = match req.rocket().state::<Provider<Context>>() {
                 Some(v) => v,
                 None => {
+                    warn!("Rocket is not managing a `Provider<Context>`");
                     return Outcome::Failure((
                         Status::InternalServerError,
                         Error::from(ErrorKind::InvalidToken),
-                    ))
+                    ));
                 }
             }
-            .get()
-            .await;
+            .get();
 
             match Self::from_str(token, &ctx.jwt_secret) {
                 Ok(token) => {
@@ -134,12 +135,24 @@ impl<'r> FromRequest<'r> for Token {
                         ))
                     }
                 }
-                Err(e) => match e.kind() {
-                    ErrorKind::Base64(_)
-                    | ErrorKind::Crypto(_)
-                    | ErrorKind::Json(_)
-                    | ErrorKind::Utf8(_) => Outcome::Failure((Status::InternalServerError, e)),
-                    _ => Outcome::Failure((Status::Unauthorized, e)),
+                Err(err) => match err.kind() {
+                    ErrorKind::Base64(e) => {
+                        warn!("Parsing JWT failed with error {:?}", e);
+                        Outcome::Failure((Status::InternalServerError, err))
+                    }
+                    ErrorKind::Crypto(e) => {
+                        warn!("Parsing JWT failed with error {:?}", e);
+                        Outcome::Failure((Status::InternalServerError, err))
+                    }
+                    ErrorKind::Json(e) => {
+                        warn!("Parsing JWT failed with error {:?}", e);
+                        Outcome::Failure((Status::InternalServerError, err))
+                    }
+                    ErrorKind::Utf8(e) => {
+                        warn!("Parsing JWT failed with error {:?}", e);
+                        Outcome::Failure((Status::InternalServerError, err))
+                    }
+                    _ => Outcome::Failure((Status::Unauthorized, err)),
                 },
             }
         } else {

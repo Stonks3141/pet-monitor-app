@@ -5,6 +5,7 @@ use super::provider::Provider;
 use crate::config::{Config, Context};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
+use log::warn;
 #[cfg(not(debug_assertions))]
 use rocket::http::ContentType;
 use rocket::http::{Cookie, CookieJar, SameSite, Status};
@@ -16,12 +17,17 @@ use std::path::PathBuf;
 /// Redirects any request to HTTPS. It preserves the original path and uses
 /// Context.domain to construct the new URL.
 #[get("/<path..>")]
-pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Redirect {
-    let path = path.as_path().to_string_lossy();
-    println!("{}", path);
-    let ctx = ctx.get().await;
+pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Result<Redirect, Status> {
+    let path = path.to_str().ok_or_else(|| {
+        warn!("Failed to convert path {:?} to string", path);
+        Status::InternalServerError
+    })?;
+    let ctx = ctx.get();
 
-    Redirect::permanent(format!("https://{}/{}", ctx.domain, path))
+    Ok(Redirect::permanent(format!(
+        "https://{}/{}",
+        ctx.domain, path
+    )))
 }
 
 /// Static HTML/CSS/JS frontend files
@@ -34,8 +40,13 @@ const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
     Ok(
         if let Some(s) = STATIC_FILES.get_file(&path).map(|f| {
-            f.contents_utf8()
-                .expect("All HTML/CSS/JS should be valid UTF-8")
+            f.contents_utf8().map_err(|e| {
+                warn!(
+                    "Converting included file {:?} to UTF-8 failed with error {:?}",
+                    path, e
+                );
+                Err(Status::InternalServerError)
+            })?
         }) {
             (
                 if let Some(ext) = path.extension() {
@@ -51,9 +62,18 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
                 ContentType::HTML,
                 STATIC_FILES
                     .get_file("index.html")
-                    .ok_or(Status::InternalServerError)?
+                    .ok_or_else(|e| {
+                        warn!(
+                            "Getting index.html from included bundle failed with error {:?}",
+                            e
+                        );
+                        Status::InternalServerError
+                    })?
                     .contents_utf8()
-                    .ok_or(Status::InternalServerError)?
+                    .ok_or_else(|e| {
+                        warn!("Converting index.html to UTF-8 failed with error {:?}", e);
+                        Status::InternalServerError
+                    })?
                     .to_string(),
             )
         },
@@ -70,30 +90,37 @@ pub async fn login(
     cookies: &CookieJar<'_>,
     ctx: &State<Provider<Context>>,
 ) -> Status {
-    let ctx = ctx.get().await;
+    let ctx = ctx.get();
 
-    if let Ok(b) = crate::secrets::validate(&password, &ctx.password_hash).await {
-        if b {
-            match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
-                Ok(token) => {
-                    let cookie = Cookie::build("token", token)
-                        .max_age(rocket::time::Duration::seconds(
-                            ctx.jwt_timeout.num_seconds(),
-                        ))
-                        .same_site(SameSite::Strict)
-                        .finish();
+    match crate::secrets::validate(&password, &ctx.password_hash).await {
+        Ok(b) => {
+            if b {
+                match Token::new(ctx.jwt_timeout).to_string(&ctx.jwt_secret) {
+                    Ok(token) => {
+                        let cookie = Cookie::build("token", token)
+                            .max_age(rocket::time::Duration::seconds(
+                                ctx.jwt_timeout.num_seconds(),
+                            ))
+                            .same_site(SameSite::Strict)
+                            .finish();
 
-                    cookies.add(cookie);
+                        cookies.add(cookie);
 
-                    Status::Ok
+                        Status::Ok
+                    }
+                    Err(e) => {
+                        warn!("Stringifying token failed with error {:?}", e);
+                        Status::InternalServerError
+                    }
                 }
-                Err(_) => Status::InternalServerError,
+            } else {
+                Status::Unauthorized
             }
-        } else {
-            Status::Unauthorized
         }
-    } else {
-        Status::InternalServerError
+        Err(e) => {
+            warn!("Validating login attempt failed with error {:?}", e);
+            Status::InternalServerError
+        }
     }
 }
 
@@ -103,7 +130,7 @@ pub async fn get_config(
     _token: Token,
     ctx: &State<Provider<Context>>,
 ) -> Result<Json<Config>, Status> {
-    let ctx = ctx.get().await;
+    let ctx = ctx.get();
     Ok(Json(ctx.config))
 }
 
@@ -114,23 +141,54 @@ pub async fn put_config(
     ctx: &State<Provider<Context>>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
-    let ctx_read = ctx.get().await;
+    let ctx_read = ctx.get();
 
     let new_ctx = Context {
         config: new_config.into_inner(),
         ..ctx_read
     };
 
-    ctx.set(new_ctx).await;
+    ctx.set(new_ctx);
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{quickcheck, TestResult};
     use ring::rand::SystemRandom;
+    use rocket::http::uri::{Origin, Reference};
     use rocket::local::asynchronous::Client;
     use rocket::tokio;
+
+    quickcheck! {
+        fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
+            use rocket::local::blocking::Client;
+
+            let path = "/".to_string() + &path.join("/");
+
+            if Reference::parse(&domain).is_err() || Origin::parse(&path).is_err() {
+                return TestResult::discard();
+            }
+
+            let ctx = Context {
+                domain: domain.clone(),
+                ..Default::default()
+            };
+
+            let rocket = rocket::build()
+                .mount("/", rocket::routes![redirect])
+                .manage(Provider::new(ctx));
+
+            let client = Client::tracked(rocket).unwrap();
+            let res = client.get(path.clone()).dispatch();
+
+            TestResult::from_bool(
+                res.status() == Status::PermanentRedirect
+                && res.headers().get_one("Location").unwrap() == format!("https://{}/{}/", domain, path)
+            )
+        }
+    }
 
     #[tokio::test]
     async fn redirect() {
