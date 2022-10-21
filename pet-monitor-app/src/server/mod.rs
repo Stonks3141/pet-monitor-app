@@ -54,7 +54,7 @@ fn http_rocket(
 ) -> Rocket<Build> {
     let rocket_cfg = rocket::Config {
         port: ctx.port,
-        address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
         log_level,
         ..rocket::Config::figment()
             .extract::<rocket::Config>()
@@ -72,7 +72,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: tls.port,
-            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
@@ -81,7 +81,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -
     } else {
         rocket::Config {
             port: ctx.port,
-            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()

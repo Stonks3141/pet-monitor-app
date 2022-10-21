@@ -37,7 +37,7 @@ impl Default for Context {
             jwt_secret: [0; 32],
             jwt_timeout: Duration::days(4),
             domain: "localhost".to_string(),
-            host: Some(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            host: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             #[cfg(not(debug_assertions))]
             port: 80,
             #[cfg(debug_assertions)]
@@ -150,5 +150,48 @@ mod tests {
         assert_eq!(ctx, ctx_file);
 
         tmp.close().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod qc {
+    use super::{Config, Context, Tls};
+    use chrono::Duration;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Context {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                password_hash: Arbitrary::arbitrary(g),
+                jwt_secret: [0; 32].map(|_| Arbitrary::arbitrary(g)),
+                jwt_timeout: Duration::milliseconds(Arbitrary::arbitrary(g)),
+                domain: Arbitrary::arbitrary(g),
+                host: Arbitrary::arbitrary(g),
+                port: Arbitrary::arbitrary(g),
+                config: Arbitrary::arbitrary(g),
+                tls: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Config {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                resolution: Arbitrary::arbitrary(g),
+                rotation: Arbitrary::arbitrary(g),
+                framerate: Arbitrary::arbitrary(g),
+                device: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Tls {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                port: Arbitrary::arbitrary(g),
+                cert: Arbitrary::arbitrary(g),
+                key: Arbitrary::arbitrary(g),
+            }
+        }
     }
 }
