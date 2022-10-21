@@ -4,10 +4,14 @@ use rocket::tokio;
 
 macro_rules! is_valid {
     (@path $val:expr) => {{
-        !($val).clone().map_or(false, |x| x.to_string_lossy().starts_with("-") || x.as_os_str().is_empty())
+        !($val).clone().map_or(false, |x| {
+            x.to_string_lossy().starts_with("-") || x.as_os_str().is_empty()
+        })
     }};
     (@string $val:expr) => {{
-        !($val).clone().map_or(false, |x| x.starts_with("-") || x.is_empty())
+        !($val)
+            .clone()
+            .map_or(false, |x| x.starts_with("-") || x.is_empty())
     }};
 }
 
@@ -47,6 +51,12 @@ fn level_to_int(x: Level) -> u32 {
     }
 }
 
+macro_rules! shrink_tuple {
+    ($struct:ident { $( $field:ident ),* $(,)? }) => {
+        Box::new(( $( $field, )* ).shrink().map(|( $( $field, )* )| $struct { $( $field, )* }))
+    };
+}
+
 impl Arbitrary for Cmd {
     fn arbitrary(g: &mut Gen) -> Self {
         Self {
@@ -57,29 +67,19 @@ impl Arbitrary for Cmd {
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(CmdShrinker {
-            command: self.command.shrink(),
-            conf_path: self.conf_path.shrink(),
-            log_level: level_to_int(self.log_level).shrink(),
-        })
-    }
-}
-
-struct CmdShrinker {
-    command: Box<dyn Iterator<Item = SubCmd>>,
-    conf_path: Box<dyn Iterator<Item = Option<PathBuf>>>,
-    log_level: Box<dyn Iterator<Item = u32>>,
-}
-
-impl Iterator for CmdShrinker {
-    type Item = Cmd;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(Cmd {
-            command: self.command.next()?,
-            conf_path: self.conf_path.next()?,
-            log_level: level_from_int(self.log_level.next()?),
-        })
+        Box::new(
+            (
+                self.command.clone(),
+                self.conf_path.clone(),
+                level_to_int(self.log_level),
+            )
+                .shrink()
+                .map(|(command, conf_path, log_level)| Self {
+                    command,
+                    conf_path,
+                    log_level: level_from_int(log_level),
+                }),
+        )
     }
 }
 
@@ -102,56 +102,14 @@ impl Arbitrary for SubCmd {
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(match self.clone() {
-            SubCmd::Configure {
-                password,
-                regen_secret,
-            } => SubCmdShrinker::Configure {
-                password: password.shrink(),
-                regen_secret: regen_secret.shrink(),
-            },
-            SubCmd::Start {
-                tls,
-                tls_port,
-                cert,
-                key,
-                port,
-            } => SubCmdShrinker::Start {
-                tls: tls.shrink(),
-                tls_port: tls_port.shrink(),
-                cert: cert.shrink(),
-                key: key.shrink(),
-                port: port.shrink(),
-            },
-        })
-    }
-}
-
-enum SubCmdShrinker {
-    Configure {
-        password: Box<dyn Iterator<Item = Option<String>>>,
-        regen_secret: Box<dyn Iterator<Item = bool>>,
-    },
-    Start {
-        tls: Box<dyn Iterator<Item = Option<bool>>>,
-        tls_port: Box<dyn Iterator<Item = Option<u16>>>,
-        cert: Box<dyn Iterator<Item = Option<PathBuf>>>,
-        key: Box<dyn Iterator<Item = Option<PathBuf>>>,
-        port: Box<dyn Iterator<Item = Option<u16>>>,
-    },
-}
-
-impl Iterator for SubCmdShrinker {
-    type Item = SubCmd;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
+        use SubCmd::{Configure, Start};
+        match self.clone() {
             Self::Configure {
                 password,
                 regen_secret,
-            } => Some(SubCmd::Configure {
-                password: password.next()?,
-                regen_secret: regen_secret.next()?,
+            } => shrink_tuple!(Configure {
+                password,
+                regen_secret
             }),
             Self::Start {
                 tls,
@@ -159,12 +117,12 @@ impl Iterator for SubCmdShrinker {
                 cert,
                 key,
                 port,
-            } => Some(SubCmd::Start {
-                tls: tls.next()?,
-                tls_port: tls_port.next()?,
-                cert: cert.next()?,
-                key: key.next()?,
-                port: port.next()?,
+            } => shrink_tuple!(Start {
+                tls,
+                tls_port,
+                cert,
+                key,
+                port
             }),
         }
     }
