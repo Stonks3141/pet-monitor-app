@@ -1,11 +1,8 @@
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
-use fixed::types::*;
+use fixed::types::{U16F16, I8F8, I16F16};
 use rocket::async_trait;
 use rocket::futures::io::{self, AsyncWrite, AsyncWriteExt};
-
-#[cfg(test)]
-mod tests;
 
 pub const MATRIX_0: [[I16F16; 3]; 3] = [
     [I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
@@ -71,10 +68,7 @@ where
     T: BmffBox,
     W: AsyncWrite + Unpin + Send,
 {
-    let mut size = bmff_box.size() + 8;
-    if T::EXTENDED_TYPE.is_some() {
-        size += 16;
-    }
+    let size = bmff_box.size();
     if size <= u32::MAX as u64 {
         w.write_all(&(size as u32).to_be_bytes()).await?;
         w.write_all(&T::TYPE).await?;
@@ -95,10 +89,7 @@ where
     T: FullBox,
     W: AsyncWrite + Unpin + Send,
 {
-    let mut size = bmff_box.size() + 8;
-    if T::EXTENDED_TYPE.is_some() {
-        size += 16;
-    }
+    let size = bmff_box.size();
     if size <= u32::MAX as u64 {
         w.write_all(&(size as u32).to_be_bytes()).await?;
         w.write_all(&T::TYPE).await?;
@@ -129,7 +120,7 @@ impl BmffBox for FileTypeBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + 4 + self.compatible_brands.len() as u64 * 4
+        8 + 4 + 4 + self.compatible_brands.len() as u64 * 4
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -158,7 +149,7 @@ impl BmffBox for MovieBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.mvhd.size()
+        8 + self.mvhd.size()
             + self.trak.iter().map(|x| x.size()).sum::<u64>()
             + self.mvex.as_ref().map(|x| x.size()).unwrap_or(0)
     }
@@ -196,13 +187,13 @@ impl BmffBox for MovieHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        (if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             8 + 8 + 4 + 8
         } else {
-            4 * 4
+            4 + 4 + 4 + 4
         }) + 4
             + 2
             + 2
@@ -219,9 +210,9 @@ impl BmffBox for MovieHeaderBox {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self.duration.num_seconds();
-        if creation_timestamp > u32::MAX as i64
-            || modification_timestamp > u32::MAX as i64
-            || duration_secs > u32::MAX as i64
+        if creation_timestamp as u64 > u32::MAX as u64
+            || modification_timestamp as u64 > u32::MAX as u64
+            || duration_secs as u64 > u32::MAX as u64
         {
             w.write_all(&(creation_timestamp as u64).to_be_bytes())
                 .await?;
@@ -240,24 +231,14 @@ impl BmffBox for MovieHeaderBox {
         w.write_all(&self.rate.to_be_bytes()).await?;
         w.write_all(&self.volume.to_be_bytes()).await?;
         w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&[0u32.to_be_bytes(), 0u32.to_be_bytes()].concat())
+        w.write_all(&[0u32.to_be_bytes(); 2].concat())
             .await?;
         for i in self.matrix {
             for j in i {
                 w.write_all(&j.to_be_bytes()).await?;
             }
         }
-        w.write_all(
-            &[
-                0u32.to_be_bytes(),
-                0u32.to_be_bytes(),
-                0u32.to_be_bytes(),
-                0u32.to_be_bytes(),
-                0u32.to_be_bytes(),
-                0u32.to_be_bytes(),
-            ]
-            .concat(),
-        )
+        w.write_all(&[0u32.to_be_bytes(); 6].concat())
         .await?;
         w.write_all(&self.next_track_id.to_be_bytes()).await?;
         Ok(())
@@ -267,9 +248,9 @@ impl BmffBox for MovieHeaderBox {
 impl FullBox for MovieHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             1
         } else {
@@ -292,7 +273,7 @@ impl BmffBox for TrackBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.tkhd.size()
+        8 + self.tkhd.size()
             + self.tref.as_ref().map(|x| x.size()).unwrap_or(0)
             + self.edts.as_ref().map(|x| x.size()).unwrap_or(0)
             + self.mdia.size()
@@ -343,9 +324,9 @@ impl BmffBox for TrackHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        (if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             8 + 8 + 4 + 4 + 8
         } else {
@@ -367,9 +348,9 @@ impl BmffBox for TrackHeaderBox {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self.duration.num_seconds();
-        if creation_timestamp > u32::MAX as i64
-            || modification_timestamp > u32::MAX as i64
-            || duration_secs > u32::MAX as i64
+        if creation_timestamp as u64 > u32::MAX as u64
+            || modification_timestamp as u64 > u32::MAX as u64
+            || duration_secs as u64 > u32::MAX as u64
         {
             w.write_all(&(creation_timestamp as u64).to_be_bytes())
                 .await?;
@@ -387,7 +368,7 @@ impl BmffBox for TrackHeaderBox {
             w.write_all(&0u32.to_be_bytes()).await?;
             w.write_all(&(duration_secs as u32).to_be_bytes()).await?;
         }
-        w.write_all(&[0u32.to_be_bytes(), 0u32.to_be_bytes()].concat())
+        w.write_all(&[0u32.to_be_bytes(); 2].concat())
             .await?;
         w.write_all(&self.layer.to_be_bytes()).await?;
         w.write_all(&self.alternate_group.to_be_bytes()).await?;
@@ -407,9 +388,9 @@ impl BmffBox for TrackHeaderBox {
 impl FullBox for TrackHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             1
         } else {
@@ -432,7 +413,7 @@ impl BmffBox for TrackReferenceBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        0
+        8
     }
 
     async fn write_box<W>(&self, _w: W) -> io::Result<()>
@@ -456,7 +437,7 @@ impl BmffBox for MediaBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.mdhd.size() + self.hdlr.size() + self.minf.size()
+        8 + self.mdhd.size() + self.hdlr.size() + self.minf.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -485,15 +466,14 @@ impl BmffBox for MediaHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        (if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             8 + 8 + 4 + 8
         } else {
             4 * 4
-        }) + 16
-            + 16
+        }) + 2 + 2
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -503,16 +483,16 @@ impl BmffBox for MediaHeaderBox {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self.duration.num_seconds();
-        if creation_timestamp > u32::MAX as i64
-            || modification_timestamp > u32::MAX as i64
-            || duration_secs > u32::MAX as i64
+        if creation_timestamp as u64 > u32::MAX as u64
+            || modification_timestamp as u64 > u32::MAX as u64
+            || duration_secs as u64 > u32::MAX as u64
         {
-            w.write_all(&(creation_timestamp as u64).to_be_bytes())
+            w.write_all(&creation_timestamp.to_be_bytes())
                 .await?;
-            w.write_all(&(modification_timestamp as u64).to_be_bytes())
+            w.write_all(&modification_timestamp.to_be_bytes())
                 .await?;
             w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u64).to_be_bytes()).await?;
+            w.write_all(&duration_secs.to_be_bytes()).await?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
                 .await?;
@@ -525,7 +505,7 @@ impl BmffBox for MediaHeaderBox {
         //    |||||   //  \\\   |||||
         //    |||||  //    \\\  |||||
         //  0 xxxxx xx      xxx xxxxx
-        let language: [u8; 2] = [
+        let language = [
             (self.language[0] - 0x60) << 2 | (self.language[1] - 0x60) >> 3,
             (self.language[1] - 0x60) << 5 | (self.language[2] - 0x60),
         ];
@@ -538,9 +518,9 @@ impl BmffBox for MediaHeaderBox {
 impl FullBox for MediaHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() > u32::MAX as i64
-            || self.modification_time.timestamp() > u32::MAX as i64
-            || self.duration.num_seconds() > u32::MAX as i64
+        if self.creation_time.timestamp() as u64 > u32::MAX as u64
+            || self.modification_time.timestamp() as u64 > u32::MAX as u64
+            || self.duration.num_seconds() as u64 > u32::MAX as u64
         {
             1
         } else {
@@ -570,7 +550,7 @@ impl BmffBox for HandlerBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + self.name.len() as u64
+        12 + 4 + 4 + 4 * 3 + self.name.len() as u64 + 1
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -580,7 +560,7 @@ impl BmffBox for HandlerBox {
         w.write_all(&0u32.to_be_bytes()).await?;
         w.write_all(&(self.handler_type as u32).to_be_bytes())
             .await?;
-        w.write_all(&[0u32.to_be_bytes(), 0u32.to_be_bytes(), 0u32.to_be_bytes()].concat())
+        w.write_all(&[0u32.to_be_bytes(); 3].concat())
             .await?;
         w.write_all(self.name.as_bytes()).await?;
         w.write_all(&[0u8]).await?; // Null terminator
@@ -608,7 +588,7 @@ impl BmffBox for MediaInformationBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.media_header.size() + self.dinf.size() + self.stbl.size()
+        8 + self.media_header.size() + self.dinf.size() + self.stbl.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -675,7 +655,7 @@ impl BmffBox for VideoMediaHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        2 + 2 * 3
+        12 + 2 + 2 * 3
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -714,7 +694,7 @@ impl BmffBox for SoundMediaHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        2
+        12 + 2 + 2
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -748,7 +728,7 @@ impl BmffBox for HintMediaHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        2 + 2 + 4 + 4 + 4 // reserved u32
+        12 + 2 + 2 + 4 + 4 + 4 // reserved u32
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -759,6 +739,7 @@ impl BmffBox for HintMediaHeaderBox {
         w.write_all(&self.avg_pdu_size.to_be_bytes()).await?;
         w.write_all(&self.max_bitrate.to_be_bytes()).await?;
         w.write_all(&self.avg_bitrate.to_be_bytes()).await?;
+        w.write_all(&0u32.to_be_bytes()).await?;
         Ok(())
     }
 }
@@ -785,7 +766,7 @@ impl BmffBox for NullMediaHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        0
+        12
     }
 
     async fn write_box<W>(&self, _w: W) -> io::Result<()>
@@ -820,7 +801,7 @@ impl BmffBox for DataInformationBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.dref.size()
+        8 + self.dref.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -843,7 +824,7 @@ impl BmffBox for DataReferenceBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.data_entries.iter().map(|x| x.size()).sum()
+        12 + 4 + self.data_entries.iter().map(|x| x.size()).sum::<u64>()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -914,7 +895,7 @@ impl BmffBox for DataEntryUrlBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.location.len() as u64 + 1
+        12 + self.location.len() as u64 + 1
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -955,7 +936,7 @@ impl BmffBox for DataEntryUrnBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.name.len() as u64 + 1 + self.location.len() as u64 + 1
+        12 + self.name.len() as u64 + 1 + self.location.len() as u64 + 1
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -997,7 +978,7 @@ impl BmffBox for SampleTableBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.stsd.size() + self.stts.size() + self.stsc.size() + self.stco.size()
+        12 + self.stsd.size() + self.stts.size() + self.stsc.size() + self.stco.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1024,7 +1005,7 @@ impl BmffBox for TimeToSampleBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.samples.len() as u64 * 8
+        12 + 4 + self.samples.len() as u64 * 8
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1074,7 +1055,7 @@ impl BmffBox for SampleDescriptionBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.entries.iter().map(|x| x.size()).sum::<u64>() + 4
+        8 + 4 + self.entries.iter().map(|x| x.size()).sum::<u64>()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1111,7 +1092,7 @@ impl BmffBox for VisualSampleEntry {
 
     #[inline]
     fn size(&self) -> u64 {
-        6 + 2 + 2 + 4 * 3 + 2 + 2 + 4 + 4 + 2 + 32 + 2
+        8 + 6 + 2 + 2 + 2 + 4 * 3 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1175,7 +1156,7 @@ impl BmffBox for AudioSampleEntry {
 
     #[inline]
     fn size(&self) -> u64 {
-        6 + 2 + 4 * 2 + 2 + 2 + 2 + 2 + 4
+        8 + 6 + 2 + 4 * 2 + 2 + 2 + 2 + 2 + 4
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1224,7 +1205,7 @@ impl BmffBox for HintSampleEntry {
 
     #[inline]
     fn size(&self) -> u64 {
-        6 + 2 + self.data.len() as u64
+        8 + 6 + 2 + self.data.len() as u64
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1276,7 +1257,7 @@ impl BmffBox for AvcSampleEntry {
 
     #[inline]
     fn size(&self) -> u64 {
-        6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
+        8 + 6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1294,7 +1275,7 @@ impl BmffBox for AvcSampleEntry {
         w.write_all(&self.frame_count.to_be_bytes()).await?;
         w.write_all(&[0u8; 32]).await?;
         w.write_all(&self.depth.to_be_bytes()).await?;
-        w.write_all(&0xffffu16.to_be_bytes()).await?; // pre_defined
+        w.write_all(&u16::MAX.to_be_bytes()).await?; // pre_defined
         write_to(&self.avcc, &mut w).await?;
         Ok(())
     }
@@ -1330,7 +1311,7 @@ impl BmffBox for AvcConfigurationBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.configuration.size()
+        8 + self.configuration.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1353,10 +1334,9 @@ pub struct AvcDecoderConfigurationRecord {
 
 impl AvcDecoderConfigurationRecord {
     fn size(&self) -> u64 {
-        1 + 1
-            + 1
-            + self.sequence_parameter_set.len() as u64
-            + self.picture_parameter_set.len() as u64
+        1 + 1 + 1 + 1 + 1 + 1
+            + 2 + self.sequence_parameter_set.len() as u64
+            + 1 + 2 + self.picture_parameter_set.len() as u64
     }
 }
 
@@ -1374,15 +1354,11 @@ impl WriteTo for AvcDecoderConfigurationRecord {
         w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes()).await?;
         w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes())
             .await?;
-        for i in self.sequence_parameter_set.iter() {
-            w.write_all(&i.to_be_bytes()).await?;
-        }
+        w.write_all(&self.sequence_parameter_set).await?;
         w.write_all(&0x01u8.to_be_bytes()).await?;
         w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes())
             .await?;
-        for i in self.picture_parameter_set.iter() {
-            w.write_all(&i.to_be_bytes()).await?;
-        }
+        w.write_all(&self.picture_parameter_set).await?;
         Ok(())
     }
 }
@@ -1399,7 +1375,7 @@ impl BmffBox for SampleToChunkBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + self.entries.len() as u64 * 4 * 3
+        12 + 4 + self.entries.len() as u64 * 4 * 3
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1435,7 +1411,7 @@ impl BmffBox for ChunkOffsetBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + self.chunk_offsets.len() as u64 * 4
+        12 + 4 + self.chunk_offsets.len() as u64 * 4
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1469,7 +1445,7 @@ impl BmffBox for EditBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.elst.size()
+        8 + self.elst.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1495,7 +1471,7 @@ impl BmffBox for EditListBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + self.entries.len() as u64 * 8 * 2 + 2 + 2
+        12 + 4 + self.entries.len() as u64 * 8 * 2 + 2 + 2
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1533,7 +1509,7 @@ impl BmffBox for MovieExtendsBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.mehd.as_ref().map(|x| x.size()).unwrap_or(0)
+        8 + self.mehd.as_ref().map(|x| x.size()).unwrap_or(0)
         + self.trex.iter().map(|x| x.size()).sum::<u64>()
     }
 
@@ -1553,7 +1529,7 @@ impl BmffBox for MovieExtendsBox {
 
 #[derive(Debug, Clone)]
 pub struct MovieExtendsHeaderBox {
-    pub fragment_duration: u64,
+    pub fragment_duration: Duration,
 }
 
 #[async_trait]
@@ -1562,7 +1538,7 @@ impl BmffBox for MovieExtendsHeaderBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        if self.fragment_duration > u32::MAX as u64 {
+        12 + if self.fragment_duration.num_seconds() as u64 > u32::MAX as u64 {
             8
         } else {
             4
@@ -1573,10 +1549,11 @@ impl BmffBox for MovieExtendsHeaderBox {
     where
         W: AsyncWrite + Unpin + Send,
     {
-        if self.fragment_duration > u32::MAX as u64 {
-            w.write_all(&self.fragment_duration.to_be_bytes()).await?;
+        let fragment_duration = self.fragment_duration.num_seconds();
+        if fragment_duration as u64 > u32::MAX as u64 {
+            w.write_all(&fragment_duration.to_be_bytes()).await?;
         } else {
-            w.write_all(&(self.fragment_duration as u32).to_be_bytes())
+            w.write_all(&(fragment_duration as u32).to_be_bytes())
                 .await?;
         }
         Ok(())
@@ -1586,7 +1563,7 @@ impl BmffBox for MovieExtendsHeaderBox {
 impl FullBox for MovieExtendsHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.fragment_duration > u32::MAX as u64 {
+        if self.fragment_duration.num_seconds() as u64 > u32::MAX as u64 {
             1
         } else {
             0
@@ -1618,7 +1595,7 @@ impl BmffBox for TrackExtendsBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        4 + 4 + 4 + 4 + 4
+        12 + 4 + 4 + 4 + 4 + 4
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1655,7 +1632,7 @@ impl BmffBox for MediaDataBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        self.data.len() as u64
+        8 + self.data.len() as u64
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
