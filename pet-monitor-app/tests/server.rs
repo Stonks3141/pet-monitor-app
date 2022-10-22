@@ -25,12 +25,13 @@ async fn test_login() {
         .spawn()
         .unwrap();
 
-    let client = Client::builder().cookie_store(true).build().unwrap();
+    let client = Client::builder().cookie_store(true).build().map_err(|e| { server.kill().unwrap(); e }).unwrap();
 
     let res = client
         .get("http://localhost:8080/api/config")
         .send()
         .await
+        .map_err(|e| { server.kill().unwrap(); e })
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
@@ -39,6 +40,7 @@ async fn test_login() {
         .body("foo")
         .send()
         .await
+        .map_err(|e| { server.kill().unwrap(); e })
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
@@ -47,6 +49,7 @@ async fn test_login() {
         .body("123")
         .send()
         .await
+        .map_err(|e| { server.kill().unwrap(); e })
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
@@ -54,6 +57,7 @@ async fn test_login() {
         .get("http://localhost:8080/api/config")
         .send()
         .await
+        .map_err(|e| { server.kill().unwrap(); e })
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
