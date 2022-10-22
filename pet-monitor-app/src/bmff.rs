@@ -73,7 +73,7 @@ where
     Ok(())
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FileTypeBox {
     pub major_brand: [u8; 4],
     pub minor_version: u32,
@@ -102,7 +102,7 @@ impl BmffBox for FileTypeBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MovieBox {
     pub mvhd: MovieHeaderBox,
     pub trak: Vec<TrackBox>,
@@ -139,7 +139,7 @@ impl BmffBox for MovieBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MovieHeaderBox {
     pub creation_time: DateTime<Utc>,
     pub modification_time: DateTime<Utc>,
@@ -239,7 +239,7 @@ impl FullBox for MovieHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackBox {
     pub tkhd: TrackHeaderBox,
     pub tref: Option<TrackReferenceBox>,
@@ -283,7 +283,7 @@ impl BmffBox for TrackBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackHeaderBox {
     pub flags: TrackHeaderFlags,
     pub creation_time: DateTime<Utc>,
@@ -392,7 +392,7 @@ impl FullBox for TrackHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackReferenceBox;
 
 #[async_trait]
@@ -412,7 +412,7 @@ impl BmffBox for TrackReferenceBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MediaBox {
     pub mdhd: MediaHeaderBox,
     pub hdlr: HandlerBox,
@@ -439,7 +439,7 @@ impl BmffBox for MediaBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MediaHeaderBox {
     pub creation_time: DateTime<Utc>,
     pub modification_time: DateTime<Utc>,
@@ -518,14 +518,14 @@ impl FullBox for MediaHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HandlerBox {
     pub handler_type: HandlerType,
     // spec says a null-terminated UTF-8 string, so not a `CString`
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(u32)]
 pub enum HandlerType {
     Video = u32::from_be_bytes(*b"vide"),
@@ -564,7 +564,7 @@ impl FullBox for HandlerBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MediaInformationBox {
     pub media_header: MediaHeader,
     pub dinf: DataInformationBox,
@@ -591,7 +591,7 @@ impl BmffBox for MediaInformationBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MediaHeader {
     Video(VideoMediaHeaderBox),
     Sound(SoundMediaHeaderBox),
@@ -626,13 +626,13 @@ impl WriteTo for MediaHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VideoMediaHeaderBox {
     pub graphics_mode: GraphicsMode,
     pub opcolor: [u16; 3],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(u16)]
 pub enum GraphicsMode {
     Copy = 0,
@@ -672,7 +672,7 @@ impl FullBox for VideoMediaHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SoundMediaHeaderBox {
     pub balance: I8F8,
 }
@@ -703,7 +703,7 @@ impl FullBox for SoundMediaHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HintMediaHeaderBox {
     pub max_pdu_size: u16,
     pub avg_pdu_size: u16,
@@ -739,7 +739,7 @@ impl FullBox for HintMediaHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NullMediaHeaderBox {
     pub flags: NullMediaHeaderFlags,
 }
@@ -778,7 +778,7 @@ impl FullBox for NullMediaHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataInformationBox {
     pub dref: DataReferenceBox,
 }
@@ -801,7 +801,7 @@ impl BmffBox for DataInformationBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataReferenceBox {
     pub data_entries: Vec<DataEntry>,
 }
@@ -835,7 +835,7 @@ impl FullBox for DataReferenceBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataEntry {
     Url(DataEntryUrlBox),
     Urn(DataEntryUrnBox),
@@ -871,7 +871,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataEntryUrlBox {
     pub flags: DataEntryFlags,
     pub location: String,
@@ -911,7 +911,7 @@ impl FullBox for DataEntryUrlBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataEntryUrnBox {
     pub flags: DataEntryFlags,
     pub name: String,
@@ -952,7 +952,7 @@ impl FullBox for DataEntryUrnBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SampleTableBox {
     pub stsd: SampleDescriptionBox,
     pub stts: TimeToSampleBox,
@@ -981,7 +981,7 @@ impl BmffBox for SampleTableBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TimeToSampleBox {
     /// `(sample_count, sample_delta)`
     pub samples: Vec<(u32, u32)>,
@@ -1018,14 +1018,23 @@ impl FullBox for TimeToSampleBox {
 }
 
 #[async_trait]
-pub trait SampleEntry: std::fmt::Debug + Send + Sync {
+pub trait SampleEntry: std::fmt::Debug {
     fn size(&self) -> u64;
     async fn write_to(&self) -> Vec<u8>;
+    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync>;
 }
 
 #[derive(Debug)]
 pub struct SampleDescriptionBox {
-    pub entries: Vec<Box<dyn SampleEntry>>,
+    pub entries: Vec<Box<dyn SampleEntry + Send + Sync>>,
+}
+
+impl Clone for SampleDescriptionBox {
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.iter().map(|x| x.clone_box()).collect(),
+        }
+    }
 }
 
 #[async_trait]
@@ -1050,7 +1059,7 @@ impl BmffBox for SampleDescriptionBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VisualSampleEntry {
     pub data_reference_index: u16,
     pub width: u16,
@@ -1107,14 +1116,20 @@ impl SampleEntry for VisualSampleEntry {
     fn size(&self) -> u64 {
         <Self as BmffBox>::size(self)
     }
+
     async fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
+        #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
         write_to(self, &mut buf).await.unwrap();
         buf
     }
+
+    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+        Box::new(self.clone())
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AudioSampleEntry {
     pub data_reference_index: u16,
     pub channel_count: u16,
@@ -1156,12 +1171,17 @@ impl SampleEntry for AudioSampleEntry {
     }
     async fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
+        #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
         write_to(self, &mut buf).await.unwrap();
         buf
     }
+
+    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+        Box::new(self.clone())
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HintSampleEntry {
     pub data_reference_index: u16,
     pub data: Vec<u8>,
@@ -1197,12 +1217,17 @@ impl SampleEntry for HintSampleEntry {
 
     async fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
+        #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
         write_to(self, &mut buf).await.unwrap();
         buf
     }
+
+    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+        Box::new(self.clone())
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AvcSampleEntry {
     pub data_reference_index: u16,
     pub width: u16,
@@ -1253,12 +1278,17 @@ impl SampleEntry for AvcSampleEntry {
 
     async fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
+        #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
         write_to(self, &mut buf).await.unwrap();
         buf
     }
+
+    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+        Box::new(self.clone())
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AvcConfigurationBox {
     pub configuration: AvcDecoderConfigurationRecord,
 }
@@ -1281,7 +1311,7 @@ impl BmffBox for AvcConfigurationBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AvcDecoderConfigurationRecord {
     pub profile_idc: u8,
     pub constraint_set_flag: u8,
@@ -1326,7 +1356,7 @@ impl WriteTo for AvcDecoderConfigurationRecord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SampleToChunkBox {
     /// `(first_chunk, samples_per_chunk, sample_description_index)`
     pub entries: Vec<(u32, u32, u32)>,
@@ -1363,7 +1393,7 @@ impl FullBox for SampleToChunkBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChunkOffsetBox {
     pub chunk_offsets: Vec<u32>,
 }
@@ -1397,7 +1427,7 @@ impl FullBox for ChunkOffsetBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EditBox {
     pub elst: EditListBox,
 }
@@ -1420,7 +1450,7 @@ impl BmffBox for EditBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EditListBox {
     /// `(segment_duration, media_time)`
     pub entries: Vec<(u64, i64)>,
@@ -1460,7 +1490,7 @@ impl FullBox for EditListBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MovieExtendsBox {
     pub mehd: Option<MovieExtendsHeaderBox>,
     pub trex: Vec<TrackExtendsBox>,
@@ -1493,7 +1523,7 @@ impl BmffBox for MovieExtendsBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MovieExtendsHeaderBox {
     pub fragment_duration: u64,
 }
@@ -1536,7 +1566,7 @@ impl FullBox for MovieExtendsHeaderBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackExtendsBox {
     pub track_id: u32,
     pub default_sample_description_index: u32,
@@ -1586,7 +1616,7 @@ impl FullBox for TrackExtendsBox {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MediaDataBox {
     pub data: Vec<u8>,
 }
