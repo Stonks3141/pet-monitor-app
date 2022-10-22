@@ -23,8 +23,8 @@ fn make_token(is_valid: bool) -> Token {
     }
 }
 
-macro_rules! make_route {
-    ($method:ident, $name:ident) => {
+macro_rules! make_routes {
+    (@internal $method:ident, $name:ident) => {
         #[$method("/")]
         fn $name(token: Token) -> Status {
             if token.verify() {
@@ -34,15 +34,20 @@ macro_rules! make_route {
             }
         }
     };
+    ( $( $method:ident, $name:ident ),* $(,)? ) => {
+        $( make_routes!(@internal $method, $name); )*
+    }
 }
 
-make_route!(get, get_route);
-make_route!(post, post_route);
-make_route!(put, put_route);
-make_route!(delete, delete_route);
-make_route!(patch, patch_route);
-make_route!(head, head_route);
-make_route!(options, options_route);
+make_routes! {
+    get, get_route,
+    post, post_route,
+    put, put_route,
+    delete, delete_route,
+    patch, patch_route,
+    head, head_route,
+    options, options_route,
+}
 
 #[derive(Debug, Clone)]
 struct ArbMethod(Method);

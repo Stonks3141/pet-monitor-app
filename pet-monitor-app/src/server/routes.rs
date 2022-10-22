@@ -158,11 +158,10 @@ mod tests {
     quickcheck! {
         fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
             use rocket::local::blocking::Client;
-            //println!("{:?}/{:?}", domain, path.join("/"));
 
             let path = "/".to_string() + &path.join("/");
 
-            if Reference::parse(&domain).is_err() || Origin::parse(&path).is_err() {
+            if Reference::parse(&domain).is_err() || Origin::parse(&path).is_err() || domain.len() == 0 || path.len() == 1 {
                 return TestResult::discard();
             }
 
