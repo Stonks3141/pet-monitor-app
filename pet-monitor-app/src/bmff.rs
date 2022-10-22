@@ -4,6 +4,43 @@ use fixed::types::*;
 use rocket::async_trait;
 use rocket::futures::io::{self, AsyncWrite, AsyncWriteExt};
 
+#[cfg(test)]
+mod tests;
+
+pub const MATRIX_0: [[I16F16; 3]; 3] = [
+    [I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+];
+
+pub const MATRIX_90: [[I16F16; 3]; 3] = [
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+];
+
+pub const MATRIX_180: [[I16F16; 3]; 3] = [
+    [I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+];
+
+pub const MATRIX_270: [[I16F16; 3]; 3] = [
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
+    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+];
+
+pub const fn matrix(degrees: u32) -> [[I16F16; 3]; 3] {
+    match degrees {
+        0 => MATRIX_0,
+        90 => MATRIX_90,
+        180 => MATRIX_180,
+        270 => MATRIX_270,
+        _ => panic!("`degrees` must be 0, 90, 180, or, 270"),
+    }
+}
+
 #[async_trait]
 pub trait BmffBox {
     const TYPE: [u8; 4];
@@ -34,7 +71,10 @@ where
     T: BmffBox,
     W: AsyncWrite + Unpin + Send,
 {
-    let size = bmff_box.size() + 8;
+    let mut size = bmff_box.size() + 8;
+    if T::EXTENDED_TYPE.is_some() {
+        size += 16;
+    }
     if size <= u32::MAX as u64 {
         w.write_all(&(size as u32).to_be_bytes()).await?;
         w.write_all(&T::TYPE).await?;
@@ -55,7 +95,10 @@ where
     T: FullBox,
     W: AsyncWrite + Unpin + Send,
 {
-    let size = bmff_box.size() + 8;
+    let mut size = bmff_box.size() + 8;
+    if T::EXTENDED_TYPE.is_some() {
+        size += 16;
+    }
     if size <= u32::MAX as u64 {
         w.write_all(&(size as u32).to_be_bytes()).await?;
         w.write_all(&T::TYPE).await?;
@@ -117,11 +160,7 @@ impl BmffBox for MovieBox {
     fn size(&self) -> u64 {
         self.mvhd.size()
             + self.trak.iter().map(|x| x.size()).sum::<u64>()
-            + if let Some(mvex) = &self.mvex {
-                mvex.size()
-            } else {
-                0
-            }
+            + self.mvex.as_ref().map(|x| x.size()).unwrap_or(0)
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -254,16 +293,8 @@ impl BmffBox for TrackBox {
     #[inline]
     fn size(&self) -> u64 {
         self.tkhd.size()
-            + if let Some(tref) = &self.tref {
-                tref.size()
-            } else {
-                0
-            }
-            + if let Some(edts) = &self.edts {
-                edts.size()
-            } else {
-                0
-            }
+            + self.tref.as_ref().map(|x| x.size()).unwrap_or(0)
+            + self.edts.as_ref().map(|x| x.size()).unwrap_or(0)
             + self.mdia.size()
     }
 
@@ -1502,11 +1533,8 @@ impl BmffBox for MovieExtendsBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        (if let Some(mehd) = &self.mehd {
-            mehd.size()
-        } else {
-            0
-        }) + self.trex.iter().map(|x| x.size()).sum::<u64>()
+        self.mehd.as_ref().map(|x| x.size()).unwrap_or(0)
+        + self.trex.iter().map(|x| x.size()).sum::<u64>()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
