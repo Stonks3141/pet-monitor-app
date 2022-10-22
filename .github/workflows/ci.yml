@@ -31,6 +31,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Create dummy `dist` directory
+        run: |
+          cd pet-monitor-app
+          mkdir dist
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
