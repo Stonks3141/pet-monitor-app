@@ -135,25 +135,22 @@ impl<'r> FromRequest<'r> for Token {
                         ))
                     }
                 }
-                Err(err) => match err.kind() {
-                    ErrorKind::Base64(e) => {
-                        warn!("Parsing JWT failed with error {:?}", e);
-                        Outcome::Failure((Status::InternalServerError, err))
+                Err(e) => {
+                    match e.kind() {
+                        ErrorKind::Base64(e) => warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Crypto(e) => warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Json(e) => warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Utf8(e) => warn!("Parsing JWT failed with error {:?}", e),
+                        _ => (),
                     }
-                    ErrorKind::Crypto(e) => {
-                        warn!("Parsing JWT failed with error {:?}", e);
-                        Outcome::Failure((Status::InternalServerError, err))
+                    match e.kind() {
+                        ErrorKind::Base64(_)
+                        | ErrorKind::Crypto(_)
+                        | ErrorKind::Json(_)
+                        | ErrorKind::Utf8(_) => Outcome::Failure((Status::InternalServerError, e)),
+                        _ => Outcome::Failure((Status::Unauthorized, e)),
                     }
-                    ErrorKind::Json(e) => {
-                        warn!("Parsing JWT failed with error {:?}", e);
-                        Outcome::Failure((Status::InternalServerError, err))
-                    }
-                    ErrorKind::Utf8(e) => {
-                        warn!("Parsing JWT failed with error {:?}", e);
-                        Outcome::Failure((Status::InternalServerError, err))
-                    }
-                    _ => Outcome::Failure((Status::Unauthorized, err)),
-                },
+                }
             }
         } else {
             Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))

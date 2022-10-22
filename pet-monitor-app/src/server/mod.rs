@@ -52,6 +52,7 @@ fn http_rocket(
     ctx_provider: Provider<Context>,
     log_level: LogLevel,
 ) -> Rocket<Build> {
+    #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = rocket::Config {
         port: ctx.port,
         address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
@@ -68,6 +69,7 @@ fn http_rocket(
 
 /// Returns the main server rocket
 fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -> Rocket<Build> {
+    #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = if let Some(tls) = &ctx.tls {
         rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),

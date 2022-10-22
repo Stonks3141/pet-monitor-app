@@ -40,13 +40,10 @@ const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
 pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
     Ok(
         if let Some(s) = STATIC_FILES.get_file(&path).map(|f| {
-            f.contents_utf8().map_err(|e| {
-                warn!(
-                    "Converting included file {:?} to UTF-8 failed with error {:?}",
-                    path, e
-                );
-                Err(Status::InternalServerError)
-            })?
+            f.contents_utf8().ok_or_else(|| {
+                warn!("Failed to convert included file {:?} to UTF-8", path);
+                Status::InternalServerError
+            })
         }) {
             (
                 if let Some(ext) = path.extension() {
@@ -55,23 +52,20 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
                 } else {
                     ContentType::Plain
                 },
-                s.to_string(),
+                s?.to_string(),
             )
         } else {
             (
                 ContentType::HTML,
                 STATIC_FILES
                     .get_file("index.html")
-                    .ok_or_else(|e| {
-                        warn!(
-                            "Getting index.html from included bundle failed with error {:?}",
-                            e
-                        );
+                    .ok_or_else(|| {
+                        warn!("Failed to get index.html from included bundle");
                         Status::InternalServerError
                     })?
                     .contents_utf8()
-                    .ok_or_else(|e| {
-                        warn!("Converting index.html to UTF-8 failed with error {:?}", e);
+                    .ok_or_else(|| {
+                        warn!("Failed to convert index.html to UTF-8");
                         Status::InternalServerError
                     })?
                     .to_string(),
@@ -109,7 +103,7 @@ pub async fn login(
                         Status::Ok
                     }
                     Err(e) => {
-                        warn!("Stringifying token failed with error {:?}", e);
+                        warn!("Stringifying token failed with error '{:?}'", e);
                         Status::InternalServerError
                     }
                 }
@@ -118,7 +112,7 @@ pub async fn login(
             }
         }
         Err(e) => {
-            warn!("Validating login attempt failed with error {:?}", e);
+            warn!("Validating login attempt failed with error '{:?}'", e);
             Status::InternalServerError
         }
     }
@@ -164,6 +158,7 @@ mod tests {
     quickcheck! {
         fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
             use rocket::local::blocking::Client;
+            //println!("{:?}/{:?}", domain, path.join("/"));
 
             let path = "/".to_string() + &path.join("/");
 
