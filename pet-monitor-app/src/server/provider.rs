@@ -18,7 +18,7 @@ impl<T: Clone> Provider<T> {
     pub fn new(val: T) -> Self {
         Self {
             inner: Arc::new(RwLock::new(val)),
-            sub: broadcast::channel::<T>(100).0,
+            sub: broadcast::channel::<T>(16).0,
         }
     }
 

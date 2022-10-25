@@ -1,41 +1,96 @@
+use std::num::NonZeroU32;
+
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
-use fixed::types::{U16F16, I8F8, I16F16};
+use fixed::types::{I16F16, I8F8, U16F16};
 use rocket::async_trait;
-use rocket::futures::io::{self, AsyncWrite, AsyncWriteExt};
+use rocket::tokio::io::{self, AsyncWrite, AsyncWriteExt};
 
 pub const MATRIX_0: [[I16F16; 3]; 3] = [
-    [I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+    [
+        I16F16::from_bits(0x00010000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00010000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x40000000),
+    ],
 ];
 
 pub const MATRIX_90: [[I16F16; 3]; 3] = [
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00010000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(-0x40000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x40000000),
+    ],
 ];
 
 pub const MATRIX_180: [[I16F16; 3]; 3] = [
-    [I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+    [
+        I16F16::from_bits(-0x40000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(-0x40000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x40000000),
+    ],
 ];
 
 pub const MATRIX_270: [[I16F16; 3]; 3] = [
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(-0x40000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00010000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000)],
-    [I16F16::from_bits(0x00000000), I16F16::from_bits(0x00000000), I16F16::from_bits(0x40000000)],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(-0x40000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00010000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+    ],
+    [
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x40000000),
+    ],
 ];
 
-pub const fn matrix(degrees: u32) -> [[I16F16; 3]; 3] {
+/// `degrees` must be 0, 90, 180, or 270
+pub const fn matrix(degrees: u32) -> Option<[[I16F16; 3]; 3]> {
     match degrees {
-        0 => MATRIX_0,
-        90 => MATRIX_90,
-        180 => MATRIX_180,
-        270 => MATRIX_270,
-        _ => panic!("`degrees` must be 0, 90, 180, or, 270"),
+        0 => Some(MATRIX_0),
+        90 => Some(MATRIX_90),
+        180 => Some(MATRIX_180),
+        270 => Some(MATRIX_270),
+        _ => None,
     }
+}
+
+fn duration(duration: &Duration, timescale: u32) -> u64 {
+    (duration.num_milliseconds() as f64 / 1000.0 * timescale as f64) as u64
 }
 
 #[async_trait]
@@ -63,7 +118,7 @@ pub trait WriteTo {
         W: AsyncWrite + Unpin + Send;
 }
 
-async fn write_to<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
+pub async fn write_to<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
 where
     T: BmffBox,
     W: AsyncWrite + Unpin + Send,
@@ -84,7 +139,7 @@ where
     Ok(())
 }
 
-async fn write_to_full<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
+pub async fn write_to_full<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
 where
     T: FullBox,
     W: AsyncWrite + Unpin + Send,
@@ -174,7 +229,7 @@ pub struct MovieHeaderBox {
     pub creation_time: DateTime<Utc>,
     pub modification_time: DateTime<Utc>,
     pub timescale: u32,
-    pub duration: Duration,
+    pub duration: Option<Duration>,
     pub rate: I16F16,
     pub volume: I8F8,
     pub matrix: [[I16F16; 3]; 3],
@@ -189,7 +244,12 @@ impl BmffBox for MovieHeaderBox {
     fn size(&self) -> u64 {
         12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             8 + 8 + 4 + 8
         } else {
@@ -209,17 +269,19 @@ impl BmffBox for MovieHeaderBox {
     {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
-        let duration_secs = self.duration.num_seconds();
+        let duration_secs = self
+            .duration
+            .as_ref()
+            .map(|x| duration(x, self.timescale))
+            .unwrap_or(u32::MAX as u64);
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
-            || duration_secs as u64 > u32::MAX as u64
+            || duration_secs > u32::MAX as u64
         {
-            w.write_all(&(creation_timestamp as u64).to_be_bytes())
-                .await?;
-            w.write_all(&(modification_timestamp as u64).to_be_bytes())
-                .await?;
+            w.write_all(&creation_timestamp.to_be_bytes()).await?;
+            w.write_all(&modification_timestamp.to_be_bytes()).await?;
             w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u64).to_be_bytes()).await?;
+            w.write_all(&duration_secs.to_be_bytes()).await?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
                 .await?;
@@ -231,15 +293,13 @@ impl BmffBox for MovieHeaderBox {
         w.write_all(&self.rate.to_be_bytes()).await?;
         w.write_all(&self.volume.to_be_bytes()).await?;
         w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&[0u32.to_be_bytes(); 2].concat())
-            .await?;
+        w.write_all(&[0u32.to_be_bytes(); 2].concat()).await?;
         for i in self.matrix {
             for j in i {
                 w.write_all(&j.to_be_bytes()).await?;
             }
         }
-        w.write_all(&[0u32.to_be_bytes(); 6].concat())
-        .await?;
+        w.write_all(&[0u32.to_be_bytes(); 6].concat()).await?;
         w.write_all(&self.next_track_id.to_be_bytes()).await?;
         Ok(())
     }
@@ -250,7 +310,12 @@ impl FullBox for MovieHeaderBox {
     fn version(&self) -> u8 {
         if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             1
         } else {
@@ -301,13 +366,15 @@ pub struct TrackHeaderBox {
     pub creation_time: DateTime<Utc>,
     pub modification_time: DateTime<Utc>,
     pub track_id: u32,
-    pub duration: Duration,
+    /// must be the same as in mvhd
+    pub timescale: u32,
+    pub duration: Option<Duration>,
     pub layer: i16,
     pub alternate_group: i16,
     pub volume: I8F8,
     pub matrix: [[I16F16; 3]; 3],
-    pub width: u32,
-    pub height: u32,
+    pub width: U16F16,
+    pub height: U16F16,
 }
 
 bitflags! {
@@ -326,7 +393,12 @@ impl BmffBox for TrackHeaderBox {
     fn size(&self) -> u64 {
         12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             8 + 8 + 4 + 4 + 8
         } else {
@@ -347,18 +419,20 @@ impl BmffBox for TrackHeaderBox {
     {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
-        let duration_secs = self.duration.num_seconds();
+        let duration_secs = self
+            .duration
+            .as_ref()
+            .map(|x| duration(x, self.timescale))
+            .unwrap_or(u32::MAX as u64);
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
         {
-            w.write_all(&(creation_timestamp as u64).to_be_bytes())
-                .await?;
-            w.write_all(&(modification_timestamp as u64).to_be_bytes())
-                .await?;
+            w.write_all(&creation_timestamp.to_be_bytes()).await?;
+            w.write_all(&modification_timestamp.to_be_bytes()).await?;
             w.write_all(&self.track_id.to_be_bytes()).await?;
             w.write_all(&0u32.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u64).to_be_bytes()).await?;
+            w.write_all(&duration_secs.to_be_bytes()).await?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
                 .await?;
@@ -368,8 +442,7 @@ impl BmffBox for TrackHeaderBox {
             w.write_all(&0u32.to_be_bytes()).await?;
             w.write_all(&(duration_secs as u32).to_be_bytes()).await?;
         }
-        w.write_all(&[0u32.to_be_bytes(); 2].concat())
-            .await?;
+        w.write_all(&[0u32.to_be_bytes(); 2].concat()).await?;
         w.write_all(&self.layer.to_be_bytes()).await?;
         w.write_all(&self.alternate_group.to_be_bytes()).await?;
         w.write_all(&self.volume.to_be_bytes()).await?;
@@ -390,7 +463,12 @@ impl FullBox for TrackHeaderBox {
     fn version(&self) -> u8 {
         if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             1
         } else {
@@ -399,7 +477,7 @@ impl FullBox for TrackHeaderBox {
     }
 
     fn flags(&self) -> [u8; 3] {
-        let flags = self.flags.bits.to_be_bytes();
+        let flags = self.flags.bits().to_be_bytes();
         [flags[1], flags[2], flags[3]]
     }
 }
@@ -456,7 +534,7 @@ pub struct MediaHeaderBox {
     pub creation_time: DateTime<Utc>,
     pub modification_time: DateTime<Utc>,
     pub timescale: u32,
-    pub duration: Duration,
+    pub duration: Option<Duration>,
     pub language: [u8; 3],
 }
 
@@ -468,12 +546,18 @@ impl BmffBox for MediaHeaderBox {
     fn size(&self) -> u64 {
         12 + (if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             8 + 8 + 4 + 8
         } else {
             4 * 4
-        }) + 2 + 2
+        }) + 2
+            + 2
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -482,15 +566,17 @@ impl BmffBox for MediaHeaderBox {
     {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
-        let duration_secs = self.duration.num_seconds();
+        let duration_secs = self
+            .duration
+            .as_ref()
+            .map(|x| duration(x, self.timescale))
+            .unwrap_or(u32::MAX as u64);
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
         {
-            w.write_all(&creation_timestamp.to_be_bytes())
-                .await?;
-            w.write_all(&modification_timestamp.to_be_bytes())
-                .await?;
+            w.write_all(&creation_timestamp.to_be_bytes()).await?;
+            w.write_all(&modification_timestamp.to_be_bytes()).await?;
             w.write_all(&self.timescale.to_be_bytes()).await?;
             w.write_all(&duration_secs.to_be_bytes()).await?;
         } else {
@@ -520,7 +606,12 @@ impl FullBox for MediaHeaderBox {
     fn version(&self) -> u8 {
         if self.creation_time.timestamp() as u64 > u32::MAX as u64
             || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self.duration.num_seconds() as u64 > u32::MAX as u64
+            || self
+                .duration
+                .as_ref()
+                .map(|x| duration(x, self.timescale))
+                .unwrap_or(u32::MAX as u64)
+                > u32::MAX as u64
         {
             1
         } else {
@@ -560,8 +651,7 @@ impl BmffBox for HandlerBox {
         w.write_all(&0u32.to_be_bytes()).await?;
         w.write_all(&(self.handler_type as u32).to_be_bytes())
             .await?;
-        w.write_all(&[0u32.to_be_bytes(); 3].concat())
-            .await?;
+        w.write_all(&[0u32.to_be_bytes(); 3].concat()).await?;
         w.write_all(self.name.as_bytes()).await?;
         w.write_all(&[0u8]).await?; // Null terminator
         Ok(())
@@ -785,7 +875,7 @@ impl FullBox for NullMediaHeaderBox {
 
     #[inline]
     fn flags(&self) -> [u8; 3] {
-        let flags = self.flags.bits.to_be_bytes();
+        let flags = self.flags.bits().to_be_bytes();
         [flags[1], flags[2], flags[3]]
     }
 }
@@ -878,7 +968,7 @@ impl WriteTo for DataEntry {
 
 bitflags! {
     pub struct DataEntryFlags: u32 {
-        /// media data in same file as containing MovieBox
+        /// Indicates that the media data is in the same file as the containing MovieBox.
         const SELF_CONTAINED = 0x000001;
     }
 }
@@ -895,14 +985,18 @@ impl BmffBox for DataEntryUrlBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + self.location.len() as u64 + 1
+        12 + if !self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
+            self.location.len() as u64 + 1
+        } else {
+            0
+        }
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send,
     {
-        if self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
+        if !self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
             w.write_all(self.location.as_bytes()).await?;
             w.write_all(&[0u8]).await?; // Null terminator
         }
@@ -918,7 +1012,7 @@ impl FullBox for DataEntryUrlBox {
 
     #[inline]
     fn flags(&self) -> [u8; 3] {
-        let flags = self.flags.bits.to_be_bytes();
+        let flags = self.flags.bits().to_be_bytes();
         [flags[1], flags[2], flags[3]]
     }
 }
@@ -927,7 +1021,7 @@ impl FullBox for DataEntryUrlBox {
 pub struct DataEntryUrnBox {
     pub flags: DataEntryFlags,
     pub name: String,
-    pub location: String,
+    pub location: Option<String>,
 }
 
 #[async_trait]
@@ -936,7 +1030,13 @@ impl BmffBox for DataEntryUrnBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + self.name.len() as u64 + 1 + self.location.len() as u64 + 1
+        12 + self.name.len() as u64
+            + 1
+            + self
+                .location
+                .as_ref()
+                .map(|x| x.len() as u64 + 1)
+                .unwrap_or(0)
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -945,8 +1045,10 @@ impl BmffBox for DataEntryUrnBox {
     {
         w.write_all(self.name.as_bytes()).await?;
         w.write_all(&[0u8]).await?; // Null terminator
-        w.write_all(self.location.as_bytes()).await?;
-        w.write_all(&[0u8]).await?; // Null terminator
+        if let Some(location) = &self.location {
+            w.write_all(location.as_bytes()).await?;
+            w.write_all(&[0u8]).await?; // Null terminator
+        }
         Ok(())
     }
 }
@@ -959,7 +1061,7 @@ impl FullBox for DataEntryUrnBox {
 
     #[inline]
     fn flags(&self) -> [u8; 3] {
-        let flags = self.flags.bits.to_be_bytes();
+        let flags = self.flags.bits().to_be_bytes();
         [flags[1], flags[2], flags[3]]
     }
 }
@@ -969,6 +1071,7 @@ pub struct SampleTableBox {
     pub stsd: SampleDescriptionBox,
     pub stts: TimeToSampleBox,
     pub stsc: SampleToChunkBox,
+    pub stsz: SampleSizeBox,
     pub stco: ChunkOffsetBox,
 }
 
@@ -978,16 +1081,21 @@ impl BmffBox for SampleTableBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + self.stsd.size() + self.stts.size() + self.stsc.size() + self.stco.size()
+        8 + self.stsd.size()
+            + self.stts.size()
+            + self.stsc.size()
+            + self.stsz.size()
+            + self.stco.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send,
     {
-        write_to(&self.stsd, &mut w).await?;
+        write_to_full(&self.stsd, &mut w).await?;
         write_to_full(&self.stts, &mut w).await?;
         write_to_full(&self.stsc, &mut w).await?;
+        write_to_full(&self.stsz, &mut w).await?;
         write_to_full(&self.stco, &mut w).await?;
         Ok(())
     }
@@ -1030,15 +1138,15 @@ impl FullBox for TimeToSampleBox {
 }
 
 #[async_trait]
-pub trait SampleEntry: std::fmt::Debug {
+pub trait SampleEntry: std::fmt::Debug + Send + Sync {
     fn size(&self) -> u64;
     async fn write_to(&self) -> Vec<u8>;
-    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync>;
+    fn clone_box(&self) -> Box<dyn SampleEntry>;
 }
 
 #[derive(Debug)]
 pub struct SampleDescriptionBox {
-    pub entries: Vec<Box<dyn SampleEntry + Send + Sync>>,
+    pub entries: Vec<Box<dyn SampleEntry>>,
 }
 
 impl Clone for SampleDescriptionBox {
@@ -1055,7 +1163,7 @@ impl BmffBox for SampleDescriptionBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + 4 + self.entries.iter().map(|x| x.size()).sum::<u64>()
+        12 + 4 + self.entries.iter().map(|x| x.size()).sum::<u64>()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1066,6 +1174,82 @@ impl BmffBox for SampleDescriptionBox {
             .await?;
         for entry in self.entries.iter() {
             w.write_all(&entry.write_to().await).await?;
+        }
+        Ok(())
+    }
+}
+
+impl FullBox for SampleDescriptionBox {
+    #[inline]
+    fn version(&self) -> u8 {
+        0
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SampleSizeBox {
+    pub sample_size: SampleSize,
+}
+
+#[async_trait]
+impl BmffBox for SampleSizeBox {
+    const TYPE: [u8; 4] = *b"stsz";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        12 + self.sample_size.size()
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        self.sample_size.write_to(&mut w).await?;
+        Ok(())
+    }
+}
+
+impl FullBox for SampleSizeBox {
+    #[inline]
+    fn version(&self) -> u8 {
+        0
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SampleSize {
+    Same(NonZeroU32),
+    Different(Vec<u32>),
+}
+
+impl SampleSize {
+    fn size(&self) -> u64 {
+        match self {
+            Self::Same(_) => 8,
+            Self::Different(x) => 8 + x.len() as u64 * 4,
+        }
+    }
+}
+
+#[async_trait]
+impl WriteTo for SampleSize {
+    async fn write_to<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        match self {
+            Self::Same(sample_size) => {
+                w.write_all(&sample_size.get().to_be_bytes()).await?;
+                w.write_all(&0u32.to_be_bytes()).await?;
+            }
+            Self::Different(entry_sizes) => {
+                w.write_all(&0u32.to_be_bytes()).await?;
+                w.write_all(&(entry_sizes.len() as u32).to_be_bytes())
+                    .await?;
+                for entry_size in entry_sizes.iter() {
+                    w.write_all(&entry_size.to_be_bytes()).await?;
+                }
+            }
         }
         Ok(())
     }
@@ -1136,7 +1320,7 @@ impl SampleEntry for VisualSampleEntry {
         buf
     }
 
-    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+    fn clone_box(&self) -> Box<dyn SampleEntry> {
         Box::new(self.clone())
     }
 }
@@ -1188,7 +1372,7 @@ impl SampleEntry for AudioSampleEntry {
         buf
     }
 
-    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+    fn clone_box(&self) -> Box<dyn SampleEntry> {
         Box::new(self.clone())
     }
 }
@@ -1234,7 +1418,7 @@ impl SampleEntry for HintSampleEntry {
         buf
     }
 
-    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+    fn clone_box(&self) -> Box<dyn SampleEntry> {
         Box::new(self.clone())
     }
 }
@@ -1257,7 +1441,7 @@ impl BmffBox for AvcSampleEntry {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + 6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
+        8 + 6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1267,6 +1451,11 @@ impl BmffBox for AvcSampleEntry {
         w.write_all(&[0u8; 6]).await?;
         w.write_all(&self.data_reference_index.to_be_bytes())
             .await?;
+        w.write_all(&0u16.to_be_bytes()).await?;
+        w.write_all(&0u16.to_be_bytes()).await?;
+        w.write_all(&0u32.to_be_bytes()).await?;
+        w.write_all(&0u32.to_be_bytes()).await?;
+        w.write_all(&0u32.to_be_bytes()).await?;
         w.write_all(&self.width.to_be_bytes()).await?;
         w.write_all(&self.height.to_be_bytes()).await?;
         w.write_all(&self.horiz_resolution.to_be_bytes()).await?;
@@ -1275,7 +1464,7 @@ impl BmffBox for AvcSampleEntry {
         w.write_all(&self.frame_count.to_be_bytes()).await?;
         w.write_all(&[0u8; 32]).await?;
         w.write_all(&self.depth.to_be_bytes()).await?;
-        w.write_all(&u16::MAX.to_be_bytes()).await?; // pre_defined
+        w.write_all(&(-1i16).to_be_bytes()).await?; // pre_defined
         write_to(&self.avcc, &mut w).await?;
         Ok(())
     }
@@ -1295,7 +1484,7 @@ impl SampleEntry for AvcSampleEntry {
         buf
     }
 
-    fn clone_box(&self) -> Box<dyn SampleEntry + Send + Sync> {
+    fn clone_box(&self) -> Box<dyn SampleEntry> {
         Box::new(self.clone())
     }
 }
@@ -1334,9 +1523,16 @@ pub struct AvcDecoderConfigurationRecord {
 
 impl AvcDecoderConfigurationRecord {
     fn size(&self) -> u64 {
-        1 + 1 + 1 + 1 + 1 + 1
-            + 2 + self.sequence_parameter_set.len() as u64
-            + 1 + 2 + self.picture_parameter_set.len() as u64
+        1 + 1
+            + 1
+            + 1
+            + 1
+            + 1
+            + 2
+            + self.sequence_parameter_set.len() as u64
+            + 1
+            + 2
+            + self.picture_parameter_set.len() as u64
     }
 }
 
@@ -1510,7 +1706,7 @@ impl BmffBox for MovieExtendsBox {
     #[inline]
     fn size(&self) -> u64 {
         8 + self.mehd.as_ref().map(|x| x.size()).unwrap_or(0)
-        + self.trex.iter().map(|x| x.size()).sum::<u64>()
+            + self.trex.iter().map(|x| x.size()).sum::<u64>()
     }
 
     async fn write_box<W>(&self, mut w: W) -> io::Result<()>
@@ -1608,7 +1804,7 @@ impl BmffBox for TrackExtendsBox {
         w.write_all(&self.default_sample_duration.to_be_bytes())
             .await?;
         w.write_all(&self.default_sample_size.to_be_bytes()).await?;
-        w.write_all(&self.default_sample_flags.bits.to_be_bytes())
+        w.write_all(&self.default_sample_flags.bits().to_be_bytes())
             .await?;
         Ok(())
     }
@@ -1641,5 +1837,330 @@ impl BmffBox for MediaDataBox {
     {
         w.write_all(&self.data).await?;
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MovieFragmentBox {
+    pub mfhd: MovieFragmentHeaderBox,
+    pub traf: Vec<TrackFragmentBox>,
+}
+
+#[async_trait]
+impl BmffBox for MovieFragmentBox {
+    const TYPE: [u8; 4] = *b"moof";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        8 + self.mfhd.size() + self.traf.iter().map(|x| x.size()).sum::<u64>()
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        write_to_full(&self.mfhd, &mut w).await?;
+        for traf in self.traf.iter() {
+            write_to(traf, &mut w).await?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MovieFragmentHeaderBox {
+    pub sequence_number: u32,
+}
+
+#[async_trait]
+impl BmffBox for MovieFragmentHeaderBox {
+    const TYPE: [u8; 4] = *b"mfhd";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        12 + 4
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        w.write_all(&self.sequence_number.to_be_bytes()).await?;
+        Ok(())
+    }
+}
+
+impl FullBox for MovieFragmentHeaderBox {
+    #[inline]
+    fn version(&self) -> u8 {
+        0
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TrackFragmentBox {
+    pub tfhd: TrackFragmentHeaderBox,
+    pub trun: Vec<TrackFragmentRunBox>,
+    // pub sdtp: (),
+    // pub sbgp: (),
+    // pub subs: (),
+}
+
+#[async_trait]
+impl BmffBox for TrackFragmentBox {
+    const TYPE: [u8; 4] = *b"traf";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        8 + self.tfhd.size() + self.trun.iter().map(|x| x.size()).sum::<u64>()
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        write_to_full(&self.tfhd, &mut w).await?;
+        for trun in self.trun.iter() {
+            write_to_full(trun, &mut w).await?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TrackFragmentHeaderBox {
+    pub track_id: u32,
+    pub base_data_offset: Option<u64>,
+    pub sample_description_index: Option<u32>,
+    pub default_sample_duration: Option<u32>,
+    pub default_sample_size: Option<u32>,
+    pub default_sample_flags: Option<DefaultSampleFlags>,
+}
+
+bitflags! {
+    struct TrackFragmentHeaderFlags: u32 {
+        const BASE_DATA_OFFSET_PRESENT = 0x000001;
+        const SAMPLE_DESCRIPTION_INDEX_PRESENT = 0x000002;
+        const DEFAULT_SAMPLE_DURATION_PRESENT = 0x000008;
+        const DEFAULT_SAMPLE_SIZE_PRESENT = 0x000010;
+        const DEFAULT_SAMPLE_FLAGS_PRESENT = 0x000020;
+        const DURATION_IS_EMPTY = 0x010000;
+    }
+}
+
+#[async_trait]
+impl BmffBox for TrackFragmentHeaderBox {
+    const TYPE: [u8; 4] = *b"tfhd";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        12 + 4
+            + self.base_data_offset.as_ref().map_or(0, |_| 8)
+            + self.sample_description_index.as_ref().map_or(0, |_| 4)
+            + self.default_sample_duration.as_ref().map_or(0, |_| 4)
+            + self.default_sample_size.as_ref().map_or(0, |_| 4)
+            + self.default_sample_flags.as_ref().map_or(0, |_| 4)
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        w.write_all(&self.track_id.to_be_bytes()).await?;
+        if let Some(base_data_offset) = self.base_data_offset {
+            w.write_all(&base_data_offset.to_be_bytes()).await?;
+        }
+        if let Some(sample_description_index) = self.sample_description_index {
+            w.write_all(&sample_description_index.to_be_bytes()).await?;
+        }
+        if let Some(default_sample_duration) = self.default_sample_duration {
+            w.write_all(&default_sample_duration.to_be_bytes()).await?;
+        }
+        if let Some(default_sample_size) = self.default_sample_size {
+            w.write_all(&default_sample_size.to_be_bytes()).await?;
+        }
+        if let Some(default_sample_flags) = self.default_sample_flags {
+            w.write_all(&default_sample_flags.bits().to_be_bytes())
+                .await?;
+        }
+        Ok(())
+    }
+}
+
+impl FullBox for TrackFragmentHeaderBox {
+    #[inline]
+    fn version(&self) -> u8 {
+        0
+    }
+
+    #[inline]
+    fn flags(&self) -> [u8; 3] {
+        let mut flags = TrackFragmentHeaderFlags::empty();
+        if self.base_data_offset.is_some() {
+            flags |= TrackFragmentHeaderFlags::BASE_DATA_OFFSET_PRESENT;
+        }
+        if self.sample_description_index.is_some() {
+            flags |= TrackFragmentHeaderFlags::SAMPLE_DESCRIPTION_INDEX_PRESENT;
+        }
+        if self.default_sample_duration.is_some() {
+            flags |= TrackFragmentHeaderFlags::DEFAULT_SAMPLE_DURATION_PRESENT;
+        }
+        if self.default_sample_size.is_some() {
+            flags |= TrackFragmentHeaderFlags::DEFAULT_SAMPLE_SIZE_PRESENT;
+        }
+        if self.default_sample_flags.is_some() {
+            flags |= TrackFragmentHeaderFlags::DEFAULT_SAMPLE_FLAGS_PRESENT;
+        }
+        let flags = flags.bits().to_be_bytes();
+        [flags[1], flags[2], flags[3]]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TrackFragmentRunBox {
+    pub data_offset: Option<i32>,
+    pub first_sample_flags: Option<u32>,
+    pub sample_durations: Option<Vec<u32>>,
+    pub sample_sizes: Option<Vec<u32>>,
+    pub sample_flags: Option<Vec<u32>>,
+    pub sample_composition_time_offsets: Option<Vec<u32>>,
+}
+
+bitflags! {
+    struct TrackFragmentRunFlags: u32 {
+        const DATA_OFFSET_PRESENT = 0x000001;
+        const FIRST_SAMPLE_FLAGS_PRESENT = 0x000004;
+        const SAMPLE_DURATION_PRESENT = 0x000100;
+        const SAMPLE_SIZE_PRESENT = 0x000200;
+        const SAMPLE_FLAGS_PRESENT = 0x000400;
+        const SAMPLE_COMPOSITION_TIME_OFFSETS_PRESENT = 0x000800;
+    }
+}
+
+impl TrackFragmentRunBox {
+    fn len(&self) -> Option<usize> {
+        let mut len = None;
+        if let Some(sample_durations) = &self.sample_durations {
+            len = Some(sample_durations.len());
+        }
+        if let Some(sample_sizes) = &self.sample_sizes {
+            let l = sample_sizes.len();
+            if let Some(len) = len {
+                if len != l {
+                    panic!();
+                }
+            } else {
+                len = Some(l);
+            }
+        }
+        if let Some(sample_flags) = &self.sample_flags {
+            let l = sample_flags.len();
+            if let Some(len) = len {
+                if len != l {
+                    panic!();
+                }
+            } else {
+                len = Some(l);
+            }
+        }
+        if let Some(sample_composition_time_offsets) = &self.sample_composition_time_offsets {
+            let l = sample_composition_time_offsets.len();
+            if let Some(len) = len {
+                if len != l {
+                    panic!();
+                }
+            } else {
+                len = Some(l);
+            }
+        }
+        len
+    }
+}
+
+#[async_trait]
+impl BmffBox for TrackFragmentRunBox {
+    const TYPE: [u8; 4] = *b"trun";
+
+    #[inline]
+    fn size(&self) -> u64 {
+        12 + 4
+            + self.data_offset.as_ref().map_or(0, |_| 4)
+            + self.first_sample_flags.as_ref().map_or(0, |_| 4)
+            + self.len().unwrap_or(0) as u64
+                * 4
+                * (self.sample_durations.is_some() as u64
+                    + self.sample_sizes.is_some() as u64
+                    + self.sample_flags.is_some() as u64
+                    + self.sample_composition_time_offsets.is_some() as u64)
+    }
+
+    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send,
+    {
+        let len = self.len().unwrap_or(0);
+        w.write_all(&(len as u32).to_be_bytes()).await?;
+        if let Some(data_offset) = self.data_offset {
+            w.write_all(&data_offset.to_be_bytes()).await?;
+        }
+        if let Some(first_sample_flags) = self.first_sample_flags {
+            w.write_all(&first_sample_flags.to_be_bytes()).await?;
+        }
+        for i in 0..len {
+            if let Some(sample_durations) = &self.sample_durations {
+                w.write_all(&sample_durations[i].to_be_bytes()).await?;
+            }
+            if let Some(sample_sizes) = &self.sample_sizes {
+                w.write_all(&sample_sizes[i].to_be_bytes()).await?;
+            }
+            if let Some(sample_flags) = &self.sample_flags {
+                w.write_all(&sample_flags[i].to_be_bytes()).await?;
+            }
+            if let Some(sample_composition_time_offsets) = &self.sample_composition_time_offsets {
+                w.write_all(&sample_composition_time_offsets[i].to_be_bytes())
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl FullBox for TrackFragmentRunBox {
+    #[inline]
+    fn version(&self) -> u8 {
+        0
+    }
+
+    #[inline]
+    fn flags(&self) -> [u8; 3] {
+        let mut flags = TrackFragmentRunFlags::empty();
+
+        flags.set(
+            TrackFragmentRunFlags::DATA_OFFSET_PRESENT,
+            self.data_offset.is_some(),
+        );
+        flags.set(
+            TrackFragmentRunFlags::FIRST_SAMPLE_FLAGS_PRESENT,
+            self.first_sample_flags.is_some(),
+        );
+        flags.set(
+            TrackFragmentRunFlags::SAMPLE_DURATION_PRESENT,
+            self.sample_durations.is_some(),
+        );
+        flags.set(
+            TrackFragmentRunFlags::SAMPLE_SIZE_PRESENT,
+            self.sample_sizes.is_some(),
+        );
+        flags.set(
+            TrackFragmentRunFlags::SAMPLE_FLAGS_PRESENT,
+            self.sample_flags.is_some(),
+        );
+        flags.set(
+            TrackFragmentRunFlags::SAMPLE_COMPOSITION_TIME_OFFSETS_PRESENT,
+            self.sample_composition_time_offsets.is_some(),
+        );
+
+        let flags = flags.bits().to_be_bytes();
+        [flags[1], flags[2], flags[3]]
     }
 }

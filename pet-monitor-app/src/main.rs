@@ -12,7 +12,7 @@ compile_error!("Linux is required for V4L2");
 use log::{info, Level};
 use rocket::config::LogLevel;
 
-mod bmff;
+mod fmp4;
 mod cli;
 mod config;
 mod secrets;
