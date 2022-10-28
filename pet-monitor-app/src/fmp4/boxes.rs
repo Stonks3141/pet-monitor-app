@@ -3,8 +3,7 @@ use std::num::NonZeroU32;
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
-use rocket::async_trait;
-use rocket::tokio::io::{self, AsyncWrite, AsyncWriteExt};
+use std::io::{self, prelude::*};
 
 pub const MATRIX_0: [[I16F16; 3]; 3] = [
     [
@@ -93,14 +92,11 @@ fn duration(duration: &Duration, timescale: u32) -> u64 {
     (duration.num_milliseconds() as f64 / 1000.0 * timescale as f64) as u64
 }
 
-#[async_trait]
 pub trait BmffBox {
     const TYPE: [u8; 4];
     const EXTENDED_TYPE: Option<[u8; 16]> = None;
     fn size(&self) -> u64;
-    async fn write_box<W>(&self, writer: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send;
+    fn write_box(&self, writer: impl Write) -> io::Result<()>;
 }
 
 pub trait FullBox: BmffBox {
@@ -111,54 +107,43 @@ pub trait FullBox: BmffBox {
     }
 }
 
-#[async_trait]
 pub trait WriteTo {
-    async fn write_to<W>(&self, writer: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send;
+    fn write_to(&self, writer: impl Write) -> io::Result<()>;
 }
 
-pub async fn write_to<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
-where
-    T: BmffBox,
-    W: AsyncWrite + Unpin + Send,
-{
+pub fn write_to<T: BmffBox>(bmff_box: &T, mut w: impl Write) -> io::Result<()> {
     let size = bmff_box.size();
     if size <= u32::MAX as u64 {
-        w.write_all(&(size as u32).to_be_bytes()).await?;
-        w.write_all(&T::TYPE).await?;
+        w.write_all(&(size as u32).to_be_bytes())?;
+        w.write_all(&T::TYPE)?;
     } else {
-        w.write_all(&1u32.to_be_bytes()).await?;
-        w.write_all(&T::TYPE).await?;
-        w.write_all(&(size + 8).to_be_bytes()).await?;
+        w.write_all(&1u32.to_be_bytes())?;
+        w.write_all(&T::TYPE)?;
+        w.write_all(&(size + 8).to_be_bytes())?;
     }
     if let Some(ext_type) = T::EXTENDED_TYPE {
-        w.write_all(&ext_type).await?;
+        w.write_all(&ext_type)?;
     }
-    bmff_box.write_box(&mut w).await?;
+    bmff_box.write_box(&mut w)?;
     Ok(())
 }
 
-pub async fn write_to_full<T, W>(bmff_box: &T, mut w: W) -> io::Result<()>
-where
-    T: FullBox,
-    W: AsyncWrite + Unpin + Send,
-{
+pub fn write_to_full<T: FullBox>(bmff_box: &T, mut w: impl Write) -> io::Result<()> {
     let size = bmff_box.size();
     if size <= u32::MAX as u64 {
-        w.write_all(&(size as u32).to_be_bytes()).await?;
-        w.write_all(&T::TYPE).await?;
+        w.write_all(&(size as u32).to_be_bytes())?;
+        w.write_all(&T::TYPE)?;
     } else {
-        w.write_all(&1u32.to_be_bytes()).await?;
-        w.write_all(&T::TYPE).await?;
-        w.write_all(&(size + 8).to_be_bytes()).await?;
+        w.write_all(&1u32.to_be_bytes())?;
+        w.write_all(&T::TYPE)?;
+        w.write_all(&(size + 8).to_be_bytes())?;
     }
     if let Some(ext_type) = T::EXTENDED_TYPE {
-        w.write_all(&ext_type).await?;
+        w.write_all(&ext_type)?;
     }
-    w.write_all(&[bmff_box.version()]).await?;
-    w.write_all(&bmff_box.flags()).await?;
-    bmff_box.write_box(&mut w).await?;
+    w.write_all(&[bmff_box.version()])?;
+    w.write_all(&bmff_box.flags())?;
+    bmff_box.write_box(&mut w)?;
     Ok(())
 }
 
@@ -169,7 +154,6 @@ pub struct FileTypeBox {
     pub compatible_brands: Vec<[u8; 4]>,
 }
 
-#[async_trait]
 impl BmffBox for FileTypeBox {
     const TYPE: [u8; 4] = *b"ftyp";
 
@@ -178,14 +162,11 @@ impl BmffBox for FileTypeBox {
         8 + 4 + 4 + self.compatible_brands.len() as u64 * 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.major_brand).await?;
-        w.write_all(&self.minor_version.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.major_brand)?;
+        w.write_all(&self.minor_version.to_be_bytes())?;
         for i in self.compatible_brands.iter() {
-            w.write_all(i).await?;
+            w.write_all(i)?;
         }
         Ok(())
     }
@@ -198,7 +179,6 @@ pub struct MovieBox {
     pub mvex: Option<MovieExtendsBox>,
 }
 
-#[async_trait]
 impl BmffBox for MovieBox {
     const TYPE: [u8; 4] = *b"moov";
 
@@ -209,16 +189,13 @@ impl BmffBox for MovieBox {
             + self.mvex.as_ref().map(|x| x.size()).unwrap_or(0)
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.mvhd, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.mvhd, &mut w)?;
         for trak in self.trak.iter() {
-            write_to(trak, &mut w).await?;
+            write_to(trak, &mut w)?;
         }
         if let Some(mvex) = &self.mvex {
-            write_to(mvex, &mut w).await?;
+            write_to(mvex, &mut w)?;
         }
         Ok(())
     }
@@ -236,7 +213,6 @@ pub struct MovieHeaderBox {
     pub next_track_id: u32,
 }
 
-#[async_trait]
 impl BmffBox for MovieHeaderBox {
     const TYPE: [u8; 4] = *b"mvhd";
 
@@ -263,10 +239,7 @@ impl BmffBox for MovieHeaderBox {
             + 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self
@@ -278,29 +251,29 @@ impl BmffBox for MovieHeaderBox {
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs > u32::MAX as u64
         {
-            w.write_all(&creation_timestamp.to_be_bytes()).await?;
-            w.write_all(&modification_timestamp.to_be_bytes()).await?;
-            w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&duration_secs.to_be_bytes()).await?;
+            w.write_all(&creation_timestamp.to_be_bytes())?;
+            w.write_all(&modification_timestamp.to_be_bytes())?;
+            w.write_all(&self.timescale.to_be_bytes())?;
+            w.write_all(&duration_secs.to_be_bytes())?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                .await?;
+                ?;
             w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                .await?;
-            w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u32).to_be_bytes()).await?;
+                ?;
+            w.write_all(&self.timescale.to_be_bytes())?;
+            w.write_all(&(duration_secs as u32).to_be_bytes())?;
         }
-        w.write_all(&self.rate.to_be_bytes()).await?;
-        w.write_all(&self.volume.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&[0u32.to_be_bytes(); 2].concat()).await?;
+        w.write_all(&self.rate.to_be_bytes())?;
+        w.write_all(&self.volume.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&[0u32.to_be_bytes(); 2].concat())?;
         for i in self.matrix {
             for j in i {
-                w.write_all(&j.to_be_bytes()).await?;
+                w.write_all(&j.to_be_bytes())?;
             }
         }
-        w.write_all(&[0u32.to_be_bytes(); 6].concat()).await?;
-        w.write_all(&self.next_track_id.to_be_bytes()).await?;
+        w.write_all(&[0u32.to_be_bytes(); 6].concat())?;
+        w.write_all(&self.next_track_id.to_be_bytes())?;
         Ok(())
     }
 }
@@ -332,7 +305,6 @@ pub struct TrackBox {
     pub mdia: MediaBox,
 }
 
-#[async_trait]
 impl BmffBox for TrackBox {
     const TYPE: [u8; 4] = *b"trak";
 
@@ -344,18 +316,15 @@ impl BmffBox for TrackBox {
             + self.mdia.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.tkhd, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.tkhd, &mut w)?;
         if let Some(tref) = &self.tref {
-            write_to(tref, &mut w).await?;
+            write_to(tref, &mut w)?;
         }
         if let Some(edts) = &self.edts {
-            write_to_full(edts, &mut w).await?;
+            write_to_full(edts, &mut w)?;
         }
-        write_to(&self.mdia, &mut w).await?;
+        write_to(&self.mdia, &mut w)?;
         Ok(())
     }
 }
@@ -385,7 +354,6 @@ bitflags! {
     }
 }
 
-#[async_trait]
 impl BmffBox for TrackHeaderBox {
     const TYPE: [u8; 4] = *b"tkhd";
 
@@ -413,10 +381,7 @@ impl BmffBox for TrackHeaderBox {
             + 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self
@@ -428,32 +393,32 @@ impl BmffBox for TrackHeaderBox {
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
         {
-            w.write_all(&creation_timestamp.to_be_bytes()).await?;
-            w.write_all(&modification_timestamp.to_be_bytes()).await?;
-            w.write_all(&self.track_id.to_be_bytes()).await?;
-            w.write_all(&0u32.to_be_bytes()).await?;
-            w.write_all(&duration_secs.to_be_bytes()).await?;
+            w.write_all(&creation_timestamp.to_be_bytes())?;
+            w.write_all(&modification_timestamp.to_be_bytes())?;
+            w.write_all(&self.track_id.to_be_bytes())?;
+            w.write_all(&0u32.to_be_bytes())?;
+            w.write_all(&duration_secs.to_be_bytes())?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                .await?;
+                ?;
             w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                .await?;
-            w.write_all(&self.track_id.to_be_bytes()).await?;
-            w.write_all(&0u32.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u32).to_be_bytes()).await?;
+                ?;
+            w.write_all(&self.track_id.to_be_bytes())?;
+            w.write_all(&0u32.to_be_bytes())?;
+            w.write_all(&(duration_secs as u32).to_be_bytes())?;
         }
-        w.write_all(&[0u32.to_be_bytes(); 2].concat()).await?;
-        w.write_all(&self.layer.to_be_bytes()).await?;
-        w.write_all(&self.alternate_group.to_be_bytes()).await?;
-        w.write_all(&self.volume.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
+        w.write_all(&[0u32.to_be_bytes(); 2].concat())?;
+        w.write_all(&self.layer.to_be_bytes())?;
+        w.write_all(&self.alternate_group.to_be_bytes())?;
+        w.write_all(&self.volume.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
         for i in self.matrix {
             for j in i {
-                w.write_all(&j.to_be_bytes()).await?;
+                w.write_all(&j.to_be_bytes())?;
             }
         }
-        w.write_all(&self.width.to_be_bytes()).await?;
-        w.write_all(&self.height.to_be_bytes()).await?;
+        w.write_all(&self.width.to_be_bytes())?;
+        w.write_all(&self.height.to_be_bytes())?;
         Ok(())
     }
 }
@@ -485,7 +450,6 @@ impl FullBox for TrackHeaderBox {
 #[derive(Debug, Clone)]
 pub struct TrackReferenceBox;
 
-#[async_trait]
 impl BmffBox for TrackReferenceBox {
     const TYPE: [u8; 4] = *b"tref";
 
@@ -494,10 +458,7 @@ impl BmffBox for TrackReferenceBox {
         8
     }
 
-    async fn write_box<W>(&self, _w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, _w: impl Write) -> io::Result<()> {
         Ok(())
     }
 }
@@ -509,7 +470,6 @@ pub struct MediaBox {
     pub minf: MediaInformationBox,
 }
 
-#[async_trait]
 impl BmffBox for MediaBox {
     const TYPE: [u8; 4] = *b"mdia";
 
@@ -518,13 +478,10 @@ impl BmffBox for MediaBox {
         8 + self.mdhd.size() + self.hdlr.size() + self.minf.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.mdhd, &mut w).await?;
-        write_to_full(&self.hdlr, &mut w).await?;
-        write_to(&self.minf, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.mdhd, &mut w)?;
+        write_to_full(&self.hdlr, &mut w)?;
+        write_to(&self.minf, &mut w)?;
         Ok(())
     }
 }
@@ -538,7 +495,6 @@ pub struct MediaHeaderBox {
     pub language: [u8; 3],
 }
 
-#[async_trait]
 impl BmffBox for MediaHeaderBox {
     const TYPE: [u8; 4] = *b"mdhd";
 
@@ -560,10 +516,7 @@ impl BmffBox for MediaHeaderBox {
             + 2
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         let creation_timestamp = self.creation_time.timestamp();
         let modification_timestamp = self.modification_time.timestamp();
         let duration_secs = self
@@ -575,17 +528,17 @@ impl BmffBox for MediaHeaderBox {
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
         {
-            w.write_all(&creation_timestamp.to_be_bytes()).await?;
-            w.write_all(&modification_timestamp.to_be_bytes()).await?;
-            w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&duration_secs.to_be_bytes()).await?;
+            w.write_all(&creation_timestamp.to_be_bytes())?;
+            w.write_all(&modification_timestamp.to_be_bytes())?;
+            w.write_all(&self.timescale.to_be_bytes())?;
+            w.write_all(&duration_secs.to_be_bytes())?;
         } else {
             w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                .await?;
+                ?;
             w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                .await?;
-            w.write_all(&self.timescale.to_be_bytes()).await?;
-            w.write_all(&(duration_secs as u32).to_be_bytes()).await?;
+                ?;
+            w.write_all(&self.timescale.to_be_bytes())?;
+            w.write_all(&(duration_secs as u32).to_be_bytes())?;
         }
         // 000aaaaa 000bbbbb 000ccccc
         //    |||||   //  \\\   |||||
@@ -595,8 +548,8 @@ impl BmffBox for MediaHeaderBox {
             (self.language[0] - 0x60) << 2 | (self.language[1] - 0x60) >> 3,
             (self.language[1] - 0x60) << 5 | (self.language[2] - 0x60),
         ];
-        w.write_all(&language).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
+        w.write_all(&language)?;
+        w.write_all(&0u16.to_be_bytes())?;
         Ok(())
     }
 }
@@ -635,7 +588,6 @@ pub enum HandlerType {
     Hint = u32::from_be_bytes(*b"hint"),
 }
 
-#[async_trait]
 impl BmffBox for HandlerBox {
     const TYPE: [u8; 4] = *b"hdlr";
 
@@ -644,16 +596,13 @@ impl BmffBox for HandlerBox {
         12 + 4 + 4 + 4 * 3 + self.name.len() as u64 + 1
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&0u32.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&0u32.to_be_bytes())?;
         w.write_all(&(self.handler_type as u32).to_be_bytes())
-            .await?;
-        w.write_all(&[0u32.to_be_bytes(); 3].concat()).await?;
-        w.write_all(self.name.as_bytes()).await?;
-        w.write_all(&[0u8]).await?; // Null terminator
+            ?;
+        w.write_all(&[0u32.to_be_bytes(); 3].concat())?;
+        w.write_all(self.name.as_bytes())?;
+        w.write_all(&[0u8])?; // Null terminator
         Ok(())
     }
 }
@@ -672,7 +621,6 @@ pub struct MediaInformationBox {
     pub stbl: SampleTableBox,
 }
 
-#[async_trait]
 impl BmffBox for MediaInformationBox {
     const TYPE: [u8; 4] = *b"minf";
 
@@ -681,13 +629,10 @@ impl BmffBox for MediaInformationBox {
         8 + self.media_header.size() + self.dinf.size() + self.stbl.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        self.media_header.write_to(&mut w).await?;
-        write_to(&self.dinf, &mut w).await?;
-        write_to(&self.stbl, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        self.media_header.write_to(&mut w)?;
+        write_to(&self.dinf, &mut w)?;
+        write_to(&self.stbl, &mut w)?;
         Ok(())
     }
 }
@@ -712,17 +657,13 @@ impl MediaHeader {
     }
 }
 
-#[async_trait]
 impl WriteTo for MediaHeader {
-    async fn write_to<W>(&self, w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_to(&self, w: impl Write) -> io::Result<()> {
         match self {
-            Self::Video(vmhd) => write_to_full(vmhd, w).await,
-            Self::Sound(smhd) => write_to_full(smhd, w).await,
-            Self::Hint(hmhd) => write_to_full(hmhd, w).await,
-            Self::Null(nmhd) => write_to_full(nmhd, w).await,
+            Self::Video(vmhd) => write_to_full(vmhd, w),
+            Self::Sound(smhd) => write_to_full(smhd, w),
+            Self::Hint(hmhd) => write_to_full(hmhd, w),
+            Self::Null(nmhd) => write_to_full(nmhd, w),
         }
     }
 }
@@ -739,7 +680,6 @@ pub enum GraphicsMode {
     Copy = 0,
 }
 
-#[async_trait]
 impl BmffBox for VideoMediaHeaderBox {
     const TYPE: [u8; 4] = *b"vmhd";
 
@@ -748,14 +688,11 @@ impl BmffBox for VideoMediaHeaderBox {
         12 + 2 + 2 * 3
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.graphics_mode as u16).to_be_bytes())
-            .await?;
+            ?;
         for i in self.opcolor {
-            w.write_all(&i.to_be_bytes()).await?;
+            w.write_all(&i.to_be_bytes())?;
         }
         Ok(())
     }
@@ -778,7 +715,6 @@ pub struct SoundMediaHeaderBox {
     pub balance: I8F8,
 }
 
-#[async_trait]
 impl BmffBox for SoundMediaHeaderBox {
     const TYPE: [u8; 4] = *b"smhd";
 
@@ -787,12 +723,9 @@ impl BmffBox for SoundMediaHeaderBox {
         12 + 2 + 2
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.balance.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.balance.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
         Ok(())
     }
 }
@@ -812,7 +745,6 @@ pub struct HintMediaHeaderBox {
     pub avg_bitrate: u32,
 }
 
-#[async_trait]
 impl BmffBox for HintMediaHeaderBox {
     const TYPE: [u8; 4] = *b"hmhd";
 
@@ -821,15 +753,12 @@ impl BmffBox for HintMediaHeaderBox {
         12 + 2 + 2 + 4 + 4 + 4 // reserved u32
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.max_pdu_size.to_be_bytes()).await?;
-        w.write_all(&self.avg_pdu_size.to_be_bytes()).await?;
-        w.write_all(&self.max_bitrate.to_be_bytes()).await?;
-        w.write_all(&self.avg_bitrate.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.max_pdu_size.to_be_bytes())?;
+        w.write_all(&self.avg_pdu_size.to_be_bytes())?;
+        w.write_all(&self.max_bitrate.to_be_bytes())?;
+        w.write_all(&self.avg_bitrate.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
         Ok(())
     }
 }
@@ -850,7 +779,6 @@ bitflags! {
     pub struct NullMediaHeaderFlags: u32 {}
 }
 
-#[async_trait]
 impl BmffBox for NullMediaHeaderBox {
     const TYPE: [u8; 4] = *b"nmhd";
 
@@ -859,10 +787,7 @@ impl BmffBox for NullMediaHeaderBox {
         12
     }
 
-    async fn write_box<W>(&self, _w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, _w: impl Write) -> io::Result<()> {
         Ok(())
     }
 }
@@ -885,7 +810,6 @@ pub struct DataInformationBox {
     pub dref: DataReferenceBox,
 }
 
-#[async_trait]
 impl BmffBox for DataInformationBox {
     const TYPE: [u8; 4] = *b"dinf";
 
@@ -894,11 +818,8 @@ impl BmffBox for DataInformationBox {
         8 + self.dref.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.dref, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.dref, &mut w)?;
         Ok(())
     }
 }
@@ -908,7 +829,6 @@ pub struct DataReferenceBox {
     pub data_entries: Vec<DataEntry>,
 }
 
-#[async_trait]
 impl BmffBox for DataReferenceBox {
     const TYPE: [u8; 4] = *b"dref";
 
@@ -917,14 +837,11 @@ impl BmffBox for DataReferenceBox {
         12 + 4 + self.data_entries.iter().map(|x| x.size()).sum::<u64>()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.data_entries.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for entry in self.data_entries.iter() {
-            entry.write_to(&mut w).await?;
+            entry.write_to(&mut w)?;
         }
         Ok(())
     }
@@ -953,15 +870,11 @@ impl DataEntry {
     }
 }
 
-#[async_trait]
 impl WriteTo for DataEntry {
-    async fn write_to<W>(&self, w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_to(&self, w: impl Write) -> io::Result<()> {
         match self {
-            Self::Url(url) => write_to_full(url, w).await,
-            Self::Urn(urn) => write_to_full(urn, w).await,
+            Self::Url(url) => write_to_full(url, w),
+            Self::Urn(urn) => write_to_full(urn, w),
         }
     }
 }
@@ -979,7 +892,6 @@ pub struct DataEntryUrlBox {
     pub location: String,
 }
 
-#[async_trait]
 impl BmffBox for DataEntryUrlBox {
     const TYPE: [u8; 4] = *b"url ";
 
@@ -992,13 +904,10 @@ impl BmffBox for DataEntryUrlBox {
         }
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         if !self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
-            w.write_all(self.location.as_bytes()).await?;
-            w.write_all(&[0u8]).await?; // Null terminator
+            w.write_all(self.location.as_bytes())?;
+            w.write_all(&[0u8])?; // Null terminator
         }
         Ok(())
     }
@@ -1024,7 +933,6 @@ pub struct DataEntryUrnBox {
     pub location: Option<String>,
 }
 
-#[async_trait]
 impl BmffBox for DataEntryUrnBox {
     const TYPE: [u8; 4] = *b"urn ";
 
@@ -1039,15 +947,12 @@ impl BmffBox for DataEntryUrnBox {
                 .unwrap_or(0)
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(self.name.as_bytes()).await?;
-        w.write_all(&[0u8]).await?; // Null terminator
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(self.name.as_bytes())?;
+        w.write_all(&[0u8])?; // Null terminator
         if let Some(location) = &self.location {
-            w.write_all(location.as_bytes()).await?;
-            w.write_all(&[0u8]).await?; // Null terminator
+            w.write_all(location.as_bytes())?;
+            w.write_all(&[0u8])?; // Null terminator
         }
         Ok(())
     }
@@ -1075,7 +980,6 @@ pub struct SampleTableBox {
     pub stco: ChunkOffsetBox,
 }
 
-#[async_trait]
 impl BmffBox for SampleTableBox {
     const TYPE: [u8; 4] = *b"stbl";
 
@@ -1088,15 +992,12 @@ impl BmffBox for SampleTableBox {
             + self.stco.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.stsd, &mut w).await?;
-        write_to_full(&self.stts, &mut w).await?;
-        write_to_full(&self.stsc, &mut w).await?;
-        write_to_full(&self.stsz, &mut w).await?;
-        write_to_full(&self.stco, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.stsd, &mut w)?;
+        write_to_full(&self.stts, &mut w)?;
+        write_to_full(&self.stsc, &mut w)?;
+        write_to_full(&self.stsz, &mut w)?;
+        write_to_full(&self.stco, &mut w)?;
         Ok(())
     }
 }
@@ -1107,7 +1008,6 @@ pub struct TimeToSampleBox {
     pub samples: Vec<(u32, u32)>,
 }
 
-#[async_trait]
 impl BmffBox for TimeToSampleBox {
     const TYPE: [u8; 4] = *b"stts";
 
@@ -1116,15 +1016,12 @@ impl BmffBox for TimeToSampleBox {
         12 + 4 + self.samples.len() as u64 * 8
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.samples.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for (sample_count, sample_delta) in self.samples.iter() {
-            w.write_all(&sample_count.to_be_bytes()).await?;
-            w.write_all(&sample_delta.to_be_bytes()).await?;
+            w.write_all(&sample_count.to_be_bytes())?;
+            w.write_all(&sample_delta.to_be_bytes())?;
         }
         Ok(())
     }
@@ -1137,10 +1034,9 @@ impl FullBox for TimeToSampleBox {
     }
 }
 
-#[async_trait]
 pub trait SampleEntry: std::fmt::Debug + Send + Sync {
     fn size(&self) -> u64;
-    async fn write_to(&self) -> Vec<u8>;
+    fn write_to(&self) -> Vec<u8>;
     fn clone_box(&self) -> Box<dyn SampleEntry>;
 }
 
@@ -1157,7 +1053,6 @@ impl Clone for SampleDescriptionBox {
     }
 }
 
-#[async_trait]
 impl BmffBox for SampleDescriptionBox {
     const TYPE: [u8; 4] = *b"stsd";
 
@@ -1166,14 +1061,11 @@ impl BmffBox for SampleDescriptionBox {
         12 + 4 + self.entries.iter().map(|x| x.size()).sum::<u64>()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for entry in self.entries.iter() {
-            w.write_all(&entry.write_to().await).await?;
+            w.write_all(&entry.write_to())?;
         }
         Ok(())
     }
@@ -1191,7 +1083,6 @@ pub struct SampleSizeBox {
     pub sample_size: SampleSize,
 }
 
-#[async_trait]
 impl BmffBox for SampleSizeBox {
     const TYPE: [u8; 4] = *b"stsz";
 
@@ -1200,11 +1091,8 @@ impl BmffBox for SampleSizeBox {
         12 + self.sample_size.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        self.sample_size.write_to(&mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        self.sample_size.write_to(&mut w)?;
         Ok(())
     }
 }
@@ -1231,23 +1119,19 @@ impl SampleSize {
     }
 }
 
-#[async_trait]
 impl WriteTo for SampleSize {
-    async fn write_to<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_to(&self, mut w: impl Write) -> io::Result<()> {
         match self {
             Self::Same(sample_size) => {
-                w.write_all(&sample_size.get().to_be_bytes()).await?;
-                w.write_all(&0u32.to_be_bytes()).await?;
+                w.write_all(&sample_size.get().to_be_bytes())?;
+                w.write_all(&0u32.to_be_bytes())?;
             }
             Self::Different(entry_sizes) => {
-                w.write_all(&0u32.to_be_bytes()).await?;
+                w.write_all(&0u32.to_be_bytes())?;
                 w.write_all(&(entry_sizes.len() as u32).to_be_bytes())
-                    .await?;
+                    ?;
                 for entry_size in entry_sizes.iter() {
-                    w.write_all(&entry_size.to_be_bytes()).await?;
+                    w.write_all(&entry_size.to_be_bytes())?;
                 }
             }
         }
@@ -1270,7 +1154,6 @@ pub struct VisualSampleEntry {
     pub depth: u16,
 }
 
-#[async_trait]
 impl BmffBox for VisualSampleEntry {
     const TYPE: [u8; 4] = *b"vide";
 
@@ -1279,44 +1162,40 @@ impl BmffBox for VisualSampleEntry {
         8 + 6 + 2 + 2 + 2 + 4 * 3 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&[0u8; 6]).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&[0u8; 6])?;
         w.write_all(&self.data_reference_index.to_be_bytes())
-            .await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&[0u32.to_be_bytes(); 3].concat()).await?;
-        w.write_all(&self.width.to_be_bytes()).await?;
-        w.write_all(&self.height.to_be_bytes()).await?;
-        w.write_all(&self.horiz_resolution.to_be_bytes()).await?;
-        w.write_all(&self.vert_resolution.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
-        w.write_all(&self.frame_count.to_be_bytes()).await?;
+            ?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&[0u32.to_be_bytes(); 3].concat())?;
+        w.write_all(&self.width.to_be_bytes())?;
+        w.write_all(&self.height.to_be_bytes())?;
+        w.write_all(&self.horiz_resolution.to_be_bytes())?;
+        w.write_all(&self.vert_resolution.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
+        w.write_all(&self.frame_count.to_be_bytes())?;
         assert!(self.compressor_name.len() <= 32);
-        w.write_all(&[self.compressor_name.len() as u8]).await?;
+        w.write_all(&[self.compressor_name.len() as u8])?;
         for _ in 0..(32 - 1 - self.compressor_name.len()) {
-            w.write_all(&[0u8]).await?;
+            w.write_all(&[0u8])?;
         }
-        w.write_all(self.compressor_name.as_bytes()).await?;
-        w.write_all(&self.depth.to_be_bytes()).await?;
-        w.write_all(&(-1i16).to_be_bytes()).await?;
+        w.write_all(self.compressor_name.as_bytes())?;
+        w.write_all(&self.depth.to_be_bytes())?;
+        w.write_all(&(-1i16).to_be_bytes())?;
         Ok(())
     }
 }
 
-#[async_trait]
 impl SampleEntry for VisualSampleEntry {
     fn size(&self) -> u64 {
         <Self as BmffBox>::size(self)
     }
 
-    async fn write_to(&self) -> Vec<u8> {
+    fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
-        write_to(self, &mut buf).await.unwrap();
+        write_to(self, &mut buf).unwrap();
         buf
     }
 
@@ -1334,7 +1213,6 @@ pub struct AudioSampleEntry {
     pub sample_rate: u32,
 }
 
-#[async_trait]
 impl BmffBox for AudioSampleEntry {
     const TYPE: [u8; 4] = *b"soun";
 
@@ -1343,32 +1221,28 @@ impl BmffBox for AudioSampleEntry {
         8 + 6 + 2 + 4 * 2 + 2 + 2 + 2 + 2 + 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&[0u8; 6]).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&[0u8; 6])?;
         w.write_all(&self.data_reference_index.to_be_bytes())
-            .await?;
-        w.write_all(&[0u32.to_be_bytes(); 2].concat()).await?;
-        w.write_all(&self.channel_count.to_be_bytes()).await?;
-        w.write_all(&self.sample_size.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&self.sample_rate.to_be_bytes()).await?;
+            ?;
+        w.write_all(&[0u32.to_be_bytes(); 2].concat())?;
+        w.write_all(&self.channel_count.to_be_bytes())?;
+        w.write_all(&self.sample_size.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&self.sample_rate.to_be_bytes())?;
         Ok(())
     }
 }
 
-#[async_trait]
 impl SampleEntry for AudioSampleEntry {
     fn size(&self) -> u64 {
         <Self as BmffBox>::size(self)
     }
-    async fn write_to(&self) -> Vec<u8> {
+    fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
-        write_to(self, &mut buf).await.unwrap();
+        write_to(self, &mut buf).unwrap();
         buf
     }
 
@@ -1383,7 +1257,6 @@ pub struct HintSampleEntry {
     pub data: Vec<u8>,
 }
 
-#[async_trait]
 impl BmffBox for HintSampleEntry {
     const TYPE: [u8; 4] = *b"hint";
 
@@ -1392,29 +1265,25 @@ impl BmffBox for HintSampleEntry {
         8 + 6 + 2 + self.data.len() as u64
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&[0u8; 6]).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&[0u8; 6])?;
         w.write_all(&self.data_reference_index.to_be_bytes())
-            .await?;
-        w.write_all(&self.data).await?;
+            ?;
+        w.write_all(&self.data)?;
         Ok(())
     }
 }
 
-#[async_trait]
 impl SampleEntry for HintSampleEntry {
     #[inline]
     fn size(&self) -> u64 {
         <Self as BmffBox>::size(self)
     }
 
-    async fn write_to(&self) -> Vec<u8> {
+    fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
-        write_to(self, &mut buf).await.unwrap();
+        write_to(self, &mut buf).unwrap();
         buf
     }
 
@@ -1435,7 +1304,6 @@ pub struct AvcSampleEntry {
     pub avcc: AvcConfigurationBox,
 }
 
-#[async_trait]
 impl BmffBox for AvcSampleEntry {
     const TYPE: [u8; 4] = *b"avc1";
 
@@ -1444,43 +1312,39 @@ impl BmffBox for AvcSampleEntry {
         8 + 6 + 2 + 2 + 2 + 4 + 4 + 4 + 2 + 2 + 4 + 4 + 4 + 2 + 32 + 2 + 2 + self.avcc.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&[0u8; 6]).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&[0u8; 6])?;
         w.write_all(&self.data_reference_index.to_be_bytes())
-            .await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&0u16.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
-        w.write_all(&self.width.to_be_bytes()).await?;
-        w.write_all(&self.height.to_be_bytes()).await?;
-        w.write_all(&self.horiz_resolution.to_be_bytes()).await?;
-        w.write_all(&self.vert_resolution.to_be_bytes()).await?;
-        w.write_all(&0u32.to_be_bytes()).await?;
-        w.write_all(&self.frame_count.to_be_bytes()).await?;
-        w.write_all(&[0u8; 32]).await?;
-        w.write_all(&self.depth.to_be_bytes()).await?;
-        w.write_all(&(-1i16).to_be_bytes()).await?; // pre_defined
-        write_to(&self.avcc, &mut w).await?;
+            ?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&0u16.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
+        w.write_all(&self.width.to_be_bytes())?;
+        w.write_all(&self.height.to_be_bytes())?;
+        w.write_all(&self.horiz_resolution.to_be_bytes())?;
+        w.write_all(&self.vert_resolution.to_be_bytes())?;
+        w.write_all(&0u32.to_be_bytes())?;
+        w.write_all(&self.frame_count.to_be_bytes())?;
+        w.write_all(&[0u8; 32])?;
+        w.write_all(&self.depth.to_be_bytes())?;
+        w.write_all(&(-1i16).to_be_bytes())?; // pre_defined
+        write_to(&self.avcc, &mut w)?;
         Ok(())
     }
 }
 
-#[async_trait]
 impl SampleEntry for AvcSampleEntry {
     #[inline]
     fn size(&self) -> u64 {
         <Self as BmffBox>::size(self)
     }
 
-    async fn write_to(&self) -> Vec<u8> {
+    fn write_to(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(<Self as BmffBox>::size(self) as usize);
         #[allow(clippy::unwrap_used)] // writing into a `Vec` is infallible
-        write_to(self, &mut buf).await.unwrap();
+        write_to(self, &mut buf).unwrap();
         buf
     }
 
@@ -1494,7 +1358,6 @@ pub struct AvcConfigurationBox {
     pub configuration: AvcDecoderConfigurationRecord,
 }
 
-#[async_trait]
 impl BmffBox for AvcConfigurationBox {
     const TYPE: [u8; 4] = *b"avcC";
 
@@ -1503,11 +1366,8 @@ impl BmffBox for AvcConfigurationBox {
         8 + self.configuration.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        self.configuration.write_to(&mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        self.configuration.write_to(&mut w)?;
         Ok(())
     }
 }
@@ -1536,25 +1396,21 @@ impl AvcDecoderConfigurationRecord {
     }
 }
 
-#[async_trait]
 impl WriteTo for AvcDecoderConfigurationRecord {
-    async fn write_to<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&1u8.to_be_bytes()).await?;
-        w.write_all(&self.profile_idc.to_be_bytes()).await?;
-        w.write_all(&self.constraint_set_flag.to_be_bytes()).await?;
-        w.write_all(&self.level_idc.to_be_bytes()).await?;
-        w.write_all(&(0xfau8 | 0x03u8).to_be_bytes()).await?;
-        w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes()).await?;
+    fn write_to(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&1u8.to_be_bytes())?;
+        w.write_all(&self.profile_idc.to_be_bytes())?;
+        w.write_all(&self.constraint_set_flag.to_be_bytes())?;
+        w.write_all(&self.level_idc.to_be_bytes())?;
+        w.write_all(&(0xfau8 | 0x03u8).to_be_bytes())?;
+        w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes())?;
         w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes())
-            .await?;
-        w.write_all(&self.sequence_parameter_set).await?;
-        w.write_all(&0x01u8.to_be_bytes()).await?;
+            ?;
+        w.write_all(&self.sequence_parameter_set)?;
+        w.write_all(&0x01u8.to_be_bytes())?;
         w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes())
-            .await?;
-        w.write_all(&self.picture_parameter_set).await?;
+            ?;
+        w.write_all(&self.picture_parameter_set)?;
         Ok(())
     }
 }
@@ -1565,7 +1421,6 @@ pub struct SampleToChunkBox {
     pub entries: Vec<(u32, u32, u32)>,
 }
 
-#[async_trait]
 impl BmffBox for SampleToChunkBox {
     const TYPE: [u8; 4] = *b"stsc";
 
@@ -1574,16 +1429,13 @@ impl BmffBox for SampleToChunkBox {
         12 + 4 + self.entries.len() as u64 * 4 * 3
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for (first_chunk, samples_per_chunk, sample_description_index) in self.entries.iter() {
-            w.write_all(&first_chunk.to_be_bytes()).await?;
-            w.write_all(&samples_per_chunk.to_be_bytes()).await?;
-            w.write_all(&sample_description_index.to_be_bytes()).await?;
+            w.write_all(&first_chunk.to_be_bytes())?;
+            w.write_all(&samples_per_chunk.to_be_bytes())?;
+            w.write_all(&sample_description_index.to_be_bytes())?;
         }
         Ok(())
     }
@@ -1601,7 +1453,6 @@ pub struct ChunkOffsetBox {
     pub chunk_offsets: Vec<u32>,
 }
 
-#[async_trait]
 impl BmffBox for ChunkOffsetBox {
     const TYPE: [u8; 4] = *b"stco";
 
@@ -1610,14 +1461,11 @@ impl BmffBox for ChunkOffsetBox {
         12 + 4 + self.chunk_offsets.len() as u64 * 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.chunk_offsets.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for chunk_offset in self.chunk_offsets.iter() {
-            w.write_all(&chunk_offset.to_be_bytes()).await?;
+            w.write_all(&chunk_offset.to_be_bytes())?;
         }
         Ok(())
     }
@@ -1635,7 +1483,6 @@ pub struct EditBox {
     pub elst: EditListBox,
 }
 
-#[async_trait]
 impl BmffBox for EditBox {
     const TYPE: [u8; 4] = *b"edts";
 
@@ -1644,11 +1491,8 @@ impl BmffBox for EditBox {
         8 + self.elst.size()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.elst, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.elst, &mut w)?;
         Ok(())
     }
 }
@@ -1661,7 +1505,6 @@ pub struct EditListBox {
     pub media_rate_fraction: i16,
 }
 
-#[async_trait]
 impl BmffBox for EditListBox {
     const TYPE: [u8; 4] = *b"elst";
 
@@ -1670,18 +1513,15 @@ impl BmffBox for EditListBox {
         12 + 4 + self.entries.len() as u64 * 8 * 2 + 2 + 2
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            .await?;
+            ?;
         for (segment_duration, media_time) in self.entries.iter() {
-            w.write_all(&segment_duration.to_be_bytes()).await?;
-            w.write_all(&media_time.to_be_bytes()).await?;
+            w.write_all(&segment_duration.to_be_bytes())?;
+            w.write_all(&media_time.to_be_bytes())?;
         }
-        w.write_all(&self.media_rate_integer.to_be_bytes()).await?;
-        w.write_all(&self.media_rate_fraction.to_be_bytes()).await?;
+        w.write_all(&self.media_rate_integer.to_be_bytes())?;
+        w.write_all(&self.media_rate_fraction.to_be_bytes())?;
         Ok(())
     }
 }
@@ -1699,7 +1539,6 @@ pub struct MovieExtendsBox {
     pub trex: Vec<TrackExtendsBox>,
 }
 
-#[async_trait]
 impl BmffBox for MovieExtendsBox {
     const TYPE: [u8; 4] = *b"mvex";
 
@@ -1709,15 +1548,12 @@ impl BmffBox for MovieExtendsBox {
             + self.trex.iter().map(|x| x.size()).sum::<u64>()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         if let Some(mehd) = &self.mehd {
-            write_to_full(mehd, &mut w).await?;
+            write_to_full(mehd, &mut w)?;
         }
         for trex in self.trex.iter() {
-            write_to_full(trex, &mut w).await?;
+            write_to_full(trex, &mut w)?;
         }
         Ok(())
     }
@@ -1728,7 +1564,6 @@ pub struct MovieExtendsHeaderBox {
     pub fragment_duration: Duration,
 }
 
-#[async_trait]
 impl BmffBox for MovieExtendsHeaderBox {
     const TYPE: [u8; 4] = *b"mehd";
 
@@ -1741,16 +1576,13 @@ impl BmffBox for MovieExtendsHeaderBox {
         }
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         let fragment_duration = self.fragment_duration.num_seconds();
         if fragment_duration as u64 > u32::MAX as u64 {
-            w.write_all(&fragment_duration.to_be_bytes()).await?;
+            w.write_all(&fragment_duration.to_be_bytes())?;
         } else {
             w.write_all(&(fragment_duration as u32).to_be_bytes())
-                .await?;
+                ?;
         }
         Ok(())
     }
@@ -1785,7 +1617,6 @@ bitflags! {
     }
 }
 
-#[async_trait]
 impl BmffBox for TrackExtendsBox {
     const TYPE: [u8; 4] = *b"trex";
 
@@ -1794,18 +1625,15 @@ impl BmffBox for TrackExtendsBox {
         12 + 4 + 4 + 4 + 4 + 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.track_id.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.track_id.to_be_bytes())?;
         w.write_all(&self.default_sample_description_index.to_be_bytes())
-            .await?;
+            ?;
         w.write_all(&self.default_sample_duration.to_be_bytes())
-            .await?;
-        w.write_all(&self.default_sample_size.to_be_bytes()).await?;
+            ?;
+        w.write_all(&self.default_sample_size.to_be_bytes())?;
         w.write_all(&self.default_sample_flags.bits().to_be_bytes())
-            .await?;
+            ?;
         Ok(())
     }
 }
@@ -1822,7 +1650,6 @@ pub struct MediaDataBox {
     pub data: Vec<u8>,
 }
 
-#[async_trait]
 impl BmffBox for MediaDataBox {
     const TYPE: [u8; 4] = *b"mdat";
 
@@ -1831,11 +1658,8 @@ impl BmffBox for MediaDataBox {
         8 + self.data.len() as u64
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.data).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.data)?;
         Ok(())
     }
 }
@@ -1846,7 +1670,6 @@ pub struct MovieFragmentBox {
     pub traf: Vec<TrackFragmentBox>,
 }
 
-#[async_trait]
 impl BmffBox for MovieFragmentBox {
     const TYPE: [u8; 4] = *b"moof";
 
@@ -1855,13 +1678,10 @@ impl BmffBox for MovieFragmentBox {
         8 + self.mfhd.size() + self.traf.iter().map(|x| x.size()).sum::<u64>()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.mfhd, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.mfhd, &mut w)?;
         for traf in self.traf.iter() {
-            write_to(traf, &mut w).await?;
+            write_to(traf, &mut w)?;
         }
         Ok(())
     }
@@ -1872,7 +1692,6 @@ pub struct MovieFragmentHeaderBox {
     pub sequence_number: u32,
 }
 
-#[async_trait]
 impl BmffBox for MovieFragmentHeaderBox {
     const TYPE: [u8; 4] = *b"mfhd";
 
@@ -1881,11 +1700,8 @@ impl BmffBox for MovieFragmentHeaderBox {
         12 + 4
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.sequence_number.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.sequence_number.to_be_bytes())?;
         Ok(())
     }
 }
@@ -1906,7 +1722,6 @@ pub struct TrackFragmentBox {
     // pub subs: (),
 }
 
-#[async_trait]
 impl BmffBox for TrackFragmentBox {
     const TYPE: [u8; 4] = *b"traf";
 
@@ -1915,13 +1730,10 @@ impl BmffBox for TrackFragmentBox {
         8 + self.tfhd.size() + self.trun.iter().map(|x| x.size()).sum::<u64>()
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        write_to_full(&self.tfhd, &mut w).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        write_to_full(&self.tfhd, &mut w)?;
         for trun in self.trun.iter() {
-            write_to_full(trun, &mut w).await?;
+            write_to_full(trun, &mut w)?;
         }
         Ok(())
     }
@@ -1948,7 +1760,6 @@ bitflags! {
     }
 }
 
-#[async_trait]
 impl BmffBox for TrackFragmentHeaderBox {
     const TYPE: [u8; 4] = *b"tfhd";
 
@@ -1962,26 +1773,23 @@ impl BmffBox for TrackFragmentHeaderBox {
             + self.default_sample_flags.as_ref().map_or(0, |_| 4)
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
-        w.write_all(&self.track_id.to_be_bytes()).await?;
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        w.write_all(&self.track_id.to_be_bytes())?;
         if let Some(base_data_offset) = self.base_data_offset {
-            w.write_all(&base_data_offset.to_be_bytes()).await?;
+            w.write_all(&base_data_offset.to_be_bytes())?;
         }
         if let Some(sample_description_index) = self.sample_description_index {
-            w.write_all(&sample_description_index.to_be_bytes()).await?;
+            w.write_all(&sample_description_index.to_be_bytes())?;
         }
         if let Some(default_sample_duration) = self.default_sample_duration {
-            w.write_all(&default_sample_duration.to_be_bytes()).await?;
+            w.write_all(&default_sample_duration.to_be_bytes())?;
         }
         if let Some(default_sample_size) = self.default_sample_size {
-            w.write_all(&default_sample_size.to_be_bytes()).await?;
+            w.write_all(&default_sample_size.to_be_bytes())?;
         }
         if let Some(default_sample_flags) = self.default_sample_flags {
             w.write_all(&default_sample_flags.bits().to_be_bytes())
-                .await?;
+                ?;
         }
         Ok(())
     }
@@ -2077,7 +1885,6 @@ impl TrackFragmentRunBox {
     }
 }
 
-#[async_trait]
 impl BmffBox for TrackFragmentRunBox {
     const TYPE: [u8; 4] = *b"trun";
 
@@ -2094,31 +1901,28 @@ impl BmffBox for TrackFragmentRunBox {
                     + self.sample_composition_time_offsets.is_some() as u64)
     }
 
-    async fn write_box<W>(&self, mut w: W) -> io::Result<()>
-    where
-        W: AsyncWrite + Unpin + Send,
-    {
+    fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         let len = self.len().unwrap_or(0);
-        w.write_all(&(len as u32).to_be_bytes()).await?;
+        w.write_all(&(len as u32).to_be_bytes())?;
         if let Some(data_offset) = self.data_offset {
-            w.write_all(&data_offset.to_be_bytes()).await?;
+            w.write_all(&data_offset.to_be_bytes())?;
         }
         if let Some(first_sample_flags) = self.first_sample_flags {
-            w.write_all(&first_sample_flags.to_be_bytes()).await?;
+            w.write_all(&first_sample_flags.to_be_bytes())?;
         }
         for i in 0..len {
             if let Some(sample_durations) = &self.sample_durations {
-                w.write_all(&sample_durations[i].to_be_bytes()).await?;
+                w.write_all(&sample_durations[i].to_be_bytes())?;
             }
             if let Some(sample_sizes) = &self.sample_sizes {
-                w.write_all(&sample_sizes[i].to_be_bytes()).await?;
+                w.write_all(&sample_sizes[i].to_be_bytes())?;
             }
             if let Some(sample_flags) = &self.sample_flags {
-                w.write_all(&sample_flags[i].to_be_bytes()).await?;
+                w.write_all(&sample_flags[i].to_be_bytes())?;
             }
             if let Some(sample_composition_time_offsets) = &self.sample_composition_time_offsets {
                 w.write_all(&sample_composition_time_offsets[i].to_be_bytes())
-                    .await?;
+                    ?;
             }
         }
         Ok(())
