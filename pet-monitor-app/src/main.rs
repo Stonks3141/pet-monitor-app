@@ -14,7 +14,6 @@ use rocket::config::LogLevel;
 
 mod cli;
 mod config;
-mod fmp4;
 mod secrets;
 mod server;
 #[cfg(test)]

@@ -1,4 +1,4 @@
-pub mod boxes;
+mod boxes;
 
 use crate::config::Config;
 use boxes::*;
@@ -11,9 +11,11 @@ use rocket::tokio::{
     task::spawn_blocking,
 };
 use rscam::Camera;
+use crate::config::Context;
+use crate::server::provider::Provider;
 use std::io::{self, prelude::*};
 use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::task::Poll;
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
@@ -238,13 +240,13 @@ pub struct VideoStream {
     use_headers: bool,
     size: u64,
     sequence_number: u32,
-    media_seg_recv: broadcast::Receiver<(Vec<u8>, MediaSegment)>,
+    media_seg_recv: broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>,
 }
 
 impl VideoStream {
     pub fn new(
         config: &Config,
-        media_seg_recv: broadcast::Receiver<(Vec<u8>, MediaSegment)>,
+        media_seg_recv: broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>,
     ) -> Self {
         let init_segment = InitSegment::from(config);
 
@@ -261,7 +263,7 @@ impl VideoStream {
 impl Stream for VideoStream {
     type Item = io::Result<Vec<u8>>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
         match self.init_segment.take() {
             Some(init_segment) => {
                 let mut buf = Vec::with_capacity(init_segment.size() as usize);
@@ -272,7 +274,14 @@ impl Stream for VideoStream {
                 Poll::Ready(Some(Ok(buf)))
             }
             None => match self.media_seg_recv.try_recv() {
-                Ok((headers, mut media_segment)) => {
+                Ok(x) => {
+                    let (headers, mut media_segment) = match x {
+                        Some(x) => x,
+                        None => {
+                            trace!("VideoStream ended");
+                            return Poll::Ready(None);
+                        },
+                    };
                     if self.use_headers {
                         media_segment.add_headers(headers);
                         self.use_headers = false;
@@ -306,7 +315,13 @@ impl Stream for VideoStream {
                     TryRecvError::Lagged(_) => {
                         #[allow(clippy::unwrap_used)]
                         // try_recv should always be `Ok` after it has lagged
-                        let (headers, mut media_segment) = self.media_seg_recv.try_recv().unwrap();
+                        let (headers, mut media_segment) = match self.media_seg_recv.try_recv().unwrap() {
+                            Some(x) => x,
+                            None => {
+                                trace!("VideoStream ended");
+                                return Poll::Ready(None);
+                            },
+                        };
                         if self.use_headers {
                             media_segment.add_headers(headers);
                             self.use_headers = false;
@@ -331,126 +346,105 @@ impl Stream for VideoStream {
     }
 }
 
-pub fn stream_media_segments(config: Config) -> broadcast::Receiver<(Vec<u8>, MediaSegment)> {
+pub fn stream_media_segments(ctx: Provider<Context>) -> broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>> {
     let (sender, receiver) = broadcast::channel(1);
+    let mut config = ctx.get().config;
+    let mut ctx_recv = ctx.subscribe();
 
     spawn_blocking(move || -> anyhow::Result<()> {
-        let mut timestamp = 0;
-        let timescale = config.framerate;
-        let bitrate = 896_000;
+        'main: loop {
+            trace!("Starting stream with config {:?}", config);
+            let mut timestamp = 0;
+            let timescale = config.framerate;
+            let bitrate = 896_000;
 
-        let mut camera = Camera::new(
-            config
-                .device
-                .as_os_str()
-                .to_str()
-                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
-        )?;
-        camera.start(&rscam::Config {
-            interval: (1, config.framerate),
-            resolution: config.resolution,
-            format: b"YUYV",
-            ..Default::default()
-        })?;
+            let mut camera = Camera::new(
+                config
+                    .device
+                    .as_os_str()
+                    .to_str()
+                    .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
+            )?;
+            camera.start(&rscam::Config {
+                interval: (1, config.framerate),
+                resolution: config.resolution,
+                format: b"YUYV",
+                ..Default::default()
+            })?;
 
-        let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
+            let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
 
-        let mut encoder =
-            x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
-                .fps(1, config.framerate)
-                .timebase(1, timescale)
-                .bitrate(bitrate)
-                .high()
-                .annexb(false)
-                .max_keyframe_interval(60)
-                .scenecut_threshold(0)
-                .build(
-                    encoding,
-                    config.resolution.0 as i32,
-                    config.resolution.1 as i32,
-                )
-                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
+            let mut encoder =
+                x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
+                    .fps(1, config.framerate)
+                    .timebase(1, timescale)
+                    .bitrate(bitrate)
+                    .high()
+                    .annexb(false)
+                    .max_keyframe_interval(60)
+                    .scenecut_threshold(0)
+                    .build(
+                        encoding,
+                        config.resolution.0 as i32,
+                        config.resolution.1 as i32,
+                    )
+                    .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
 
-        let headers = encoder
-            .headers()
-            .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
-            .entirety()
-            .to_vec();
+            let headers = encoder
+                .headers()
+                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+                .entirety()
+                .to_vec();
 
-        'outer: loop {
-            let time = Instant::now();
-            let mut sample_sizes = vec![];
-            let mut buf = vec![];
+            'outer: loop {
+                if let Ok(ctx) = ctx_recv.try_recv() {
+                    config = ctx.config;
+                    sender.send(None).unwrap_or(0);
+                    trace!("Config updated to {:?}, restarting stream", config);
+                    continue 'main;
+                }
+                let time = Instant::now();
+                let mut sample_sizes = vec![];
+                let mut buf = vec![];
 
-            for _ in 0..60 {
-                let frame = match camera.capture() {
-                    Ok(f) => f,
-                    Err(e) => {
-                        warn!("Capturing frame failed with error {:?}", e);
-                        continue 'outer;
-                    }
-                };
+                for _ in 0..60 {
+                    let frame = match camera.capture() {
+                        Ok(f) => f,
+                        Err(e) => {
+                            warn!("Capturing frame failed with error {:?}", e);
+                            continue 'outer;
+                        }
+                    };
 
-                let image = x264::Image::new(
-                    x264::Colorspace::YUYV,
-                    config.resolution.0 as i32,
-                    config.resolution.1 as i32,
-                    &[x264::Plane {
-                        stride: config.resolution.0 as i32 * 2,
-                        data: &*frame,
-                    }],
-                );
+                    let image = x264::Image::new(
+                        x264::Colorspace::YUYV,
+                        config.resolution.0 as i32,
+                        config.resolution.1 as i32,
+                        &[x264::Plane {
+                            stride: config.resolution.0 as i32 * 2,
+                            data: &*frame,
+                        }],
+                    );
 
-                let (data, _) = match encoder.encode(timestamp, image) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        warn!("Encoding frame failed with error {:?}", e);
-                        continue 'outer;
-                    }
-                };
+                    let (data, _) = match encoder.encode(timestamp, image) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            warn!("Encoding frame failed with error {:?}", e);
+                            continue 'outer;
+                        }
+                    };
 
-                sample_sizes.push(data.entirety().len() as u32);
-                buf.extend_from_slice(data.entirety());
-                timestamp += timescale as i64 / config.framerate as i64;
+                    sample_sizes.push(data.entirety().len() as u32);
+                    buf.extend_from_slice(data.entirety());
+                    timestamp += timescale as i64 / config.framerate as i64;
+                }
+
+                let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
+                sender.send(Some((headers.clone(), media_segment))).unwrap_or(0);
+                trace!("Sent media segment, took {:?} to capture", time.elapsed());
             }
-
-            let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
-            sender.send((headers.clone(), media_segment)).unwrap_or(0);
-            trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
     });
 
     receiver
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::config::Rotation;
-
-    use super::*;
-    use rocket::futures::stream::StreamExt;
-    use rocket::tokio::{self, fs, io::AsyncWriteExt};
-    use std::path::PathBuf;
-
-    #[ignore]
-    #[tokio::test]
-    async fn test_mp4() {
-        let config = crate::config::Config {
-            resolution: (640, 480),
-            rotation: Rotation::R0,
-            framerate: 30,
-            device: PathBuf::from("/dev/video0"),
-        };
-
-        let mut file = fs::File::create("video.mp4").await.unwrap();
-
-        let rx = stream_media_segments(config.clone());
-
-        let stream = VideoStream::new(&config, rx);
-        let mut stream = stream.take(6);
-
-        while let Some(segment) = stream.next().await {
-            file.write_all(&segment.unwrap()).await.unwrap();
-        }
-    }
 }

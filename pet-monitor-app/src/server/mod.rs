@@ -1,7 +1,7 @@
 //! This module contains all server-related logic.
 
 use crate::config::Context;
-use crate::fmp4::stream_media_segments;
+use fmp4::stream_media_segments;
 use provider::Provider;
 use rocket::config::LogLevel;
 use rocket::config::TlsConfig;
@@ -11,6 +11,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
 mod auth;
+mod fmp4;
 mod provider;
 mod routes;
 use routes::*;
@@ -96,7 +97,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -
     #[cfg(not(debug_assertions))]
     let routes = rocket::routes![files, login, get_config, put_config, stream];
 
-    let media_seg_rx = stream_media_segments(ctx.config.clone());
+    let media_seg_rx = stream_media_segments(ctx_provider.clone());
 
     rocket::custom(&rocket_cfg)
         .mount("/", routes)

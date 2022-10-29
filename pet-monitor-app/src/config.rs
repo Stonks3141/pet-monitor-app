@@ -1,6 +1,7 @@
 use chrono::Duration;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Serialize_repr, Deserialize_repr};
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
@@ -72,7 +73,8 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u32)]
 pub enum Rotation {
     R0 = 0,
     R90 = 90,

@@ -3,17 +3,18 @@
 use super::auth::Token;
 use super::provider::Provider;
 use crate::config::{Config, Context};
-use crate::fmp4::{MediaSegment, VideoStream};
+use crate::server::fmp4::{MediaSegment, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
 use rocket::futures::{Stream, StreamExt};
-use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status};
+use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status, Header};
 use rocket::response::stream::ByteStream;
 use rocket::response::Redirect;
 use rocket::serde::json::Json;
 use rocket::tokio::sync::broadcast;
 use rocket::{get, post, put, State};
+use rocket::Responder;
 use std::path::PathBuf;
 
 /// Redirects any request to HTTPS. It preserves the original path and uses
@@ -147,16 +148,42 @@ pub async fn put_config(
     Ok(())
 }
 
+#[derive(Debug, Responder)]
+pub struct StreamResponse<S: Stream<Item = Vec<u8>>> {
+    stream: ByteStream<S>,
+    content_type: ContentType,
+    cache_control: CacheControl,
+}
+
+#[derive(Debug)]
+struct CacheControl {
+    max_age: Option<u32>,
+    no_store: bool,
+}
+
+impl From<CacheControl> for Header<'_> {
+    fn from(cache_control: CacheControl) -> Self {
+        let mut value = String::new();
+        if let Some(max_age) = cache_control.max_age {
+            value.push_str("max-age=");
+            value.push_str(&max_age.to_string());
+        }
+        if cache_control.no_store {
+            value.push_str(", no-store");
+        }
+        Header::new("cache-control", value)
+    }
+}
+
 #[get("/stream.mp4")]
 pub async fn stream(
-    //_token: Token,
+    _token: Token,
     ctx: &State<Provider<Context>>,
-    media_seg_recv: &State<broadcast::Receiver<(Vec<u8>, MediaSegment)>>,
-) -> (ContentType, ByteStream<impl Stream<Item = Vec<u8>>>) {
+    media_seg_recv: &State<broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>>,
+) -> StreamResponse<impl Stream<Item = Vec<u8>>> {
     let ctx = ctx.get();
-    (
-        ContentType::MP4,
-        ByteStream(
+    StreamResponse {
+        stream: ByteStream(
             VideoStream::new(&ctx.config, media_seg_recv.resubscribe()).filter_map(
                 |x| async move {
                     match x {
@@ -169,7 +196,12 @@ pub async fn stream(
                 },
             ),
         ),
-    )
+        content_type: ContentType::MP4,
+        cache_control: CacheControl {
+            max_age: Some(0),
+            no_store: true,
+        },
+    }
 }
 
 #[cfg(test)]
