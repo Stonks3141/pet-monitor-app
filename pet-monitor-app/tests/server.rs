@@ -26,19 +26,18 @@ async fn test_login() {
         .assert()
         .success();
 
-    let server = Cleanup(std::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
-        .arg("--config")
-        .arg(tmp.path())
-        .arg("start")
-        .arg("--port")
-        .arg("8080")
-        .spawn()
-        .unwrap());
+    let _server = Cleanup(
+        std::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
+            .arg("--config")
+            .arg(tmp.path())
+            .arg("start")
+            .arg("--port")
+            .arg("8080")
+            .spawn()
+            .unwrap(),
+    );
 
-    let client = Client::builder()
-        .cookie_store(true)
-        .build()
-        .unwrap();
+    let client = Client::builder().cookie_store(true).build().unwrap();
 
     let res = client
         .get("http://localhost:8080/api/config")

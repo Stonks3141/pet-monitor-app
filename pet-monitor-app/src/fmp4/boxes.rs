@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
 
+use crate::config::Rotation;
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
@@ -77,14 +78,12 @@ pub const MATRIX_270: [[I16F16; 3]; 3] = [
     ],
 ];
 
-/// `degrees` must be 0, 90, 180, or 270
-pub const fn matrix(degrees: u32) -> Option<[[I16F16; 3]; 3]> {
-    match degrees {
-        0 => Some(MATRIX_0),
-        90 => Some(MATRIX_90),
-        180 => Some(MATRIX_180),
-        270 => Some(MATRIX_270),
-        _ => None,
+pub const fn matrix(rotation: Rotation) -> [[I16F16; 3]; 3] {
+    match rotation {
+        Rotation::R0 => MATRIX_0,
+        Rotation::R90 => MATRIX_90,
+        Rotation::R180 => MATRIX_180,
+        Rotation::R270 => MATRIX_270,
     }
 }
 
@@ -256,10 +255,8 @@ impl BmffBox for MovieHeaderBox {
             w.write_all(&self.timescale.to_be_bytes())?;
             w.write_all(&duration_secs.to_be_bytes())?;
         } else {
-            w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                ?;
-            w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                ?;
+            w.write_all(&(creation_timestamp as u32).to_be_bytes())?;
+            w.write_all(&(modification_timestamp as u32).to_be_bytes())?;
             w.write_all(&self.timescale.to_be_bytes())?;
             w.write_all(&(duration_secs as u32).to_be_bytes())?;
         }
@@ -399,10 +396,8 @@ impl BmffBox for TrackHeaderBox {
             w.write_all(&0u32.to_be_bytes())?;
             w.write_all(&duration_secs.to_be_bytes())?;
         } else {
-            w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                ?;
-            w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                ?;
+            w.write_all(&(creation_timestamp as u32).to_be_bytes())?;
+            w.write_all(&(modification_timestamp as u32).to_be_bytes())?;
             w.write_all(&self.track_id.to_be_bytes())?;
             w.write_all(&0u32.to_be_bytes())?;
             w.write_all(&(duration_secs as u32).to_be_bytes())?;
@@ -533,10 +528,8 @@ impl BmffBox for MediaHeaderBox {
             w.write_all(&self.timescale.to_be_bytes())?;
             w.write_all(&duration_secs.to_be_bytes())?;
         } else {
-            w.write_all(&(creation_timestamp as u32).to_be_bytes())
-                ?;
-            w.write_all(&(modification_timestamp as u32).to_be_bytes())
-                ?;
+            w.write_all(&(creation_timestamp as u32).to_be_bytes())?;
+            w.write_all(&(modification_timestamp as u32).to_be_bytes())?;
             w.write_all(&self.timescale.to_be_bytes())?;
             w.write_all(&(duration_secs as u32).to_be_bytes())?;
         }
@@ -580,6 +573,7 @@ pub struct HandlerBox {
     pub name: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 #[repr(u32)]
 pub enum HandlerType {
@@ -598,8 +592,7 @@ impl BmffBox for HandlerBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&0u32.to_be_bytes())?;
-        w.write_all(&(self.handler_type as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.handler_type as u32).to_be_bytes())?;
         w.write_all(&[0u32.to_be_bytes(); 3].concat())?;
         w.write_all(self.name.as_bytes())?;
         w.write_all(&[0u8])?; // Null terminator
@@ -637,6 +630,7 @@ impl BmffBox for MediaInformationBox {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum MediaHeader {
     Video(VideoMediaHeaderBox),
@@ -689,8 +683,7 @@ impl BmffBox for VideoMediaHeaderBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.graphics_mode as u16).to_be_bytes())
-            ?;
+        w.write_all(&(self.graphics_mode as u16).to_be_bytes())?;
         for i in self.opcolor {
             w.write_all(&i.to_be_bytes())?;
         }
@@ -838,8 +831,7 @@ impl BmffBox for DataReferenceBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.data_entries.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.data_entries.len() as u32).to_be_bytes())?;
         for entry in self.data_entries.iter() {
             entry.write_to(&mut w)?;
         }
@@ -854,6 +846,7 @@ impl FullBox for DataReferenceBox {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum DataEntry {
     Url(DataEntryUrlBox),
@@ -1017,8 +1010,7 @@ impl BmffBox for TimeToSampleBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.samples.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.samples.len() as u32).to_be_bytes())?;
         for (sample_count, sample_delta) in self.samples.iter() {
             w.write_all(&sample_count.to_be_bytes())?;
             w.write_all(&sample_delta.to_be_bytes())?;
@@ -1062,8 +1054,7 @@ impl BmffBox for SampleDescriptionBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
         for entry in self.entries.iter() {
             w.write_all(&entry.write_to())?;
         }
@@ -1104,6 +1095,7 @@ impl FullBox for SampleSizeBox {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum SampleSize {
     Same(NonZeroU32),
@@ -1128,8 +1120,7 @@ impl WriteTo for SampleSize {
             }
             Self::Different(entry_sizes) => {
                 w.write_all(&0u32.to_be_bytes())?;
-                w.write_all(&(entry_sizes.len() as u32).to_be_bytes())
-                    ?;
+                w.write_all(&(entry_sizes.len() as u32).to_be_bytes())?;
                 for entry_size in entry_sizes.iter() {
                     w.write_all(&entry_size.to_be_bytes())?;
                 }
@@ -1164,8 +1155,7 @@ impl BmffBox for VisualSampleEntry {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&[0u8; 6])?;
-        w.write_all(&self.data_reference_index.to_be_bytes())
-            ?;
+        w.write_all(&self.data_reference_index.to_be_bytes())?;
         w.write_all(&0u16.to_be_bytes())?;
         w.write_all(&0u16.to_be_bytes())?;
         w.write_all(&[0u32.to_be_bytes(); 3].concat())?;
@@ -1223,8 +1213,7 @@ impl BmffBox for AudioSampleEntry {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&[0u8; 6])?;
-        w.write_all(&self.data_reference_index.to_be_bytes())
-            ?;
+        w.write_all(&self.data_reference_index.to_be_bytes())?;
         w.write_all(&[0u32.to_be_bytes(); 2].concat())?;
         w.write_all(&self.channel_count.to_be_bytes())?;
         w.write_all(&self.sample_size.to_be_bytes())?;
@@ -1267,8 +1256,7 @@ impl BmffBox for HintSampleEntry {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&[0u8; 6])?;
-        w.write_all(&self.data_reference_index.to_be_bytes())
-            ?;
+        w.write_all(&self.data_reference_index.to_be_bytes())?;
         w.write_all(&self.data)?;
         Ok(())
     }
@@ -1314,8 +1302,7 @@ impl BmffBox for AvcSampleEntry {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&[0u8; 6])?;
-        w.write_all(&self.data_reference_index.to_be_bytes())
-            ?;
+        w.write_all(&self.data_reference_index.to_be_bytes())?;
         w.write_all(&0u16.to_be_bytes())?;
         w.write_all(&0u16.to_be_bytes())?;
         w.write_all(&0u32.to_be_bytes())?;
@@ -1404,12 +1391,10 @@ impl WriteTo for AvcDecoderConfigurationRecord {
         w.write_all(&self.level_idc.to_be_bytes())?;
         w.write_all(&(0xfau8 | 0x03u8).to_be_bytes())?;
         w.write_all(&(0xe0u8 | 0x01u8).to_be_bytes())?;
-        w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes())
-            ?;
+        w.write_all(&(self.sequence_parameter_set.len() as u16).to_be_bytes())?;
         w.write_all(&self.sequence_parameter_set)?;
         w.write_all(&0x01u8.to_be_bytes())?;
-        w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes())
-            ?;
+        w.write_all(&(self.picture_parameter_set.len() as u16).to_be_bytes())?;
         w.write_all(&self.picture_parameter_set)?;
         Ok(())
     }
@@ -1430,8 +1415,7 @@ impl BmffBox for SampleToChunkBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
         for (first_chunk, samples_per_chunk, sample_description_index) in self.entries.iter() {
             w.write_all(&first_chunk.to_be_bytes())?;
             w.write_all(&samples_per_chunk.to_be_bytes())?;
@@ -1462,8 +1446,7 @@ impl BmffBox for ChunkOffsetBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.chunk_offsets.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.chunk_offsets.len() as u32).to_be_bytes())?;
         for chunk_offset in self.chunk_offsets.iter() {
             w.write_all(&chunk_offset.to_be_bytes())?;
         }
@@ -1514,8 +1497,7 @@ impl BmffBox for EditListBox {
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
-        w.write_all(&(self.entries.len() as u32).to_be_bytes())
-            ?;
+        w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
         for (segment_duration, media_time) in self.entries.iter() {
             w.write_all(&segment_duration.to_be_bytes())?;
             w.write_all(&media_time.to_be_bytes())?;
@@ -1581,8 +1563,7 @@ impl BmffBox for MovieExtendsHeaderBox {
         if fragment_duration as u64 > u32::MAX as u64 {
             w.write_all(&fragment_duration.to_be_bytes())?;
         } else {
-            w.write_all(&(fragment_duration as u32).to_be_bytes())
-                ?;
+            w.write_all(&(fragment_duration as u32).to_be_bytes())?;
         }
         Ok(())
     }
@@ -1627,13 +1608,10 @@ impl BmffBox for TrackExtendsBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&self.track_id.to_be_bytes())?;
-        w.write_all(&self.default_sample_description_index.to_be_bytes())
-            ?;
-        w.write_all(&self.default_sample_duration.to_be_bytes())
-            ?;
+        w.write_all(&self.default_sample_description_index.to_be_bytes())?;
+        w.write_all(&self.default_sample_duration.to_be_bytes())?;
         w.write_all(&self.default_sample_size.to_be_bytes())?;
-        w.write_all(&self.default_sample_flags.bits().to_be_bytes())
-            ?;
+        w.write_all(&self.default_sample_flags.bits().to_be_bytes())?;
         Ok(())
     }
 }
@@ -1788,8 +1766,7 @@ impl BmffBox for TrackFragmentHeaderBox {
             w.write_all(&default_sample_size.to_be_bytes())?;
         }
         if let Some(default_sample_flags) = self.default_sample_flags {
-            w.write_all(&default_sample_flags.bits().to_be_bytes())
-                ?;
+            w.write_all(&default_sample_flags.bits().to_be_bytes())?;
         }
         Ok(())
     }
@@ -1921,8 +1898,7 @@ impl BmffBox for TrackFragmentRunBox {
                 w.write_all(&sample_flags[i].to_be_bytes())?;
             }
             if let Some(sample_composition_time_offsets) = &self.sample_composition_time_offsets {
-                w.write_all(&sample_composition_time_offsets[i].to_be_bytes())
-                    ?;
+                w.write_all(&sample_composition_time_offsets[i].to_be_bytes())?;
             }
         }
         Ok(())

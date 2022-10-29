@@ -54,7 +54,7 @@ pub struct Config {
     /// Pixel resolution (width, height)
     pub resolution: (u32, u32),
     /// Rotation in degrees (0, 90, 180, or 270)
-    pub rotation: u32,
+    pub rotation: Rotation,
     /// Framerate in frames per second
     pub framerate: u32,
     /// The v4l2 device to capture video with (eg. "/dev/video0")
@@ -64,12 +64,20 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            resolution: (1280, 720),
-            rotation: 0,
+            resolution: (640, 480),
+            rotation: Rotation::R0,
             framerate: 30,
             device: PathBuf::from("/dev/video0"),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Rotation {
+    R0 = 0,
+    R90 = 90,
+    R180 = 180,
+    R270 = 270,
 }
 
 /// TLS config options
@@ -100,18 +108,21 @@ impl Default for Tls {
 pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::Result<()> {
     use anyhow::Context;
     let ctx = ctx.to_owned();
-    if let Some(path) = path {
-        let path = path.as_ref().to_owned();
-        spawn_blocking(move || {
-            confy::store_path(path, ctx).context("Failed to store configuration file")
-        })
-        .await?
-    } else {
-        spawn_blocking(move || {
-            confy::store("pet-monitor-app", Some("config"), ctx)
-                .context("Failed to store configuration file")
-        })
-        .await?
+    match path {
+        Some(path) => {
+            let path = path.as_ref().to_owned();
+            spawn_blocking(move || {
+                confy::store_path(path, ctx).context("Failed to store configuration file")
+            })
+            .await?
+        }
+        None => {
+            spawn_blocking(move || {
+                confy::store("pet-monitor-app", Some("config"), ctx)
+                    .context("Failed to store configuration file")
+            })
+            .await?
+        }
     }
 }
 
@@ -155,7 +166,7 @@ mod tests {
 
 #[cfg(test)]
 mod qc {
-    use super::{Config, Context, Tls};
+    use super::*;
     use chrono::Duration;
     use quickcheck::{Arbitrary, Gen};
 
@@ -181,6 +192,18 @@ mod qc {
                 rotation: Arbitrary::arbitrary(g),
                 framerate: Arbitrary::arbitrary(g),
                 device: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Rotation {
+        fn arbitrary(g: &mut Gen) -> Self {
+            match u32::arbitrary(g) % 4 {
+                0 => Self::R0,
+                1 => Self::R90,
+                2 => Self::R180,
+                3 => Self::R270,
+                _ => unreachable!(),
             }
         }
     }

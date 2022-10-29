@@ -1,260 +1,456 @@
-
 pub mod boxes;
 
-use boxes::*;
-use fixed::types::{U16F16, I8F8, I16F16};
-use chrono::{Duration, Utc};
-use rocket::tokio::{sync::broadcast, task::{spawn_blocking, JoinHandle}};
-use rscam::Camera;
-
 use crate::config::Config;
+use boxes::*;
+use chrono::{Duration, Utc};
+use fixed::types::{I16F16, I8F8, U16F16};
+use log::{trace, warn};
+use rocket::futures::Stream;
+use rocket::tokio::{
+    sync::broadcast::{self, error::TryRecvError},
+    task::spawn_blocking,
+};
+use rscam::Camera;
+use std::io::{self, prelude::*};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use std::time::Instant;
 
-pub async fn init_segment(config: &Config) -> (FileTypeBox, MovieBox) {
-    let sps = vec![
-        0x67,0x64,0x00,0x1f,0xac,0xd9,0x80,0x50,0x05,0xbb,0x01,0x6a,0x02,0x02,0x02,0x80,0x00,0x00,0x03,0x00,0x80,0x00,0x00,0x1e,0x07,0x8c,0x18,0xcd,
-    ]; // TODO
-    let pps = vec![0x68,0xe9,0x7b,0x2c,0x8b]; // TODO
-
-    let ftyp = FileTypeBox {
-        major_brand: *b"isom",
-        minor_version: 0,
-        compatible_brands: vec![*b"isom", *b"iso6", *b"iso2", *b"avc1", *b"mp41"],
-    };
-
-    let moov = moov(config.resolution.0, config.resolution.1, config.rotation, config.framerate, sps, pps);
-
-    (ftyp, moov)
+#[derive(Debug, Clone)]
+pub struct InitSegment {
+    ftyp: FileTypeBox,
+    moov: MovieBox,
 }
 
-pub async fn stream_media_segments(config: Config, init_segment_size: u64, sender: broadcast::Sender<(MovieFragmentBox, MediaDataBox)>) -> JoinHandle<()> {    
-    spawn_blocking(move || {
-        let mut size = init_segment_size;
+impl InitSegment {
+    fn size(&self) -> u64 {
+        self.ftyp.size() + self.moov.size()
+    }
+}
+
+impl WriteTo for InitSegment {
+    fn write_to(&self, mut w: impl Write) -> io::Result<()> {
+        write_to(&self.ftyp, &mut w)?;
+        write_to(&self.moov, &mut w)?;
+        Ok(())
+    }
+}
+
+impl From<&Config> for InitSegment {
+    fn from(config: &Config) -> Self {
+        let sps = vec![
+            0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x80, 0x50, 0x05, 0xbb, 0x01, 0x6a, 0x02, 0x02,
+            0x02, 0x80, 0x00, 0x00, 0x03, 0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18, 0xcd,
+        ]; // TODO
+        let pps = vec![0x68, 0xe9, 0x7b, 0x2c, 0x8b]; // TODO
+        let timescale = config.framerate;
+        let (width, height) = config.resolution;
+
+        let ftyp = FileTypeBox {
+            major_brand: *b"isom",
+            minor_version: 0,
+            compatible_brands: vec![*b"isom", *b"iso6", *b"iso2", *b"avc1", *b"mp41"],
+        };
+
+        let time = Utc::now();
+        let duration = Some(Duration::zero());
+
+        let moov = MovieBox {
+            mvhd: MovieHeaderBox {
+                creation_time: time,
+                modification_time: time,
+                timescale,
+                duration,
+                rate: I16F16::from_num(1),
+                volume: I8F8::from_num(1),
+                matrix: matrix(config.rotation),
+                next_track_id: 0,
+            },
+            trak: vec![TrackBox {
+                tkhd: TrackHeaderBox {
+                    flags: TrackHeaderFlags::TRACK_ENABLED
+                        | TrackHeaderFlags::TRACK_IN_MOVIE
+                        | TrackHeaderFlags::TRACK_IN_PREVIEW,
+                    creation_time: time,
+                    modification_time: time,
+                    track_id: 1,
+                    timescale,
+                    duration,
+                    layer: 0,
+                    alternate_group: 0,
+                    volume: I8F8::from_num(1),
+                    matrix: matrix(config.rotation),
+                    width: U16F16::from_num(width),
+                    height: U16F16::from_num(height),
+                },
+                tref: None,
+                edts: None,
+                mdia: MediaBox {
+                    mdhd: MediaHeaderBox {
+                        creation_time: time,
+                        modification_time: time,
+                        timescale,
+                        duration,
+                        language: *b"und",
+                    },
+                    hdlr: HandlerBox {
+                        handler_type: HandlerType::Video,
+                        name: "foo".to_string(), // TODO
+                    },
+                    minf: MediaInformationBox {
+                        media_header: MediaHeader::Video(VideoMediaHeaderBox {
+                            graphics_mode: GraphicsMode::Copy,
+                            opcolor: [0, 0, 0],
+                        }),
+                        dinf: DataInformationBox {
+                            dref: DataReferenceBox {
+                                data_entries: vec![DataEntry::Url(DataEntryUrlBox {
+                                    flags: DataEntryFlags::SELF_CONTAINED,
+                                    location: String::new(),
+                                })],
+                            },
+                        },
+                        stbl: SampleTableBox {
+                            stsd: SampleDescriptionBox {
+                                entries: vec![Box::new(AvcSampleEntry {
+                                    data_reference_index: 1,
+                                    width: width as u16,
+                                    height: height as u16,
+                                    horiz_resolution: U16F16::from_num(72),
+                                    vert_resolution: U16F16::from_num(72),
+                                    frame_count: 1,
+                                    depth: 0x0018,
+                                    avcc: AvcConfigurationBox {
+                                        configuration: AvcDecoderConfigurationRecord {
+                                            profile_idc: 0x64, // high
+                                            constraint_set_flag: 0x00,
+                                            level_idc: 0x1f, // 0x2a: 4.2 0b0010_1100
+                                            sequence_parameter_set: sps,
+                                            picture_parameter_set: pps,
+                                        },
+                                    },
+                                })],
+                            },
+                            stts: TimeToSampleBox { samples: vec![] },
+                            stsc: SampleToChunkBox { entries: vec![] },
+                            stsz: SampleSizeBox {
+                                sample_size: SampleSize::Different(vec![]),
+                            },
+                            stco: ChunkOffsetBox {
+                                chunk_offsets: vec![],
+                            },
+                        },
+                    },
+                },
+            }],
+            mvex: Some(MovieExtendsBox {
+                mehd: None,
+                trex: vec![TrackExtendsBox {
+                    track_id: 1,
+                    default_sample_description_index: 1,
+                    default_sample_duration: 0,
+                    default_sample_size: 0,
+                    default_sample_flags: DefaultSampleFlags::empty(),
+                }],
+            }),
+        };
+
+        Self { ftyp, moov }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaSegment {
+    moof: MovieFragmentBox,
+    mdat: MediaDataBox,
+}
+
+impl MediaSegment {
+    fn new(config: &Config, sequence_number: u32, sample_sizes: Vec<u32>, data: Vec<u8>) -> Self {
+        let timescale = config.framerate;
+        let mut moof = MovieFragmentBox {
+            mfhd: MovieFragmentHeaderBox { sequence_number },
+            traf: vec![TrackFragmentBox {
+                tfhd: TrackFragmentHeaderBox {
+                    track_id: 1,
+                    base_data_offset: Some(0),
+                    sample_description_index: None,
+                    default_sample_duration: Some(timescale / config.framerate),
+                    default_sample_size: None,
+                    default_sample_flags: {
+                        #[allow(clippy::unwrap_used)] // infallible
+                        Some(DefaultSampleFlags::from_bits(0x01010000).unwrap())
+                    }, // not I-frame
+                },
+                trun: vec![TrackFragmentRunBox {
+                    data_offset: Some(0),
+                    first_sample_flags: Some(0x02000000), // I-frame
+                    sample_durations: None,
+                    sample_sizes: Some(sample_sizes),
+                    sample_flags: None,
+                    sample_composition_time_offsets: None,
+                }],
+            }],
+        };
+
+        moof.traf[0].trun[0].data_offset = Some(moof.size() as i32 + 8);
+
+        Self {
+            moof,
+            mdat: MediaDataBox { data },
+        }
+    }
+
+    fn size(&self) -> u64 {
+        self.moof.size() + self.mdat.size()
+    }
+
+    fn set_base_data_offset(&mut self, offset: u64) {
+        self.moof.traf[0].tfhd.base_data_offset = Some(offset);
+    }
+
+    fn set_sequence_number(&mut self, sequence_number: u32) {
+        self.moof.mfhd.sequence_number = sequence_number;
+    }
+
+    fn add_headers(&mut self, mut headers: Vec<u8>) {
+        #[allow(clippy::unwrap_used)]
+        // MediaSegments constructed with `new` should always have sample_sizes
+        {
+            self.moof.traf[0].trun[0].sample_sizes.as_mut().unwrap()[0] += headers.len() as u32;
+        }
+        headers.append(&mut self.mdat.data);
+        self.mdat.data = headers;
+    }
+}
+
+impl WriteTo for MediaSegment {
+    fn write_to(&self, mut w: impl Write) -> io::Result<()> {
+        write_to(&self.moof, &mut w)?;
+        write_to(&self.mdat, &mut w)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct VideoStream {
+    init_segment: Option<InitSegment>,
+    use_headers: bool,
+    size: u64,
+    sequence_number: u32,
+    media_seg_recv: broadcast::Receiver<(Vec<u8>, MediaSegment)>,
+}
+
+impl VideoStream {
+    pub fn new(
+        config: &Config,
+        media_seg_recv: broadcast::Receiver<(Vec<u8>, MediaSegment)>,
+    ) -> Self {
+        let init_segment = InitSegment::from(config);
+
+        Self {
+            size: init_segment.size(),
+            init_segment: Some(init_segment),
+            use_headers: true,
+            sequence_number: 1,
+            media_seg_recv,
+        }
+    }
+}
+
+impl Stream for VideoStream {
+    type Item = io::Result<Vec<u8>>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.init_segment.take() {
+            Some(init_segment) => {
+                let mut buf = Vec::with_capacity(init_segment.size() as usize);
+                if let Err(e) = init_segment.write_to(&mut buf) {
+                    return Poll::Ready(Some(Err(e)));
+                }
+                trace!("VideoStream sent init segment");
+                Poll::Ready(Some(Ok(buf)))
+            }
+            None => match self.media_seg_recv.try_recv() {
+                Ok((headers, mut media_segment)) => {
+                    if self.use_headers {
+                        media_segment.add_headers(headers);
+                        self.use_headers = false;
+                    }
+                    media_segment.set_base_data_offset(self.size);
+                    media_segment.set_sequence_number(self.sequence_number);
+                    self.sequence_number += 1;
+                    self.size += media_segment.size();
+                    let mut buf = Vec::with_capacity(media_segment.size() as usize);
+                    if let Err(e) = media_segment.write_to(&mut buf) {
+                        return Poll::Ready(Some(Err(e)));
+                    }
+                    trace!(
+                        "VideoStream sent media segment with sequence number {}",
+                        self.sequence_number - 1
+                    );
+                    Poll::Ready(Some(Ok(buf)))
+                }
+                Err(e) => match e {
+                    TryRecvError::Closed => Poll::Ready(None),
+                    TryRecvError::Empty => {
+                        let mut rx = self.media_seg_recv.resubscribe();
+                        let waker = cx.waker().clone();
+                        rocket::tokio::spawn(async move {
+                            let _ = rx.recv().await;
+                            waker.wake();
+                        });
+                        trace!("VideoStream is pending");
+                        Poll::Pending
+                    }
+                    TryRecvError::Lagged(_) => {
+                        #[allow(clippy::unwrap_used)]
+                        // try_recv should always be `Ok` after it has lagged
+                        let (headers, mut media_segment) = self.media_seg_recv.try_recv().unwrap();
+                        if self.use_headers {
+                            media_segment.add_headers(headers);
+                            self.use_headers = false;
+                        }
+                        media_segment.set_base_data_offset(self.size);
+                        media_segment.set_sequence_number(self.sequence_number);
+                        self.sequence_number += 1;
+                        self.size += media_segment.size();
+                        let mut buf = Vec::with_capacity(media_segment.size() as usize);
+                        if let Err(e) = media_segment.write_to(&mut buf) {
+                            return Poll::Ready(Some(Err(e)));
+                        }
+                        trace!(
+                            "VideoStream sent media segment with sequence number {}",
+                            self.sequence_number - 1
+                        );
+                        Poll::Ready(Some(Ok(buf)))
+                    }
+                },
+            },
+        }
+    }
+}
+
+pub fn stream_media_segments(config: Config) -> broadcast::Receiver<(Vec<u8>, MediaSegment)> {
+    let (sender, receiver) = broadcast::channel(1);
+
+    spawn_blocking(move || -> anyhow::Result<()> {
         let mut timestamp = 0;
         let timescale = config.framerate;
         let bitrate = 896_000;
 
-        let mut camera = Camera::new("/dev/video0").unwrap();
+        let mut camera = Camera::new(
+            config
+                .device
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
+        )?;
         camera.start(&rscam::Config {
             interval: (1, config.framerate),
             resolution: config.resolution,
             format: b"YUYV",
             ..Default::default()
-        }).unwrap();
+        })?;
 
         let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
 
-        let mut encoder = x264::Setup::preset(x264::Preset::Fast, x264::Tune::None, false, true)
-            .fps(1, config.framerate)
-            .timebase(1, timescale)
-            .bitrate(bitrate)
-            .high()
-            .annexb(false)
-            .max_keyframe_interval(60)
-            .scenecut_threshold(0)
-            .build(encoding, config.resolution.0 as i32, config.resolution.1 as i32)
-            .unwrap();
+        let mut encoder =
+            x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
+                .fps(1, config.framerate)
+                .timebase(1, timescale)
+                .bitrate(bitrate)
+                .high()
+                .annexb(false)
+                .max_keyframe_interval(60)
+                .scenecut_threshold(0)
+                .build(
+                    encoding,
+                    config.resolution.0 as i32,
+                    config.resolution.1 as i32,
+                )
+                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
 
-        for sequence_number in 1.. {
+        let headers = encoder
+            .headers()
+            .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+            .entirety()
+            .to_vec();
+
+        'outer: loop {
+            let time = Instant::now();
             let mut sample_sizes = vec![];
             let mut buf = vec![];
 
-            if sequence_number == 0 {
-                buf.extend_from_slice(encoder.headers().unwrap().entirety());
-            }
-
             for _ in 0..60 {
-                let frame = &*camera.capture().unwrap();
+                let frame = match camera.capture() {
+                    Ok(f) => f,
+                    Err(e) => {
+                        warn!("Capturing frame failed with error {:?}", e);
+                        continue 'outer;
+                    }
+                };
 
-                let image = x264::Image::new(x264::Colorspace::YUYV, config.resolution.0 as i32, config.resolution.1 as i32, &[
-                    x264::Plane {
+                let image = x264::Image::new(
+                    x264::Colorspace::YUYV,
+                    config.resolution.0 as i32,
+                    config.resolution.1 as i32,
+                    &[x264::Plane {
                         stride: config.resolution.0 as i32 * 2,
-                        data: &frame,
-                    },
-                ]);
+                        data: &*frame,
+                    }],
+                );
 
-                let (data, _) = encoder.encode(timestamp, image).unwrap();
+                let (data, _) = match encoder.encode(timestamp, image) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        warn!("Encoding frame failed with error {:?}", e);
+                        continue 'outer;
+                    }
+                };
 
                 sample_sizes.push(data.entirety().len() as u32);
                 buf.extend_from_slice(data.entirety());
                 timestamp += timescale as i64 / config.framerate as i64;
             }
 
-            let mut moof = MovieFragmentBox {
-                mfhd: MovieFragmentHeaderBox { sequence_number },
-                traf: vec![TrackFragmentBox {
-                    tfhd: TrackFragmentHeaderBox {
-                        track_id: 1,
-                        base_data_offset: Some(size),
-                        sample_description_index: None,
-                        default_sample_duration: Some(timescale / config.framerate),
-                        default_sample_size: None,
-                        default_sample_flags: Some(DefaultSampleFlags::from_bits(0x01010000).unwrap()), // not I-frame
-                    },
-                    trun: vec![TrackFragmentRunBox {
-                        data_offset: Some(0),
-                        first_sample_flags: Some(0x02000000),// I-frame
-                        sample_durations: None,
-                        sample_sizes: Some(sample_sizes),
-                        sample_flags: None,
-                        sample_composition_time_offsets: None,
-                    }],
-                }],
-            };
-
-            moof.traf[0].trun[0].data_offset = Some(moof.size() as i32 + 8);
-
-            let mdat = MediaDataBox { data: buf };
-
-            size += moof.size();
-            size += mdat.size();
-
-            sender.send((moof, mdat)).unwrap_or(0);
+            let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
+            sender.send((headers.clone(), media_segment)).unwrap_or(0);
+            trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
-    })
-}
+    });
 
-fn moov(
-    width: u32,
-    height: u32,
-    rotation: u32,
-    timescale: u32,
-    sps: Vec<u8>,
-    pps: Vec<u8>,
-) -> MovieBox {
-    let time = Utc::now();
-    let duration = Some(Duration::zero());
-
-    MovieBox {
-        mvhd: MovieHeaderBox {
-            creation_time: time,
-            modification_time: time,
-            timescale,
-            duration,
-            rate: I16F16::from_num(1),
-            volume: I8F8::from_num(1),
-            matrix: matrix(rotation).unwrap(),
-            next_track_id: 0,
-        },
-        trak: vec![TrackBox {
-            tkhd: TrackHeaderBox {
-                flags: TrackHeaderFlags::TRACK_ENABLED
-                    | TrackHeaderFlags::TRACK_IN_MOVIE
-                    | TrackHeaderFlags::TRACK_IN_PREVIEW,
-                creation_time: time,
-                modification_time: time,
-                track_id: 1,
-                timescale,
-                duration,
-                layer: 0,
-                alternate_group: 0,
-                volume: I8F8::from_num(1),
-                matrix: matrix(rotation).unwrap(),
-                width: U16F16::from_num(width),
-                height: U16F16::from_num(height),
-            },
-            tref: None,
-            edts: None,
-            mdia: MediaBox {
-                mdhd: MediaHeaderBox {
-                    creation_time: time,
-                    modification_time: time,
-                    timescale,
-                    duration,
-                    language: *b"und",
-                },
-                hdlr: HandlerBox {
-                    handler_type: HandlerType::Video,
-                    name: "foo".to_string(), // TODO
-                },
-                minf: MediaInformationBox {
-                    media_header: MediaHeader::Video(VideoMediaHeaderBox {
-                        graphics_mode: GraphicsMode::Copy,
-                        opcolor: [0, 0, 0],
-                    }),
-                    dinf: DataInformationBox {
-                        dref: DataReferenceBox {
-                            data_entries: vec![DataEntry::Url(DataEntryUrlBox {
-                                flags: DataEntryFlags::SELF_CONTAINED,
-                                location: String::new(),
-                            })],
-                        },
-                    },
-                    stbl: SampleTableBox {
-                        stsd: SampleDescriptionBox {
-                            entries: vec![Box::new(AvcSampleEntry {
-                                data_reference_index: 1,
-                                width: width as u16,
-                                height: height as u16,
-                                horiz_resolution: U16F16::from_num(72),
-                                vert_resolution: U16F16::from_num(72),
-                                frame_count: 1,
-                                depth: 0x0018,
-                                avcc: AvcConfigurationBox {
-                                    configuration: AvcDecoderConfigurationRecord {
-                                        profile_idc: 0x64, // high
-                                        constraint_set_flag: 0x00,
-                                        level_idc: 0x1f, // 0x2a: 4.2 0b0010_1100
-                                        sequence_parameter_set: sps,
-                                        picture_parameter_set: pps,
-                                    },
-                                },
-                            })],
-                        },
-                        stts: TimeToSampleBox { samples: vec![] },
-                        stsc: SampleToChunkBox { entries: vec![] },
-                        stsz: SampleSizeBox {
-                            sample_size: SampleSize::Different(vec![]),
-                        },
-                        stco: ChunkOffsetBox {
-                            chunk_offsets: vec![],
-                        },
-                    },
-                },
-            },
-        }],
-        mvex: Some(MovieExtendsBox {
-            mehd: None,
-            trex: vec![TrackExtendsBox {
-                track_id: 1,
-                default_sample_description_index: 1,
-                default_sample_duration: 0,
-                default_sample_size: 0,
-                default_sample_flags: DefaultSampleFlags::empty(),
-            }],
-        }),
-    }
+    receiver
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Rotation;
+
+    use super::*;
+    use rocket::futures::stream::StreamExt;
+    use rocket::tokio::{self, fs, io::AsyncWriteExt};
     use std::path::PathBuf;
 
-    use rocket::tokio::{self, fs};
-    use super::*;
-
-    //#[ignore]
+    #[ignore]
     #[tokio::test]
     async fn test_mp4() {
         let config = crate::config::Config {
             resolution: (640, 480),
-            rotation: 0,
+            rotation: Rotation::R0,
             framerate: 30,
             device: PathBuf::from("/dev/video0"),
         };
 
         let mut file = fs::File::create("video.mp4").await.unwrap();
 
-        let (ftyp, moov) = init_segment(&config).await;
-        write_to(&ftyp, &mut file).await.unwrap();
-        write_to(&moov, &mut file).await.unwrap();
+        let rx = stream_media_segments(config.clone());
 
-        let (tx, mut rx) = broadcast::channel(2);
-        let handle = stream_media_segments(config, ftyp.size() + moov.size(), tx).await;
-        for _ in 0..5 {
-            let (moof, mdat) = rx.recv().await.unwrap();
-            write_to(&moof, &mut file).await.unwrap();
-            write_to(&mdat, &mut file).await.unwrap();
+        let stream = VideoStream::new(&config, rx);
+        let mut stream = stream.take(6);
+
+        while let Some(segment) = stream.next().await {
+            file.write_all(&segment.unwrap()).await.unwrap();
         }
-        handle.abort();
     }
 }

@@ -3,14 +3,16 @@
 use super::auth::Token;
 use super::provider::Provider;
 use crate::config::{Config, Context};
+use crate::fmp4::{MediaSegment, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
-#[cfg(not(debug_assertions))]
-use rocket::http::ContentType;
-use rocket::http::{Cookie, CookieJar, SameSite, Status};
+use rocket::futures::{Stream, StreamExt};
+use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status};
+use rocket::response::stream::ByteStream;
 use rocket::response::Redirect;
 use rocket::serde::json::Json;
+use rocket::tokio::sync::broadcast;
 use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
@@ -46,11 +48,10 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
             })
         }) {
             (
-                if let Some(ext) = path.extension() {
-                    ContentType::from_extension(&ext.to_string_lossy())
-                        .unwrap_or(ContentType::Plain)
-                } else {
-                    ContentType::Plain
+                match path.extension() {
+                    Some(ext) => ContentType::from_extension(&ext.to_string_lossy())
+                        .unwrap_or(ContentType::Plain),
+                    None => ContentType::Plain,
                 },
                 s?.to_string(),
             )
@@ -144,6 +145,31 @@ pub async fn put_config(
 
     ctx.set(new_ctx);
     Ok(())
+}
+
+#[get("/stream.mp4")]
+pub async fn stream(
+    //_token: Token,
+    ctx: &State<Provider<Context>>,
+    media_seg_recv: &State<broadcast::Receiver<(Vec<u8>, MediaSegment)>>,
+) -> (ContentType, ByteStream<impl Stream<Item = Vec<u8>>>) {
+    let ctx = ctx.get();
+    (
+        ContentType::MP4,
+        ByteStream(
+            VideoStream::new(&ctx.config, media_seg_recv.resubscribe()).filter_map(
+                |x| async move {
+                    match x {
+                        Ok(x) => Some(x),
+                        Err(e) => {
+                            warn!("Error streaming segment: {:?}", e);
+                            None
+                        }
+                    }
+                },
+            ),
+        ),
+    )
 }
 
 #[cfg(test)]

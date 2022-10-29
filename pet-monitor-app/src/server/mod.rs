@@ -1,6 +1,7 @@
 //! This module contains all server-related logic.
 
 use crate::config::Context;
+use crate::fmp4::stream_media_segments;
 use provider::Provider;
 use rocket::config::LogLevel;
 use rocket::config::TlsConfig;
@@ -70,8 +71,8 @@ fn http_rocket(
 /// Returns the main server rocket
 fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -> Rocket<Build> {
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
-    let rocket_cfg = if let Some(tls) = &ctx.tls {
-        rocket::Config {
+    let rocket_cfg = match &ctx.tls {
+        Some(tls) => rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: tls.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
@@ -79,24 +80,26 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel) -
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
-        }
-    } else {
-        rocket::Config {
+        },
+        None => rocket::Config {
             port: ctx.port,
             address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
-        }
+        },
     };
 
     #[cfg(debug_assertions)]
-    let routes = rocket::routes![login, get_config, put_config];
+    let routes = rocket::routes![login, get_config, put_config, stream];
     #[cfg(not(debug_assertions))]
-    let routes = rocket::routes![files, login, get_config, put_config];
+    let routes = rocket::routes![files, login, get_config, put_config, stream];
+
+    let media_seg_rx = stream_media_segments(ctx.config.clone());
 
     rocket::custom(&rocket_cfg)
         .mount("/", routes)
         .manage(ctx_provider)
+        .manage(media_seg_rx)
 }

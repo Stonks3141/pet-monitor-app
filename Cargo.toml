@@ -3,6 +3,7 @@ members = ["pet-monitor-app"]
 default-members = ["pet-monitor-app"]
 
 [profile.release]
+opt-level = 3
 codegen-units = 1
 lto = true
 strip = true
