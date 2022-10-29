@@ -97,6 +97,7 @@ impl Arbitrary for SubCmd {
                 cert: Arbitrary::arbitrary(g),
                 key: Arbitrary::arbitrary(g),
                 port: Arbitrary::arbitrary(g),
+                stream: Arbitrary::arbitrary(g),
             }
         }
     }
@@ -117,12 +118,14 @@ impl Arbitrary for SubCmd {
                 cert,
                 key,
                 port,
+                stream,
             } => shrink_tuple!(Start {
                 tls,
                 tls_port,
                 cert,
                 key,
-                port
+                port,
+                stream,
             }),
         }
     }
@@ -164,6 +167,7 @@ fn make_args(cmd: &Cmd) -> Vec<String> {
             tls_port,
             cert,
             key,
+            stream,
         } => {
             args.push("start".to_string());
             if let Some(tls) = tls {
@@ -185,6 +189,9 @@ fn make_args(cmd: &Cmd) -> Vec<String> {
             if let Some(key) = key {
                 args.push("--key".to_string());
                 args.push(key.to_owned().into_os_string().into_string().unwrap());
+            }
+            if !stream {
+                args.push("--no-stream".to_string());
             }
         }
     }
@@ -217,6 +224,7 @@ async fn merge_tls_cfg() -> anyhow::Result<()> {
             cert: Some(PathBuf::from("cert.pem")),
             key: Some(PathBuf::from("key.key")),
             port: None,
+            stream: false,
         },
         conf_path: None,
         log_level: Level::Info,
@@ -248,6 +256,7 @@ async fn merge_no_tls() -> anyhow::Result<()> {
             cert: None,
             key: None,
             port: None,
+            stream: false,
         },
         conf_path: None,
         log_level: Level::Info,
@@ -279,6 +288,7 @@ async fn merge_invalid_tls() {
             cert: Some(PathBuf::from("cert.pem")),
             key: None,
             port: None,
+            stream: false,
         },
         conf_path: None,
         log_level: Level::Info,

@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
             config::store(&cmd.conf_path, &ctx).await?;
             info!("Successfully updated configuration!");
         }
-        cli::SubCmd::Start { .. } => {
+        cli::SubCmd::Start { stream, .. } => {
             let level = match cmd.log_level {
                 Level::Error => LogLevel::Critical,
                 Level::Warn => LogLevel::Critical,
@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
                 Level::Debug => LogLevel::Debug,
                 Level::Trace => LogLevel::Debug,
             };
-            server::launch(cmd.conf_path, ctx, level).await?;
+            server::launch(cmd.conf_path, ctx, level, stream).await?;
         }
     }
     Ok(())

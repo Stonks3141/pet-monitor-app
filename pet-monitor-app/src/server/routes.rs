@@ -3,18 +3,17 @@
 use super::auth::Token;
 use super::provider::Provider;
 use crate::config::{Config, Context};
-use crate::server::fmp4::{MediaSegment, VideoStream};
+use crate::server::fmp4::{MediaSegReceiver, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
 use rocket::futures::{Stream, StreamExt};
-use rocket::http::{ContentType, Cookie, CookieJar, SameSite, Status, Header};
+use rocket::http::{ContentType, Cookie, CookieJar, Header, SameSite, Status};
 use rocket::response::stream::ByteStream;
 use rocket::response::Redirect;
 use rocket::serde::json::Json;
-use rocket::tokio::sync::broadcast;
-use rocket::{get, post, put, State};
 use rocket::Responder;
+use rocket::{get, post, put, State};
 use std::path::PathBuf;
 
 /// Redirects any request to HTTPS. It preserves the original path and uses
@@ -179,7 +178,7 @@ impl From<CacheControl> for Header<'_> {
 pub async fn stream(
     _token: Token,
     ctx: &State<Provider<Context>>,
-    media_seg_recv: &State<broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>>,
+    media_seg_recv: &State<MediaSegReceiver>,
 ) -> StreamResponse<impl Stream<Item = Vec<u8>>> {
     let ctx = ctx.get();
     StreamResponse {

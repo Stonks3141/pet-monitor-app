@@ -28,6 +28,7 @@ pub enum SubCmd {
         cert: Option<PathBuf>,
         key: Option<PathBuf>,
         port: Option<u16>,
+        stream: bool,
     },
     Configure {
         password: Option<String>,
@@ -68,6 +69,8 @@ pub fn cmd() -> Command {
                     .required(false)
                     .value_parser(value_parser!(PathBuf))
                     .value_hint(ValueHint::FilePath))
+                .arg(arg!(--"no-stream" "Disable video streaming.")
+                    .action(ArgAction::SetFalse))
         )
         .subcommand_required(true)
         .arg(arg!(-c --config <CONFIG> "Path to the configuration file to use.")
@@ -92,11 +95,12 @@ where
                 regen_secret: matches.get_flag("regen-secret"),
             },
             Some(("start", matches)) => SubCmd::Start {
-                tls: matches.get_one::<bool>("tls").map(|x| x.to_owned()),
-                tls_port: matches.get_one::<u16>("tls-port").map(|x| x.to_owned()),
+                tls: matches.get_one::<bool>("tls").map(|x| *x),
+                tls_port: matches.get_one::<u16>("tls-port").map(|x| *x),
                 cert: matches.get_one::<PathBuf>("cert").map(|x| x.to_owned()),
                 key: matches.get_one::<PathBuf>("key").map(|x| x.to_owned()),
-                port: matches.get_one::<u16>("port").map(|x| x.to_owned()),
+                port: matches.get_one::<u16>("port").map(|x| *x),
+                stream: *matches.get_one::<bool>("no-stream").unwrap(),
             },
             _ => unreachable!("`Command::subcommand_required` guarantees this"),
         },
@@ -135,6 +139,7 @@ pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
             tls_port,
             cert,
             key,
+            ..
         } => {
             if let Some(port) = port {
                 ctx.port = *port;

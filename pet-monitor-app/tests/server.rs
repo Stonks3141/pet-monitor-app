@@ -33,6 +33,7 @@ async fn test_login() {
             .arg("start")
             .arg("--port")
             .arg("8080")
+            .arg("--no-stream")
             .spawn()
             .unwrap(),
     );

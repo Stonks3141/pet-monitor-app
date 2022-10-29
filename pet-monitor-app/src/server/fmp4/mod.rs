@@ -1,6 +1,8 @@
 mod boxes;
 
 use crate::config::Config;
+use crate::config::Context;
+use crate::server::provider::Provider;
 use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
@@ -11,8 +13,6 @@ use rocket::tokio::{
     task::spawn_blocking,
 };
 use rscam::Camera;
-use crate::config::Context;
-use crate::server::provider::Provider;
 use std::io::{self, prelude::*};
 use std::pin::Pin;
 use std::task::Poll;
@@ -263,7 +263,10 @@ impl VideoStream {
 impl Stream for VideoStream {
     type Item = io::Result<Vec<u8>>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         match self.init_segment.take() {
             Some(init_segment) => {
                 let mut buf = Vec::with_capacity(init_segment.size() as usize);
@@ -280,7 +283,7 @@ impl Stream for VideoStream {
                         None => {
                             trace!("VideoStream ended");
                             return Poll::Ready(None);
-                        },
+                        }
                     };
                     if self.use_headers {
                         media_segment.add_headers(headers);
@@ -315,13 +318,14 @@ impl Stream for VideoStream {
                     TryRecvError::Lagged(_) => {
                         #[allow(clippy::unwrap_used)]
                         // try_recv should always be `Ok` after it has lagged
-                        let (headers, mut media_segment) = match self.media_seg_recv.try_recv().unwrap() {
-                            Some(x) => x,
-                            None => {
-                                trace!("VideoStream ended");
-                                return Poll::Ready(None);
-                            },
-                        };
+                        let (headers, mut media_segment) =
+                            match self.media_seg_recv.try_recv().unwrap() {
+                                Some(x) => x,
+                                None => {
+                                    trace!("VideoStream ended");
+                                    return Poll::Ready(None);
+                                }
+                            };
                         if self.use_headers {
                             media_segment.add_headers(headers);
                             self.use_headers = false;
@@ -346,7 +350,9 @@ impl Stream for VideoStream {
     }
 }
 
-pub fn stream_media_segments(ctx: Provider<Context>) -> broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>> {
+pub type MediaSegReceiver = broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>;
+
+pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
     let (sender, receiver) = broadcast::channel(1);
     let mut config = ctx.get().config;
     let mut ctx_recv = ctx.subscribe();
@@ -358,13 +364,10 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> broadcast::Receiver<Opti
             let timescale = config.framerate;
             let bitrate = 896_000;
 
-            let mut camera = Camera::new(
-                config
-                    .device
-                    .as_os_str()
-                    .to_str()
-                    .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
-            )?;
+            let mut camera =
+                Camera::new(config.device.as_os_str().to_str().ok_or_else(|| {
+                    anyhow::Error::msg("failed to convert device path to string")
+                })?)?;
             camera.start(&rscam::Config {
                 interval: (1, config.framerate),
                 resolution: config.resolution,
@@ -440,7 +443,9 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> broadcast::Receiver<Opti
                 }
 
                 let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
-                sender.send(Some((headers.clone(), media_segment))).unwrap_or(0);
+                sender
+                    .send(Some((headers.clone(), media_segment)))
+                    .unwrap_or(0);
                 trace!("Sent media segment, took {:?} to capture", time.elapsed());
             }
         }
