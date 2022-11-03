@@ -7,7 +7,6 @@ use rocket::config::LogLevel;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
 use rocket::{Build, Rocket};
-use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
 mod auth;
@@ -58,7 +57,7 @@ fn http_rocket(
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = rocket::Config {
         port: ctx.port,
-        address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+        address: ctx.host,
         log_level,
         ..rocket::Config::figment()
             .extract::<rocket::Config>()
@@ -77,7 +76,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel, s
         Some(tls) => rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: tls.port,
-            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            address: ctx.host,
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
@@ -85,7 +84,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel, s
         },
         None => rocket::Config {
             port: ctx.port,
-            address: ctx.host.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            address: ctx.host,
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
@@ -93,7 +92,7 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel, s
         },
     };
 
-    let mut routes = rocket::routes![login, get_config, put_config, stream];
+    let mut routes = rocket::routes![login, get_config, put_config];
     if stream {
         routes.append(&mut rocket::routes![stream]);
     }

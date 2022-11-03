@@ -21,7 +21,7 @@ pub struct Context {
     /// The domain to serve from (used by HTTPS redirect route)
     pub domain: String,
     /// The IP address to listen on
-    pub host: Option<IpAddr>,
+    pub host: IpAddr,
     /// The port to listen on
     pub port: u16,
     /// Configuration accessed by the browser
@@ -38,7 +38,7 @@ impl Default for Context {
             jwt_secret: [0; 32],
             jwt_timeout: Duration::days(4),
             domain: "localhost".to_string(),
-            host: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            host: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             #[cfg(not(debug_assertions))]
             port: 80,
             #[cfg(debug_assertions)]

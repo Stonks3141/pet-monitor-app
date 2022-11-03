@@ -3,9 +3,7 @@ use assert_fs::NamedTempFile;
 use reqwest::{Client, StatusCode};
 use rocket::tokio;
 
-use std::process::Child;
-
-struct Cleanup(Child);
+struct Cleanup(std::process::Child);
 
 impl Drop for Cleanup {
     fn drop(&mut self) {
