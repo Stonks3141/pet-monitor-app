@@ -2,12 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <!--link rel="icon" href="%sveltekit.assets%/favicon.png" /-->
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     %sveltekit.head%
   </head>
 
   <body data-sveltekit-prefetch>
-    <div>%sveltekit.body%</div>
+    <div
+      class="flex flex-col min-h-screen w-screen p-4 place-content-center items-center bg-base-300"
+    >
+      %sveltekit.body%
+    </div>
   </body>
 </html>
