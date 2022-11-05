@@ -114,3 +114,24 @@ jobs:
           cd client
           pnpm install
           pnpm build
+
+  lint-client:
+    name: Lint client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 7.8.0
+      - name: Build bundle
+        run: |
+          cd client
+          pnpm install
+          pnpm lint
