@@ -2,6 +2,7 @@ use chrono::Duration;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
@@ -60,6 +61,9 @@ pub struct Config {
     pub framerate: u32,
     /// The v4l2 device to capture video with (eg. "/dev/video0")
     pub device: PathBuf,
+    /// Additional options to pass to v4l2
+    #[serde(rename = "v4l2Options")]
+    pub v4l2_options: HashMap<String, String>,
 }
 
 impl Default for Config {
@@ -69,6 +73,7 @@ impl Default for Config {
             rotation: Rotation::R0,
             framerate: 30,
             device: PathBuf::from("/dev/video0"),
+            v4l2_options: HashMap::new(),
         }
     }
 }
@@ -194,6 +199,7 @@ mod qc {
                 rotation: Arbitrary::arbitrary(g),
                 framerate: Arbitrary::arbitrary(g),
                 device: Arbitrary::arbitrary(g),
+                v4l2_options: Arbitrary::arbitrary(g),
             }
         }
     }

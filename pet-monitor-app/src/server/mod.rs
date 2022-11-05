@@ -70,7 +70,12 @@ fn http_rocket(
 }
 
 /// Returns the main server rocket
-fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel, stream: bool) -> Rocket<Build> {
+fn rocket(
+    ctx: &Context,
+    ctx_provider: Provider<Context>,
+    log_level: LogLevel,
+    stream: bool,
+) -> Rocket<Build> {
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = match &ctx.tls {
         Some(tls) => rocket::Config {
@@ -99,10 +104,13 @@ fn rocket(ctx: &Context, ctx_provider: Provider<Context>, log_level: LogLevel, s
     #[cfg(not(debug_assertions))]
     routes.append(&mut rocket::routes![files]);
 
-    let media_seg_rx = stream_media_segments(ctx_provider.clone());
-
-    rocket::custom(&rocket_cfg)
+    let mut rocket = rocket::custom(&rocket_cfg)
         .mount("/", routes)
-        .manage(ctx_provider)
-        .manage(media_seg_rx)
+        .manage(ctx_provider.clone());
+
+    if stream {
+        let media_seg_rx = stream_media_segments(ctx_provider);
+        rocket = rocket.manage(media_seg_rx);
+    }
+    rocket
 }

@@ -91,20 +91,24 @@ where
     Cmd {
         command: match matches.subcommand() {
             Some(("configure", matches)) => SubCmd::Configure {
-                password: matches.get_one::<String>("password").map(|s| s.to_owned()),
+                password: matches.get_one::<String>("password").cloned(),
                 regen_secret: matches.get_flag("regen-secret"),
             },
             Some(("start", matches)) => SubCmd::Start {
-                tls: matches.get_one::<bool>("tls").map(|x| *x),
-                tls_port: matches.get_one::<u16>("tls-port").map(|x| *x),
-                cert: matches.get_one::<PathBuf>("cert").map(|x| x.to_owned()),
-                key: matches.get_one::<PathBuf>("key").map(|x| x.to_owned()),
-                port: matches.get_one::<u16>("port").map(|x| *x),
-                stream: *matches.get_one::<bool>("no-stream").unwrap(),
+                tls: matches.get_one::<bool>("tls").copied(),
+                tls_port: matches.get_one::<u16>("tls-port").copied(),
+                cert: matches.get_one::<PathBuf>("cert").cloned(),
+                key: matches.get_one::<PathBuf>("key").cloned(),
+                port: matches.get_one::<u16>("port").copied(),
+                stream: {
+                    // no-stream has a default value and is always present
+                    #[allow(clippy::unwrap_used)]
+                    *matches.get_one::<bool>("no-stream").unwrap()
+                },
             },
             _ => unreachable!("`Command::subcommand_required` guarantees this"),
         },
-        conf_path: matches.get_one::<PathBuf>("config").map(|s| s.to_owned()),
+        conf_path: matches.get_one::<PathBuf>("config").cloned(),
         log_level: match matches.get_count("quiet") {
             2.. => Level::Error,
             1 => Level::Warn,
