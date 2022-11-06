@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Install x264
-        run: sudo apt-get install x264
+        run: sudo apt-get install libx264-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -38,7 +38,7 @@ jobs:
           cd pet-monitor-app
           mkdir dist
       - name: Install x264
-        run: sudo apt-get install x264
+        run: sudo apt-get install libx264-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -58,7 +58,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Install x264
-        run: sudo apt-get install x264
+        run: sudo apt-get install libx264-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -77,7 +77,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Install x264
-        run: sudo apt-get install x264
+        run: sudo apt-get install libx264-dev
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
