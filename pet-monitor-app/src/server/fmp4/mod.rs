@@ -48,7 +48,7 @@ impl From<&Config> for InitSegment {
             0x02, 0x80, 0x00, 0x00, 0x03, 0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18, 0xcd,
         ]; // TODO
         let pps = vec![0x68, 0xe9, 0x7b, 0x2c, 0x8b]; // TODO
-        let timescale = config.framerate;
+        let timescale = config.interval.1;
         let (width, height) = config.resolution;
 
         let ftyp = FileTypeBox {
@@ -172,7 +172,7 @@ pub struct MediaSegment {
 
 impl MediaSegment {
     fn new(config: &Config, sequence_number: u32, sample_sizes: Vec<u32>, data: Vec<u8>) -> Self {
-        let timescale = config.framerate;
+        let timescale = config.interval.1;
         let mut moof = MovieFragmentBox {
             mfhd: MovieFragmentHeaderBox { sequence_number },
             traf: vec![TrackFragmentBox {
@@ -180,7 +180,9 @@ impl MediaSegment {
                     track_id: 1,
                     base_data_offset: Some(0),
                     sample_description_index: None,
-                    default_sample_duration: Some(timescale / config.framerate),
+                    default_sample_duration: Some(
+                        timescale * config.interval.0 / config.interval.1,
+                    ),
                     default_sample_size: None,
                     default_sample_flags: {
                         #[allow(clippy::unwrap_used)] // infallible
@@ -364,7 +366,7 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
         'main: loop {
             trace!("Starting stream with config {:?}", config);
             let mut timestamp = 0;
-            let timescale = config.framerate;
+            let timescale = config.interval.1;
             let bitrate = 896_000;
 
             let mut camera =
@@ -378,16 +380,17 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
                 .map(|ctl| (ctl.name, ctl.id))
                 .collect();
 
-            for (name, val) in config.v4l2_options.iter() {
+            for (name, val) in config.v4l2_controls.iter() {
                 match controls.get(name) {
                     Some(id) => camera.set_control(*id, val).unwrap_or(()), // ignore failure
-                    None => log::warn!("Couldn't find control {}", name), // TODO: handle errors by returning a 400 for PUT /api/config
-                                                                          // or printing an error message if loaded from the config file
+                    None => log::warn!("Couldn't find control {}", name),
+                    // TODO: handle errors by returning a 400 for PUT /api/config
+                    // or printing an error message if loaded from the config file
                 }
             }
 
             camera.start(&rscam::Config {
-                interval: (1, config.framerate),
+                interval: config.interval,
                 resolution: config.resolution,
                 format: b"YUYV",
                 ..Default::default()
@@ -397,7 +400,7 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
 
             let mut encoder =
                 x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
-                    .fps(1, config.framerate)
+                    .fps(config.interval.0, config.interval.1)
                     .timebase(1, timescale)
                     .bitrate(bitrate)
                     .high()
@@ -457,7 +460,8 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
 
                     sample_sizes.push(data.entirety().len() as u32);
                     buf.extend_from_slice(data.entirety());
-                    timestamp += timescale as i64 / config.framerate as i64;
+                    timestamp +=
+                        timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
                 }
 
                 let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);

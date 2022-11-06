@@ -1,6 +1,6 @@
 use chrono::Duration;
 use rocket::tokio::task::spawn_blocking;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
@@ -53,27 +53,43 @@ impl Default for Context {
 /// The config accessible by the browser
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
-    /// Pixel resolution (width, height)
-    pub resolution: (u32, u32),
-    /// Rotation in degrees (0, 90, 180, or 270)
-    pub rotation: Rotation,
-    /// Framerate in frames per second
-    pub framerate: u32,
     /// The v4l2 device to capture video with (eg. "/dev/video0")
     pub device: PathBuf,
+    /// The fourCC code to capture in
+    #[serde(serialize_with = "ser_format")]
+    #[serde(deserialize_with = "de_format")]
+    pub format: [u8; 4],
+    /// Pixel resolution (width, height)
+    pub resolution: (u32, u32),
+    /// A fraction representing the length of time for a frame
+    pub interval: (u32, u32),
+    /// Rotation in degrees (0, 90, 180, or 270)
+    pub rotation: Rotation,
     /// Additional options to pass to v4l2
-    #[serde(rename = "v4l2Options")]
-    pub v4l2_options: HashMap<String, String>,
+    #[serde(rename = "v4l2Controls")]
+    pub v4l2_controls: HashMap<String, String>,
+}
+
+pub fn ser_format<S: Serializer>(format: &[u8; 4], s: S) -> Result<S::Ok, S::Error> {
+    let format = std::str::from_utf8(format).unwrap();
+    format.serialize(s)
+}
+
+pub fn de_format<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 4], D::Error> {
+    let format = String::deserialize(d)?;
+    let format = format.as_bytes();
+    Ok([format[0], format[1], format[2], format[3]])
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            resolution: (640, 480),
-            rotation: Rotation::R0,
-            framerate: 30,
             device: PathBuf::from("/dev/video0"),
-            v4l2_options: HashMap::new(),
+            format: *b"YUYV",
+            resolution: (640, 480),
+            interval: (1, 30),
+            rotation: Rotation::R0,
+            v4l2_controls: HashMap::new(),
         }
     }
 }
@@ -195,11 +211,17 @@ mod qc {
     impl Arbitrary for Config {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
-                resolution: Arbitrary::arbitrary(g),
-                rotation: Arbitrary::arbitrary(g),
-                framerate: Arbitrary::arbitrary(g),
                 device: Arbitrary::arbitrary(g),
-                v4l2_options: Arbitrary::arbitrary(g),
+                format: [
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                    Arbitrary::arbitrary(g),
+                ],
+                resolution: Arbitrary::arbitrary(g),
+                interval: Arbitrary::arbitrary(g),
+                rotation: Arbitrary::arbitrary(g),
+                v4l2_controls: Arbitrary::arbitrary(g),
             }
         }
     }

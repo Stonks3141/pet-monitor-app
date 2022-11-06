@@ -1,6 +1,7 @@
 //! This module provides Rocket routes for the server.
 
 use super::auth::Token;
+use super::fmp4::capabilities::{check_config, Capabilities};
 use super::provider::Provider;
 use crate::config::{Config, Context};
 use crate::server::fmp4::{MediaSegReceiver, VideoStream};
@@ -134,14 +135,19 @@ pub async fn get_config(
 pub async fn put_config(
     _token: Token,
     ctx: &State<Provider<Context>>,
+    caps: &State<Capabilities>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
     let ctx_read = ctx.get();
 
-    let new_ctx = Context {
-        config: new_config.into_inner(),
-        ..ctx_read
-    };
+    let config = new_config.into_inner();
+
+    if let Err(e) = check_config(&config, caps) {
+        warn!("Error in PUT /api/config: {:?}", e);
+        return Err(Status::BadRequest);
+    }
+
+    let new_ctx = Context { config, ..ctx_read };
 
     ctx.set(new_ctx);
     Ok(())
@@ -201,6 +207,11 @@ pub async fn stream(
             no_store: true,
         },
     }
+}
+
+#[get("/api/capabilities")]
+pub async fn capabilities(_token: Token, caps: &State<Capabilities>) -> Json<Capabilities> {
+    Json((*caps).clone())
 }
 
 #[cfg(test)]

@@ -36,7 +36,7 @@ pub async fn launch(
         None
     };
 
-    let rocket = rocket(&ctx, ctx_prov, log_level, stream).launch();
+    let rocket = rocket(&ctx, ctx_prov, log_level, stream).await?.launch();
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
@@ -70,12 +70,12 @@ fn http_rocket(
 }
 
 /// Returns the main server rocket
-fn rocket(
+async fn rocket(
     ctx: &Context,
     ctx_provider: Provider<Context>,
     log_level: LogLevel,
     stream: bool,
-) -> Rocket<Build> {
+) -> anyhow::Result<Rocket<Build>> {
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = match &ctx.tls {
         Some(tls) => rocket::Config {
@@ -97,20 +97,24 @@ fn rocket(
         },
     };
 
-    let mut routes = rocket::routes![login, get_config, put_config];
+    let mut routes = rocket::routes![login, get_config, put_config, capabilities];
     if stream {
         routes.append(&mut rocket::routes![stream]);
     }
     #[cfg(not(debug_assertions))]
     routes.append(&mut rocket::routes![files]);
 
+    let caps = fmp4::capabilities::get_capabilities_all().await?;
+    fmp4::capabilities::check_config(&ctx.config, &caps)?;
+
     let mut rocket = rocket::custom(&rocket_cfg)
         .mount("/", routes)
-        .manage(ctx_provider.clone());
+        .manage(ctx_provider.clone())
+        .manage(caps);
 
     if stream {
         let media_seg_rx = stream_media_segments(ctx_provider);
         rocket = rocket.manage(media_seg_rx);
     }
-    rocket
+    Ok(rocket)
 }
