@@ -7,7 +7,9 @@
 </svelte:head>
 
 <main>
-  <div class="flex flex-col min-h-screen w-screen p-4 place-content-center items-center bg-base-300">
+  <div
+    class="flex flex-col min-h-screen w-screen p-4 place-content-center items-center bg-base-300"
+  >
     <slot />
   </div>
 </main>

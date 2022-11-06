@@ -6,7 +6,7 @@ type Config = {
   framerate: number;
   rotation: 0 | 90 | 180 | 270;
   device: string;
-  v4l2Options: Record<string, string>,
+  v4l2Controls: Record<string, string>;
 };
 
 /**

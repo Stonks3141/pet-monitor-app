@@ -6,7 +6,7 @@
   import Form from './Form.svelte';
 
   export let data: PageData & { config: Config; options: Options };
-  
+
   const onSubmit = (newConfig: Config) => {
     fetch('/api/config', {
       method: 'PUT',
@@ -17,7 +17,7 @@
       body: JSON.stringify(newConfig),
     });
     goto('/stream');
-  }
+  };
 </script>
 
 <Form options={data.options} config={data.config} {onSubmit} />
