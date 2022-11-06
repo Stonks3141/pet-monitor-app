@@ -574,7 +574,7 @@ pub struct HandlerBox {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum HandlerType {
     Video = u32::from_be_bytes(*b"vide"),
@@ -668,7 +668,7 @@ pub struct VideoMediaHeaderBox {
     pub opcolor: [u16; 3],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum GraphicsMode {
     Copy = 0,

@@ -1,7 +1,7 @@
 mod boxes;
+pub mod capabilities;
 
-use crate::config::Config;
-use crate::config::Context;
+use crate::config::{Config, Context};
 use crate::server::provider::Provider;
 use boxes::*;
 use chrono::{Duration, Utc};
@@ -13,10 +13,13 @@ use rocket::tokio::{
     task::spawn_blocking,
 };
 use rscam::Camera;
-use std::io::{self, prelude::*};
-use std::pin::Pin;
-use std::task::Poll;
-use std::time::Instant;
+use std::{
+    collections::HashMap,
+    io::{self, prelude::*},
+    pin::Pin,
+    task::Poll,
+    time::Instant,
+};
 
 #[derive(Debug, Clone)]
 pub struct InitSegment {
@@ -368,6 +371,21 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
                 Camera::new(config.device.as_os_str().to_str().ok_or_else(|| {
                     anyhow::Error::msg("failed to convert device path to string")
                 })?)?;
+
+            let controls: HashMap<String, u32> = camera
+                .controls()
+                .filter_map(|ctl| ctl.ok())
+                .map(|ctl| (ctl.name, ctl.id))
+                .collect();
+
+            for (name, val) in config.v4l2_options.iter() {
+                match controls.get(name) {
+                    Some(id) => camera.set_control(*id, val).unwrap_or(()), // ignore failure
+                    None => (), // TODO: handle errors by returning a 400 for PUT /api/config
+                                // or printing an error message if loaded from the config file
+                }
+            }
+
             camera.start(&rscam::Config {
                 interval: (1, config.framerate),
                 resolution: config.resolution,
@@ -425,7 +443,7 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
                         config.resolution.1 as i32,
                         &[x264::Plane {
                             stride: config.resolution.0 as i32 * 2,
-                            data: &*frame,
+                            data: &frame,
                         }],
                     );
 
