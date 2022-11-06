@@ -61,8 +61,7 @@ pub async fn get_capabilities_all() -> anyhow::Result<Capabilities> {
         let path = f.path();
         if path
             .file_name()
-            .map(|name| name.to_str())
-            .flatten()
+            .and_then(|name| name.to_str())
             .map(|name| name.starts_with("video"))
             .unwrap_or(false)
         {

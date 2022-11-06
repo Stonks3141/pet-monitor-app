@@ -381,8 +381,8 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
             for (name, val) in config.v4l2_options.iter() {
                 match controls.get(name) {
                     Some(id) => camera.set_control(*id, val).unwrap_or(()), // ignore failure
-                    None => (), // TODO: handle errors by returning a 400 for PUT /api/config
-                                // or printing an error message if loaded from the config file
+                    None => log::warn!("Couldn't find control {}", name), // TODO: handle errors by returning a 400 for PUT /api/config
+                                                                          // or printing an error message if loaded from the config file
                 }
             }
 

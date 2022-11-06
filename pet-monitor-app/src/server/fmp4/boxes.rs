@@ -278,19 +278,16 @@ impl BmffBox for MovieHeaderBox {
 impl FullBox for MovieHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() as u64 > u32::MAX as u64
-            || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self
-                .duration
-                .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
-                > u32::MAX as u64
-        {
-            1
-        } else {
-            0
-        }
+        u8::from(
+            self.creation_time.timestamp() as u64 > u32::MAX as u64
+                || self.modification_time.timestamp() as u64 > u32::MAX as u64
+                || self
+                    .duration
+                    .as_ref()
+                    .map(|x| duration(x, self.timescale))
+                    .unwrap_or(u32::MAX as u64)
+                    > u32::MAX as u64,
+        )
     }
 }
 
@@ -421,19 +418,16 @@ impl BmffBox for TrackHeaderBox {
 impl FullBox for TrackHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() as u64 > u32::MAX as u64
-            || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self
-                .duration
-                .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
-                > u32::MAX as u64
-        {
-            1
-        } else {
-            0
-        }
+        u8::from(
+            self.creation_time.timestamp() as u64 > u32::MAX as u64
+                || self.modification_time.timestamp() as u64 > u32::MAX as u64
+                || self
+                    .duration
+                    .as_ref()
+                    .map(|x| duration(x, self.timescale))
+                    .unwrap_or(u32::MAX as u64)
+                    > u32::MAX as u64,
+        )
     }
 
     fn flags(&self) -> [u8; 3] {
@@ -550,19 +544,16 @@ impl BmffBox for MediaHeaderBox {
 impl FullBox for MediaHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.creation_time.timestamp() as u64 > u32::MAX as u64
-            || self.modification_time.timestamp() as u64 > u32::MAX as u64
-            || self
-                .duration
-                .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
-                > u32::MAX as u64
-        {
-            1
-        } else {
-            0
-        }
+        u8::from(
+            self.creation_time.timestamp() as u64 > u32::MAX as u64
+                || self.modification_time.timestamp() as u64 > u32::MAX as u64
+                || self
+                    .duration
+                    .as_ref()
+                    .map(|x| duration(x, self.timescale))
+                    .unwrap_or(u32::MAX as u64)
+                    > u32::MAX as u64,
+        )
     }
 }
 
@@ -1572,11 +1563,7 @@ impl BmffBox for MovieExtendsHeaderBox {
 impl FullBox for MovieExtendsHeaderBox {
     #[inline]
     fn version(&self) -> u8 {
-        if self.fragment_duration.num_seconds() as u64 > u32::MAX as u64 {
-            1
-        } else {
-            0
-        }
+        (self.fragment_duration.num_seconds() as u64 > u32::MAX as u64) as u8
     }
 }
 

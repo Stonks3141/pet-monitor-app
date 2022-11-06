@@ -1616,7 +1616,7 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "simple_logger",
- "x264",
+ "x264-next",
 ]
 
 [[package]]
@@ -3079,9 +3079,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "x264"
-version = "0.4.0"
-source = "git+https://github.com/Stonks3141/x264#8f9be85eb729fdde99c37dace62e21e0710b3062"
+name = "x264-next"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34ba7e949610fa693f61876accdf49fd24e6dd90d21b3fc28aaa24d157828fad"
 dependencies = [
  "pkg-config",
  "x264-sys",
