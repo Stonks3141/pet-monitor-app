@@ -132,8 +132,50 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: 7.8.0
-      - name: Build bundle
+      - name: Run lints
         run: |
           cd client
           pnpm install
           pnpm lint
+
+  typecheck-client:
+    name: Typecheck client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 7.8.0
+      - name: Run typecheck
+        run: |
+          cd client
+          pnpm install
+          pnpm check
+
+  test-client:
+    name: Test client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 7.8.0
+      - name: Run tests
+        run: |
+          cd client
+          pnpm install
+          pnpm test
