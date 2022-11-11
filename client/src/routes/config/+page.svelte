@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import type { Config, Options } from '$lib';
+  import type { Config, Capabilities } from '$lib';
   import { getToken } from '$lib';
   import { goto } from '$app/navigation';
   import Form from './Form.svelte';
 
-  export let data: PageData & { config: Config; options: Options };
+  export let data: PageData & { config: Config; capabilities: Capabilities };
 
   const onSubmit = (newConfig: Config) => {
     fetch('/api/config', {
@@ -20,4 +20,4 @@
   };
 </script>
 
-<Form options={data.options} config={data.config} {onSubmit} />
+<Form capabilities={data.capabilities} config={data.config} {onSubmit} />

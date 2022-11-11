@@ -1,13 +1,37 @@
 <script lang="ts">
-  import type { Config, Controls, Option } from '$lib';
+  import type { Config, Capabilities } from '$lib';
   import { clearToken } from '$lib';
   import { goto } from '$app/navigation';
 
-  export let options: Controls;
+  export let capabilities: Capabilities;
   export let config: Config;
   export let onSubmit: (_: Config) => void;
 
-  let selected: Control;
+  console.log(config);
+
+  const updateFormat = () => (config.format = Object.keys(capabilities[config.device])[0]);
+  const updateResolution = () =>
+    (config.resolution = capabilities[config.device][config.format][0].resolution);
+  const updateInterval = () =>
+    (config.interval = capabilities[config.device][config.format].find(
+      (res) =>
+        res.resolution[0] === config.resolution[0] && res.resolution[1] === config.resolution[1]
+    )!.intervals[0]);
+
+  const getCurrentIntervals = () =>
+    capabilities[config.device][config.format].find(
+      (res) =>
+        res.resolution[0] === config.resolution[0] && res.resolution[1] === config.resolution[1]
+    )!.intervals;
+
+  const handleControlEdit = (
+    e: Event & { currentTarget: HTMLInputElement },
+    optionName: string
+  ) => {
+    config.v4l2Controls[(<HTMLInputElement>e.target).value] = config.v4l2Controls[optionName];
+    delete config.v4l2Controls[optionName];
+  };
+
   let newOptionName = '';
   let newOptionValue = '';
 </script>
@@ -27,8 +51,6 @@
     class="form-control card-body"
     on:submit={(e) => {
       e.preventDefault();
-      config.resolution = selected.resolution;
-      config.framerate = selected.framerate;
       onSubmit(config);
     }}
   >
@@ -37,18 +59,47 @@
       id="device"
       class="select bg-base-200 select-bordered"
       bind:value={config.device}
-      on:change={() => (selected = options[config.device][0])}
+      on:change={() => {
+        updateFormat();
+        updateResolution();
+        updateInterval();
+      }}
     >
-      {#each Object.keys(options) as deviceName}
+      {#each Object.keys(capabilities) as deviceName}
         <option value={deviceName}>{deviceName}</option>
       {/each}
     </select>
     <label for="format" class="label">Format</label>
-    <select id="format" class="select bg-base-200 select-bordered" bind:value={selected}>
-      {#each options[config.device] as option}
-        <option value={option}>
-          {`${option.resolution[0]}x${option.resolution[1]}@${option.framerate}fps`}
-        </option>
+    <select
+      id="format"
+      class="select bg-base-200 select-bordered"
+      bind:value={config.format}
+      on:change={() => {
+        updateResolution();
+        updateInterval();
+      }}
+    >
+      {#each Object.keys(capabilities[config.device]) as format}
+        <option value={format}>{format}</option>
+      {/each}
+    </select>
+    <label for="resolution" class="label">Resolution</label>
+    <select
+      id="resolution"
+      class="select bg-base-200 select-bordered"
+      bind:value={config.resolution}
+      on:change={() => {
+        updateInterval();
+      }}
+    >
+      {#each capabilities[config.device][config.format] as { resolution }}
+        <option value={resolution}>{`${resolution[0]}x${resolution[1]}`}</option>
+      {/each}
+    </select>
+    <label for="interval" class="label">Framerate</label>
+    <select id="interval" class="select bg-base-200 select-bordered" bind:value={config.interval}>
+      {#each getCurrentIntervals() as interval}
+        <option value={interval}>{interval[1] / interval[0]}</option>
       {/each}
     </select>
     <label for="rotation" class="label">Rotation</label>
@@ -58,7 +109,7 @@
       <option value={180}>180°</option>
       <option value={270}>270°</option>
     </select>
-    <label for="v4l2Controls" class="label">Additional V4L2 options</label>
+    <label for="v4l2Controls" class="label">Additional V4L2 controls</label>
     <div id="v4l2Controls" class="flex flex-col gap-2">
       {#each Object.keys(config.v4l2Controls) as optionName}
         <div class="flex flex-row gap-2">
@@ -66,10 +117,7 @@
             type="text"
             class="input input-bordered bg-base-200 w-full"
             value={optionName}
-            on:change={(e) => {
-              config.v4l2Controls[e.target.value] = config.v4l2Controls[optionName];
-              delete config.v4l2Controls[optionName];
-            }}
+            on:change={(e) => handleControlEdit(e, optionName)}
           />
           <input
             type="text"

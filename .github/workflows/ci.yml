@@ -178,4 +178,5 @@ jobs:
         run: |
           cd client
           pnpm install
+          pnpx playwright install
           pnpm test

@@ -2,24 +2,21 @@
  * A video configuration.
  */
 type Config = {
-  resolution: [number, number];
-  framerate: number;
-  rotation: 0 | 90 | 180 | 270;
   device: string;
+  format: string;
+  resolution: [number, number];
+  interval: [number, number];
+  rotation: 0 | 90 | 180 | 270;
   v4l2Controls: Record<string, string>;
 };
 
 /**
  * A map of device paths to `Option` arrays.
  */
-type Options = Record<string, Option[]>;
-
-/**
- * A possible resolution and framerate combination for a device.
- */
-type Option = {
+type Capabilities = Record<string, Record<string, Resolution[]>>;
+type Resolution = {
   resolution: [number, number];
-  framerate: number;
+  intervals: [number, number][];
 };
 
 /**
@@ -43,5 +40,5 @@ const clearToken = () => {
   document.cookie = 'token=; Max-Age=0';
 };
 
-export type { Config, Options, Option };
+export type { Config, Capabilities, Resolution };
 export { getToken, clearToken };
