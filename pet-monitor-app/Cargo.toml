@@ -32,7 +32,7 @@ rust-argon2 = "1.0"
 bitflags = "1.3"
 fixed = "1.19"
 rscam = "0.5"
-x264 = { package = "x264-next", version = "0.4" }
+x264 = { git = "https://github.com/Stonks3141/x264.git" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
