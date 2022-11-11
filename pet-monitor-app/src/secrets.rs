@@ -4,6 +4,7 @@
 use ring::rand::SecureRandom;
 use rocket::tokio::task::spawn_blocking;
 
+#[cfg(not(test))]
 pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     ad: &[],
     hash_length: 32, // bytes
@@ -12,6 +13,19 @@ pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     secret: &[],
     thread_mode: argon2::ThreadMode::Parallel,
     time_cost: 3,
+    variant: argon2::Variant::Argon2id,
+    version: argon2::Version::Version13,
+};
+
+#[cfg(test)]
+pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
+    ad: &[],
+    hash_length: 32, // bytes
+    lanes: 1,
+    mem_cost: 16, // KiB
+    secret: &[],
+    thread_mode: argon2::ThreadMode::Parallel,
+    time_cost: 1,
     variant: argon2::Variant::Argon2id,
     version: argon2::Version::Version13,
 };
