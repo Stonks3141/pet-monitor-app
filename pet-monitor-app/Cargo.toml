@@ -40,6 +40,7 @@ assert_fs = "1.0"
 predicates = "2.1"
 quickcheck = "1.0"
 reqwest = { version = "0.11", features = ["cookies"] }
+tokio = { version = "1.21", features = ["rt", "macros", "time", "process"] }
 
 [[bin]]
 name = "pet-monitor-app"

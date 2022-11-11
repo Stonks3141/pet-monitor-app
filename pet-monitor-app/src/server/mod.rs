@@ -77,8 +77,8 @@ async fn rocket(
     stream: bool,
 ) -> anyhow::Result<Rocket<Build>> {
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
-    let rocket_cfg = match &ctx.tls {
-        Some(tls) => rocket::Config {
+    let rocket_cfg = if let Some(tls) = &ctx.tls {
+        rocket::Config {
             tls: Some(TlsConfig::from_paths(&tls.cert, &tls.key)),
             port: tls.port,
             address: ctx.host,
@@ -86,15 +86,16 @@ async fn rocket(
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
-        },
-        None => rocket::Config {
+        }
+    } else {
+        rocket::Config {
             port: ctx.port,
             address: ctx.host,
             log_level,
             ..rocket::Config::figment()
                 .extract::<rocket::Config>()
                 .unwrap()
-        },
+        }
     };
 
     let mut routes = rocket::routes![login, get_config, put_config, capabilities];

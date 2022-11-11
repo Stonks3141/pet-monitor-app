@@ -1,15 +1,8 @@
 use assert_cmd::Command;
 use assert_fs::NamedTempFile;
 use reqwest::{Client, StatusCode};
-use rocket::tokio;
-
-struct Cleanup(std::process::Child);
-
-impl Drop for Cleanup {
-    fn drop(&mut self) {
-        self.0.kill().unwrap();
-    }
-}
+use std::process::Stdio;
+use tokio::io::AsyncReadExt;
 
 #[tokio::test]
 async fn test_login() {
@@ -24,29 +17,34 @@ async fn test_login() {
         .assert()
         .success();
 
-    let _server = Cleanup(
-        std::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
-            .arg("--config")
-            .arg(tmp.path())
-            .arg("start")
-            .arg("--port")
-            .arg("8080")
-            .arg("--no-stream")
-            .spawn()
-            .unwrap(),
-    );
+    let server = tokio::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
+        .arg("--config")
+        .arg(tmp.path())
+        .arg("start")
+        .arg("--port")
+        .arg("8080")
+        .arg("--no-stream")
+        .kill_on_drop(true)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+
+    // wait for the server to start up
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let client = Client::builder().cookie_store(true).build().unwrap();
 
     let res = client
-        .get("http://localhost:8080/api/config")
+        .get("http://127.0.0.1:8080/api/config")
         .send()
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = client
-        .post("http://localhost:8080/api/login")
+        .post("http://127.0.0.1:8080/api/login")
         .body("foo")
         .send()
         .await
@@ -54,7 +52,7 @@ async fn test_login() {
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = client
-        .post("http://localhost:8080/api/login")
+        .post("http://127.0.0.1:8080/api/login")
         .body("123")
         .send()
         .await
@@ -62,7 +60,7 @@ async fn test_login() {
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
-        .get("http://localhost:8080/api/config")
+        .get("http://127.0.0.1:8080/api/config")
         .send()
         .await
         .unwrap();

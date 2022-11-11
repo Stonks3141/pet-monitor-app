@@ -1625,6 +1625,7 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "simple_logger",
+ "tokio",
  "x264",
 ]
 

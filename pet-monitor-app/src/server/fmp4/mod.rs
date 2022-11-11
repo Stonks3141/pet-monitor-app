@@ -471,6 +471,7 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
 }
 use rocket::tokio;
 #[tokio::test]
+#[ignore]
 async fn test_mp4() {
     use rocket::futures::StreamExt;
     use rocket::tokio::io::AsyncWriteExt;
