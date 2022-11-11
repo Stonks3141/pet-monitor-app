@@ -23,8 +23,11 @@
       (res) =>
         res.resolution[0] === config.resolution[0] && res.resolution[1] === config.resolution[1]
     )!.intervals;
-    
-  const handleControlEdit = (e: Event & { currentTarget: HTMLInputElement }, optionName: string) => {
+
+  const handleControlEdit = (
+    e: Event & { currentTarget: HTMLInputElement },
+    optionName: string
+  ) => {
     config.v4l2Controls[(<HTMLInputElement>e.target).value] = config.v4l2Controls[optionName];
     delete config.v4l2Controls[optionName];
   };
@@ -114,7 +117,7 @@
             type="text"
             class="input input-bordered bg-base-200 w-full"
             value={optionName}
-            on:change={e => handleControlEdit(e, optionName)}
+            on:change={(e) => handleControlEdit(e, optionName)}
           />
           <input
             type="text"
