@@ -31,10 +31,12 @@ async fn test_login() {
         .spawn()
         .unwrap();
 
-    // wait for the server to start up
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
     let client = Client::builder().cookie_store(true).build().unwrap();
+
+    // wait for the server to start up
+    while client.get("http://127.0.0.1:8080").send().await.is_err() {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
 
     let res = client
         .get("http://127.0.0.1:8080/api/config")
