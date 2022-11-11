@@ -112,17 +112,14 @@ impl<'r> FromRequest<'r> for Token {
                     }
                 }
             }
-            let ctx = match req.rocket().state::<Provider<Context>>() {
-                Some(v) => v,
-                None => {
-                    warn!("Rocket is not managing a `Provider<Context>`");
-                    return Outcome::Failure((
-                        Status::InternalServerError,
-                        Error::from(ErrorKind::InvalidToken),
-                    ));
-                }
-            }
-            .get();
+            let Some(ctx) = req.rocket().state::<Provider<Context>>() else {
+                warn!("Rocket is not managing a `Provider<Context>`");
+                return Outcome::Failure((
+                    Status::InternalServerError,
+                    Error::from(ErrorKind::InvalidToken),
+                ));
+            };
+            let ctx = ctx.get();
 
             match Self::from_str(token, &ctx.jwt_secret) {
                 Ok(token) => {

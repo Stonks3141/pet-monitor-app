@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use chrono::Duration;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -71,6 +72,7 @@ pub struct Config {
 }
 
 pub fn ser_format<S: Serializer>(format: &[u8; 4], s: S) -> Result<S::Ok, S::Error> {
+    #[allow(clippy::unwrap_used)] // fourCC codes are always printable ASCII
     let format = std::str::from_utf8(format).unwrap();
     format.serialize(s)
 }
@@ -129,8 +131,7 @@ impl Default for Tls {
 
 /// Writes out a [`Context`] to the config file.
 pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::Result<()> {
-    use anyhow::Context;
-    let ctx = ctx.to_owned();
+    let ctx = ctx.clone();
     match path {
         Some(path) => {
             let path = path.as_ref().to_owned();

@@ -20,7 +20,7 @@ use std::path::PathBuf;
 /// Redirects any request to HTTPS. It preserves the original path and uses
 /// Context.domain to construct the new URL.
 #[get("/<path..>")]
-pub async fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Result<Redirect, Status> {
+pub fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Result<Redirect, Status> {
     let path = path.to_str().ok_or_else(|| {
         warn!("Failed to convert path {:?} to string", path);
         Status::InternalServerError
@@ -122,17 +122,14 @@ pub async fn login(
 
 /// Retrieves the current configuration. The request must have a valid JWT.
 #[get("/api/config")]
-pub async fn get_config(
-    _token: Token,
-    ctx: &State<Provider<Context>>,
-) -> Result<Json<Config>, Status> {
+pub fn get_config(_token: Token, ctx: &State<Provider<Context>>) -> Json<Config> {
     let ctx = ctx.get();
-    Ok(Json(ctx.config))
+    Json(ctx.config)
 }
 
 /// Updates the current configuration. The request must have a valid JWT.
 #[put("/api/config", format = "json", data = "<new_config>")]
-pub async fn put_config(
+pub fn put_config(
     _token: Token,
     ctx: &State<Provider<Context>>,
     caps: &State<Capabilities>,
@@ -181,7 +178,7 @@ impl From<CacheControl> for Header<'_> {
 }
 
 #[get("/stream.mp4")]
-pub async fn stream(
+pub fn stream(
     _token: Token,
     ctx: &State<Provider<Context>>,
     media_seg_recv: &State<MediaSegReceiver>,
@@ -210,7 +207,7 @@ pub async fn stream(
 }
 
 #[get("/api/capabilities")]
-pub async fn capabilities(_token: Token, caps: &State<Capabilities>) -> Json<Capabilities> {
+pub fn capabilities(_token: Token, caps: &State<Capabilities>) -> Json<Capabilities> {
     Json((*caps).clone())
 }
 

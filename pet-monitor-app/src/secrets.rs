@@ -25,7 +25,7 @@ pub async fn init_password(rng: &impl SecureRandom, password: &str) -> anyhow::R
     let password = password.to_string();
 
     spawn_blocking(move || {
-        argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG).map_err(|e| e.into())
+        argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG).map_err(Into::into)
     })
     .await?
 }
@@ -36,7 +36,7 @@ pub async fn validate(password: &str, hash: &str) -> anyhow::Result<bool> {
     let hash = hash.to_string();
     spawn_blocking(move || argon2::verify_encoded(&hash, password.as_bytes()))
         .await?
-        .map_err(|e| e.into())
+        .map_err(Into::into)
 }
 
 /// Returns a randomly generated JWT secret

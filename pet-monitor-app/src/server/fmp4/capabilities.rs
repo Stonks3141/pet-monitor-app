@@ -3,6 +3,7 @@ use rocket::tokio::{fs, task::spawn_blocking};
 use rscam::{FormatInfo, IntervalInfo, ResolutionInfo};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
@@ -94,9 +95,8 @@ pub async fn get_capabilities_all() -> anyhow::Result<Capabilities> {
         let path = f.path();
         if path
             .file_name()
-            .and_then(|name| name.to_str())
-            .map(|name| name.starts_with("video"))
-            .unwrap_or(false)
+            .and_then(OsStr::to_str)
+            .map_or(false, |name| name.starts_with("video"))
         {
             let path_clone = path.clone();
             let path_caps =
@@ -124,7 +124,7 @@ where
 {
     camera
         .formats()
-        .filter_map(|fmt| fmt.ok())
+        .filter_map(Result::ok)
         .map(|fmt| {
             let resolutions: anyhow::Result<_> = get_resolutions(camera.resolutions(&fmt.format)?)
                 .into_iter()

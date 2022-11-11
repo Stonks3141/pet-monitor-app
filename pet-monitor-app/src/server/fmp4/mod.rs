@@ -186,12 +186,12 @@ impl MediaSegment {
                     default_sample_size: None,
                     default_sample_flags: {
                         #[allow(clippy::unwrap_used)] // infallible
-                        Some(DefaultSampleFlags::from_bits(0x01010000).unwrap())
+                        Some(DefaultSampleFlags::from_bits(0x0101_0000).unwrap())
                     }, // not I-frame
                 },
                 trun: vec![TrackFragmentRunBox {
                     data_offset: Some(0),
-                    first_sample_flags: Some(0x02000000), // I-frame
+                    first_sample_flags: Some(0x0200_0000), // I-frame
                     sample_durations: None,
                     sample_sizes: Some(sample_sizes),
                     sample_flags: None,
@@ -283,12 +283,9 @@ impl Stream for VideoStream {
             }
             None => match self.media_seg_recv.try_recv() {
                 Ok(x) => {
-                    let (headers, mut media_segment) = match x {
-                        Some(x) => x,
-                        None => {
-                            trace!("VideoStream ended");
-                            return Poll::Ready(None);
-                        }
+                    let Some((headers, mut media_segment)) = x else {
+                        trace!("VideoStream ended");
+                        return Poll::Ready(None);
                     };
                     if self.use_headers {
                         media_segment.add_headers(headers);
@@ -314,7 +311,7 @@ impl Stream for VideoStream {
                         let mut rx = self.media_seg_recv.resubscribe();
                         let waker = cx.waker().clone();
                         rocket::tokio::spawn(async move {
-                            let _ = rx.recv().await;
+                            let _x = rx.recv().await;
                             waker.wake();
                         });
                         trace!("VideoStream is pending");
@@ -323,14 +320,10 @@ impl Stream for VideoStream {
                     TryRecvError::Lagged(_) => {
                         #[allow(clippy::unwrap_used)]
                         // try_recv should always be `Ok` after it has lagged
-                        let (headers, mut media_segment) =
-                            match self.media_seg_recv.try_recv().unwrap() {
-                                Some(x) => x,
-                                None => {
-                                    trace!("VideoStream ended");
-                                    return Poll::Ready(None);
-                                }
-                            };
+                        let Some((headers, mut media_segment)) = self.media_seg_recv.try_recv().unwrap() else {
+                            trace!("VideoStream ended");
+                            return Poll::Ready(None);
+                        };
                         if self.use_headers {
                             media_segment.add_headers(headers);
                             self.use_headers = false;
@@ -376,14 +369,15 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
 
             let controls: HashMap<String, u32> = camera
                 .controls()
-                .filter_map(|ctl| ctl.ok())
+                .filter_map(Result::ok)
                 .map(|ctl| (ctl.name, ctl.id))
                 .collect();
 
-            for (name, val) in config.v4l2_controls.iter() {
-                match controls.get(name) {
-                    Some(id) => camera.set_control(*id, val).unwrap_or(()), // ignore failure
-                    None => log::warn!("Couldn't find control {}", name),
+            for (name, val) in &config.v4l2_controls {
+                if let Some(id) = controls.get(name) {
+                    camera.set_control(*id, val).unwrap_or(()); // ignore failure
+                } else {
+                    log::warn!("Couldn't find control {}", name);
                     // TODO: handle errors by returning a 400 for PUT /api/config
                     // or printing an error message if loaded from the config file
                 }
@@ -474,4 +468,19 @@ pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
     });
 
     receiver
+}
+use rocket::tokio;
+#[tokio::test]
+async fn test_mp4() {
+    use rocket::futures::StreamExt;
+    use rocket::tokio::io::AsyncWriteExt;
+
+    let ctx = Provider::new(Context::default());
+    let config = ctx.get().config;
+    let seg_recv = stream_media_segments(ctx);
+    let mut stream = VideoStream::new(&config, seg_recv).take(10);
+    let mut file = rocket::tokio::fs::File::create("video.mp4").await.unwrap();
+    while let Some(seg) = stream.next().await {
+        file.write_all(&seg.unwrap()).await.unwrap();
+    }
 }

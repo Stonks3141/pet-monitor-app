@@ -40,10 +40,10 @@ pub async fn launch(
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
-        let _ = result.0?;
-        let _ = result.1?;
+        let _x = result.0?;
+        let _x = result.1?;
     } else {
-        let _ = rocket.await?;
+        let _x = rocket.await?;
     }
     Ok(())
 }

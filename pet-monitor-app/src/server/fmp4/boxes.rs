@@ -8,73 +8,73 @@ use std::io::{self, prelude::*};
 
 pub const MATRIX_0: [[I16F16; 3]; 3] = [
     [
-        I16F16::from_bits(0x00010000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0001_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00010000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0001_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x40000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x4000_0000),
     ],
 ];
 
 pub const MATRIX_90: [[I16F16; 3]; 3] = [
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00010000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0001_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(-0x40000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(-0x4000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x40000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x4000_0000),
     ],
 ];
 
 pub const MATRIX_180: [[I16F16; 3]; 3] = [
     [
-        I16F16::from_bits(-0x40000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(-0x4000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(-0x40000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(-0x4000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x40000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x4000_0000),
     ],
 ];
 
 pub const MATRIX_270: [[I16F16; 3]; 3] = [
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(-0x40000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(-0x4000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00010000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
+        I16F16::from_bits(0x0001_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
     ],
     [
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x00000000),
-        I16F16::from_bits(0x40000000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x0000_0000),
+        I16F16::from_bits(0x4000_0000),
     ],
 ];
 
@@ -112,7 +112,7 @@ pub trait WriteTo {
 
 pub fn write_to<T: BmffBox>(bmff_box: &T, mut w: impl Write) -> io::Result<()> {
     let size = bmff_box.size();
-    if size <= u32::MAX as u64 {
+    if u32::try_from(size).is_ok() {
         w.write_all(&(size as u32).to_be_bytes())?;
         w.write_all(&T::TYPE)?;
     } else {
@@ -129,7 +129,7 @@ pub fn write_to<T: BmffBox>(bmff_box: &T, mut w: impl Write) -> io::Result<()> {
 
 pub fn write_to_full<T: FullBox>(bmff_box: &T, mut w: impl Write) -> io::Result<()> {
     let size = bmff_box.size();
-    if size <= u32::MAX as u64 {
+    if u32::try_from(size).is_ok() {
         w.write_all(&(size as u32).to_be_bytes())?;
         w.write_all(&T::TYPE)?;
     } else {
@@ -164,7 +164,7 @@ impl BmffBox for FileTypeBox {
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&self.major_brand)?;
         w.write_all(&self.minor_version.to_be_bytes())?;
-        for i in self.compatible_brands.iter() {
+        for i in &self.compatible_brands {
             w.write_all(i)?;
         }
         Ok(())
@@ -184,13 +184,13 @@ impl BmffBox for MovieBox {
     #[inline]
     fn size(&self) -> u64 {
         8 + self.mvhd.size()
-            + self.trak.iter().map(|x| x.size()).sum::<u64>()
-            + self.mvex.as_ref().map(|x| x.size()).unwrap_or(0)
+            + self.trak.iter().map(BmffBox::size).sum::<u64>()
+            + self.mvex.as_ref().map_or(0, BmffBox::size)
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         write_to_full(&self.mvhd, &mut w)?;
-        for trak in self.trak.iter() {
+        for trak in &self.trak {
             write_to(trak, &mut w)?;
         }
         if let Some(mvex) = &self.mvex {
@@ -222,8 +222,7 @@ impl BmffBox for MovieHeaderBox {
             || self
                 .duration
                 .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
+                .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                 > u32::MAX as u64
         {
             8 + 8 + 4 + 8
@@ -244,8 +243,7 @@ impl BmffBox for MovieHeaderBox {
         let duration_secs = self
             .duration
             .as_ref()
-            .map(|x| duration(x, self.timescale))
-            .unwrap_or(u32::MAX as u64);
+            .map_or(u32::MAX as u64, |x| duration(x, self.timescale));
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs > u32::MAX as u64
@@ -284,8 +282,7 @@ impl FullBox for MovieHeaderBox {
                 || self
                     .duration
                     .as_ref()
-                    .map(|x| duration(x, self.timescale))
-                    .unwrap_or(u32::MAX as u64)
+                    .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                     > u32::MAX as u64,
         )
     }
@@ -305,8 +302,8 @@ impl BmffBox for TrackBox {
     #[inline]
     fn size(&self) -> u64 {
         8 + self.tkhd.size()
-            + self.tref.as_ref().map(|x| x.size()).unwrap_or(0)
-            + self.edts.as_ref().map(|x| x.size()).unwrap_or(0)
+            + self.tref.as_ref().map_or(0, BmffBox::size)
+            + self.edts.as_ref().map_or(0, BmffBox::size)
             + self.mdia.size()
     }
 
@@ -342,9 +339,9 @@ pub struct TrackHeaderBox {
 
 bitflags! {
     pub struct TrackHeaderFlags: u32 {
-        const TRACK_ENABLED = 0x000001;
-        const TRACK_IN_MOVIE = 0x000002;
-        const TRACK_IN_PREVIEW = 0x000004;
+        const TRACK_ENABLED = 0x00_0001;
+        const TRACK_IN_MOVIE = 0x00_0002;
+        const TRACK_IN_PREVIEW = 0x00_0004;
     }
 }
 
@@ -358,8 +355,7 @@ impl BmffBox for TrackHeaderBox {
             || self
                 .duration
                 .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
+                .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                 > u32::MAX as u64
         {
             8 + 8 + 4 + 4 + 8
@@ -381,8 +377,7 @@ impl BmffBox for TrackHeaderBox {
         let duration_secs = self
             .duration
             .as_ref()
-            .map(|x| duration(x, self.timescale))
-            .unwrap_or(u32::MAX as u64);
+            .map_or(u32::MAX as u64, |x| duration(x, self.timescale));
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
@@ -424,8 +419,7 @@ impl FullBox for TrackHeaderBox {
                 || self
                     .duration
                     .as_ref()
-                    .map(|x| duration(x, self.timescale))
-                    .unwrap_or(u32::MAX as u64)
+                    .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                     > u32::MAX as u64,
         )
     }
@@ -494,8 +488,7 @@ impl BmffBox for MediaHeaderBox {
             || self
                 .duration
                 .as_ref()
-                .map(|x| duration(x, self.timescale))
-                .unwrap_or(u32::MAX as u64)
+                .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                 > u32::MAX as u64
         {
             8 + 8 + 4 + 8
@@ -511,8 +504,7 @@ impl BmffBox for MediaHeaderBox {
         let duration_secs = self
             .duration
             .as_ref()
-            .map(|x| duration(x, self.timescale))
-            .unwrap_or(u32::MAX as u64);
+            .map_or(u32::MAX as u64, |x| duration(x, self.timescale));
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
             || duration_secs as u64 > u32::MAX as u64
@@ -550,8 +542,7 @@ impl FullBox for MediaHeaderBox {
                 || self
                     .duration
                     .as_ref()
-                    .map(|x| duration(x, self.timescale))
-                    .unwrap_or(u32::MAX as u64)
+                    .map_or(u32::MAX as u64, |x| duration(x, self.timescale))
                     > u32::MAX as u64,
         )
     }
@@ -818,12 +809,12 @@ impl BmffBox for DataReferenceBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + 4 + self.data_entries.iter().map(|x| x.size()).sum::<u64>()
+        12 + 4 + self.data_entries.iter().map(DataEntry::size).sum::<u64>()
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.data_entries.len() as u32).to_be_bytes())?;
-        for entry in self.data_entries.iter() {
+        for entry in &self.data_entries {
             entry.write_to(&mut w)?;
         }
         Ok(())
@@ -866,7 +857,7 @@ impl WriteTo for DataEntry {
 bitflags! {
     pub struct DataEntryFlags: u32 {
         /// Indicates that the media data is in the same file as the containing MovieBox.
-        const SELF_CONTAINED = 0x000001;
+        const SELF_CONTAINED = 0x00_0001;
     }
 }
 
@@ -881,10 +872,10 @@ impl BmffBox for DataEntryUrlBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + if !self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
-            self.location.len() as u64 + 1
-        } else {
+        12 + if self.flags.contains(DataEntryFlags::SELF_CONTAINED) {
             0
+        } else {
+            self.location.len() as u64 + 1
         }
     }
 
@@ -922,13 +913,7 @@ impl BmffBox for DataEntryUrnBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        12 + self.name.len() as u64
-            + 1
-            + self
-                .location
-                .as_ref()
-                .map(|x| x.len() as u64 + 1)
-                .unwrap_or(0)
+        12 + self.name.len() as u64 + 1 + self.location.as_ref().map_or(0, |x| x.len() as u64 + 1)
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
@@ -1002,7 +987,7 @@ impl BmffBox for TimeToSampleBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.samples.len() as u32).to_be_bytes())?;
-        for (sample_count, sample_delta) in self.samples.iter() {
+        for (sample_count, sample_delta) in &self.samples {
             w.write_all(&sample_count.to_be_bytes())?;
             w.write_all(&sample_delta.to_be_bytes())?;
         }
@@ -1046,7 +1031,7 @@ impl BmffBox for SampleDescriptionBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
-        for entry in self.entries.iter() {
+        for entry in &self.entries {
             w.write_all(&entry.write_to())?;
         }
         Ok(())
@@ -1407,7 +1392,7 @@ impl BmffBox for SampleToChunkBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
-        for (first_chunk, samples_per_chunk, sample_description_index) in self.entries.iter() {
+        for (first_chunk, samples_per_chunk, sample_description_index) in &self.entries {
             w.write_all(&first_chunk.to_be_bytes())?;
             w.write_all(&samples_per_chunk.to_be_bytes())?;
             w.write_all(&sample_description_index.to_be_bytes())?;
@@ -1438,7 +1423,7 @@ impl BmffBox for ChunkOffsetBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.chunk_offsets.len() as u32).to_be_bytes())?;
-        for chunk_offset in self.chunk_offsets.iter() {
+        for chunk_offset in &self.chunk_offsets {
             w.write_all(&chunk_offset.to_be_bytes())?;
         }
         Ok(())
@@ -1489,7 +1474,7 @@ impl BmffBox for EditListBox {
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         w.write_all(&(self.entries.len() as u32).to_be_bytes())?;
-        for (segment_duration, media_time) in self.entries.iter() {
+        for (segment_duration, media_time) in &self.entries {
             w.write_all(&segment_duration.to_be_bytes())?;
             w.write_all(&media_time.to_be_bytes())?;
         }
@@ -1517,15 +1502,15 @@ impl BmffBox for MovieExtendsBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + self.mehd.as_ref().map(|x| x.size()).unwrap_or(0)
-            + self.trex.iter().map(|x| x.size()).sum::<u64>()
+        8 + self.mehd.as_ref().map_or(0, BmffBox::size)
+            + self.trex.iter().map(BmffBox::size).sum::<u64>()
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         if let Some(mehd) = &self.mehd {
             write_to_full(mehd, &mut w)?;
         }
-        for trex in self.trex.iter() {
+        for trex in &self.trex {
             write_to_full(trex, &mut w)?;
         }
         Ok(())
@@ -1578,10 +1563,10 @@ pub struct TrackExtendsBox {
 
 bitflags! {
     pub struct DefaultSampleFlags: u32 {
-        const SAMPLE_DEPENDS_ON = 0x03000000;
-        const SAMPLE_IS_DEPENDED_ON = 0x00C00000;
-        const SAMPLE_HAS_REDUNDANCY = 0x00300000;
-        const SAMPLE_PADDING_VALUE = 0x000D0000;
+        const SAMPLE_DEPENDS_ON = 0x0300_0000;
+        const SAMPLE_IS_DEPENDED_ON = 0x00C0_0000;
+        const SAMPLE_HAS_REDUNDANCY = 0x0030_0000;
+        const SAMPLE_PADDING_VALUE = 0x000D_0000;
     }
 }
 
@@ -1640,12 +1625,12 @@ impl BmffBox for MovieFragmentBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + self.mfhd.size() + self.traf.iter().map(|x| x.size()).sum::<u64>()
+        8 + self.mfhd.size() + self.traf.iter().map(BmffBox::size).sum::<u64>()
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         write_to_full(&self.mfhd, &mut w)?;
-        for traf in self.traf.iter() {
+        for traf in &self.traf {
             write_to(traf, &mut w)?;
         }
         Ok(())
@@ -1692,12 +1677,12 @@ impl BmffBox for TrackFragmentBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + self.tfhd.size() + self.trun.iter().map(|x| x.size()).sum::<u64>()
+        8 + self.tfhd.size() + self.trun.iter().map(BmffBox::size).sum::<u64>()
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
         write_to_full(&self.tfhd, &mut w)?;
-        for trun in self.trun.iter() {
+        for trun in &self.trun {
             write_to_full(trun, &mut w)?;
         }
         Ok(())
@@ -1716,12 +1701,12 @@ pub struct TrackFragmentHeaderBox {
 
 bitflags! {
     struct TrackFragmentHeaderFlags: u32 {
-        const BASE_DATA_OFFSET_PRESENT = 0x000001;
-        const SAMPLE_DESCRIPTION_INDEX_PRESENT = 0x000002;
-        const DEFAULT_SAMPLE_DURATION_PRESENT = 0x000008;
-        const DEFAULT_SAMPLE_SIZE_PRESENT = 0x000010;
-        const DEFAULT_SAMPLE_FLAGS_PRESENT = 0x000020;
-        const DURATION_IS_EMPTY = 0x010000;
+        const BASE_DATA_OFFSET_PRESENT = 0x00_0001;
+        const SAMPLE_DESCRIPTION_INDEX_PRESENT = 0x00_0002;
+        const DEFAULT_SAMPLE_DURATION_PRESENT = 0x00_0008;
+        const DEFAULT_SAMPLE_SIZE_PRESENT = 0x00_0010;
+        const DEFAULT_SAMPLE_FLAGS_PRESENT = 0x00_0020;
+        const DURATION_IS_EMPTY = 0x01_0000;
     }
 }
 
@@ -1800,12 +1785,12 @@ pub struct TrackFragmentRunBox {
 
 bitflags! {
     struct TrackFragmentRunFlags: u32 {
-        const DATA_OFFSET_PRESENT = 0x000001;
-        const FIRST_SAMPLE_FLAGS_PRESENT = 0x000004;
-        const SAMPLE_DURATION_PRESENT = 0x000100;
-        const SAMPLE_SIZE_PRESENT = 0x000200;
-        const SAMPLE_FLAGS_PRESENT = 0x000400;
-        const SAMPLE_COMPOSITION_TIME_OFFSETS_PRESENT = 0x000800;
+        const DATA_OFFSET_PRESENT = 0x00_0001;
+        const FIRST_SAMPLE_FLAGS_PRESENT = 0x00_0004;
+        const SAMPLE_DURATION_PRESENT = 0x00_0100;
+        const SAMPLE_SIZE_PRESENT = 0x00_0200;
+        const SAMPLE_FLAGS_PRESENT = 0x00_0400;
+        const SAMPLE_COMPOSITION_TIME_OFFSETS_PRESENT = 0x00_0800;
     }
 }
 

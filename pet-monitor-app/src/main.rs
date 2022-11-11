@@ -34,11 +34,9 @@ async fn main() -> anyhow::Result<()> {
         }
         cli::SubCmd::Start { stream, .. } => {
             let level = match cmd.log_level {
-                Level::Error => LogLevel::Critical,
-                Level::Warn => LogLevel::Critical,
+                Level::Error | Level::Warn => LogLevel::Critical,
                 Level::Info => LogLevel::Normal,
-                Level::Debug => LogLevel::Debug,
-                Level::Trace => LogLevel::Debug,
+                Level::Debug | Level::Trace => LogLevel::Debug,
             };
             server::launch(cmd.conf_path, ctx, level, stream).await?;
         }
