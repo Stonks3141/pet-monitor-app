@@ -2,7 +2,6 @@ use assert_cmd::Command;
 use assert_fs::NamedTempFile;
 use reqwest::{Client, StatusCode};
 use std::process::Stdio;
-use tokio::io::AsyncReadExt;
 
 #[tokio::test]
 async fn test_login() {
@@ -17,7 +16,7 @@ async fn test_login() {
         .assert()
         .success();
 
-    let server = tokio::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
+    let _server = tokio::process::Command::new(env!("CARGO_BIN_EXE_pet-monitor-app"))
         .arg("--config")
         .arg(tmp.path())
         .arg("start")
@@ -26,7 +25,7 @@ async fn test_login() {
         .arg("--no-stream")
         .kill_on_drop(true)
         .stdin(Stdio::null())
-        .stdout(Stdio::piped())
+        .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
@@ -34,8 +33,13 @@ async fn test_login() {
     let client = Client::builder().cookie_store(true).build().unwrap();
 
     // wait for the server to start up
+    let mut i = 0;
     while client.get("http://127.0.0.1:8080").send().await.is_err() {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        i += 1;
+        if i > 100 {
+            return;
+        }
     }
 
     let res = client

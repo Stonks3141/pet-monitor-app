@@ -1,6 +1,8 @@
 use super::*;
 use crate::config::Context;
 use crate::server::provider::Provider;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use rocket::http::{Cookie, Header, Method, Status};
 use rocket::local::blocking::Client;
@@ -67,7 +69,7 @@ impl Arbitrary for ArbMethod {
     }
 }
 
-fn client() -> Client {
+static CLIENT: Lazy<Mutex<Client>> = Lazy::new(|| {
     let rocket = rocket::build()
         .mount(
             "/",
@@ -82,15 +84,14 @@ fn client() -> Client {
             ],
         )
         .manage(Provider::new(Context::default()));
-    Client::tracked(rocket).unwrap()
-}
+    Mutex::new(Client::tracked(rocket).unwrap())
+});
 
 quickcheck! {
     fn qc_guard_no_csrf(method: ArbMethod, is_valid: bool) -> bool {
-        let client = client();
-
         let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-        let res = client
+        let lock = CLIENT.lock();
+        let res = lock
             .req(method.0, "/")
             .cookie(Cookie::new("token", &token))
             .dispatch();
@@ -103,10 +104,9 @@ quickcheck! {
     }
 
     fn qc_guard_invalid_csrf(method: ArbMethod, is_valid: bool) -> bool {
-        let client = client();
-
         let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-        let res = client
+        let lock = CLIENT.lock();
+        let res = lock
             .req(method.0, "/")
             .cookie(Cookie::new("token", &token))
             .header(Header::new("x-csrf-token", "foo"))
@@ -120,10 +120,9 @@ quickcheck! {
     }
 
     fn qc_guard_valid_csrf(method: ArbMethod, is_valid: bool) -> bool {
-        let client = client();
-
         let token = make_token(is_valid).to_string(&[0; 32]).unwrap();
-        let res = client
+        let lock = CLIENT.lock();
+        let res = lock
             .req(method.0, "/")
             .cookie(Cookie::new("token", &token))
             .header(Header::new("x-csrf-token", token))

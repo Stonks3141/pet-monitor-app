@@ -1613,6 +1613,7 @@ dependencies = [
  "include_dir",
  "jsonwebtoken",
  "log",
+ "once_cell",
  "parking_lot",
  "predicates",
  "quickcheck",
