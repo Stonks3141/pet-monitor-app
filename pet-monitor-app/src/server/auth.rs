@@ -59,10 +59,10 @@ impl Token {
     /// Verifies the validity of a `Token`.
     pub fn verify(&self) -> bool {
         let utc = Utc::now();
-        let exp = DateTime::<Utc>::from_utc(
-            NaiveDateTime::from_timestamp(self.claims.exp as i64, 0),
-            Utc,
-        );
+        let Some(naive_time) = NaiveDateTime::from_timestamp_opt(self.claims.exp as i64, 0) else {
+            return false;
+        };
+        let exp = DateTime::<Utc>::from_utc(naive_time, Utc);
 
         utc < exp
     }
