@@ -1,7 +1,7 @@
 mod boxes;
 pub mod capabilities;
 
-use crate::config::{Config, Context};
+use crate::config::{Config, Context, Format};
 use crate::server::provider::Provider;
 use boxes::*;
 use chrono::{Duration, Utc};
@@ -394,6 +394,127 @@ impl Iterator for FrameIter {
     }
 }
 
+enum SegmentIter {
+    Software {
+        config: Config,
+        encoder: x264::Encoder,
+        timestamp: i64,
+        timescale: u32,
+        frames: FrameIter,
+    },
+    Hardware {
+        frames: FrameIter,
+    },
+}
+
+impl SegmentIter {
+    fn new(config: Config, frames: FrameIter) -> anyhow::Result<Self> {
+        Ok(match config.format {
+            Format::H264 => Self::Hardware { frames },
+            format => Self::Software {
+                timescale: config.interval.1,
+                encoder: {
+                    let timescale = config.interval.1;
+                    let bitrate = 896_000;
+                    let colorspace = match format {
+                        Format::H264 => unreachable!(),
+                        Format::BGR3 => x264::Colorspace::BGR,
+                        Format::RGB3 => x264::Colorspace::RGB,
+                        Format::YUYV => x264::Colorspace::YUYV,
+                        Format::YV12 => x264::Colorspace::YV12,
+                    };
+                    let encoding = x264::Encoding::from(colorspace);
+
+                    x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
+                        .fps(config.interval.0, config.interval.1)
+                        .timebase(1, timescale)
+                        .bitrate(bitrate)
+                        .high()
+                        .annexb(false)
+                        .max_keyframe_interval(60)
+                        .scenecut_threshold(0)
+                        .build(
+                            encoding,
+                            config.resolution.0 as i32,
+                            config.resolution.1 as i32,
+                        )
+                        .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+                },
+                timestamp: 0,
+                config,
+                frames,
+            },
+        })
+    }
+
+    fn get_headers(&mut self) -> anyhow::Result<Vec<u8>> {
+        Ok(match self {
+            Self::Software { encoder, .. } => encoder
+                .headers()
+                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+                .entirety()
+                .to_vec(),
+            Self::Hardware { .. } => panic!(),
+        })
+    }
+}
+
+impl Iterator for SegmentIter {
+    type Item = MediaSegment;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Software {
+                config,
+                encoder,
+                timestamp,
+                timescale,
+                frames,
+            } => {
+                let mut sample_sizes = vec![];
+                let mut buf = vec![];
+
+                for _ in 0..60 {
+                    let frame = match frames.next() {
+                        Some(Ok(f)) => f,
+                        Some(Err(e)) => {
+                            warn!("Capturing frame failed with error {:?}", e);
+                            panic!();
+                        }
+                        None => unreachable!(),
+                    };
+
+                    let image = x264::Image::new(
+                        x264::Colorspace::YUYV,
+                        config.resolution.0 as i32,
+                        config.resolution.1 as i32,
+                        &[x264::Plane {
+                            stride: config.resolution.0 as i32 * 2,
+                            data: &frame,
+                        }],
+                    );
+
+                    let (data, _) = match encoder.encode(*timestamp, image) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            warn!("Encoding frame failed with error {:?}", e);
+                            panic!();
+                        }
+                    };
+
+                    sample_sizes.push(data.entirety().len() as u32);
+                    buf.extend_from_slice(data.entirety());
+                    *timestamp +=
+                        *timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
+                }
+
+                Some(MediaSegment::new(&config, 0, sample_sizes, buf))
+            }
+            Self::Hardware { .. } => panic!(),
+        }
+    }
+}
+
 pub type MediaSegReceiver = flume::Receiver<Option<MediaSegment>>;
 pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 
@@ -411,36 +532,7 @@ pub fn stream_media_segments(
         let timescale = config.interval.1;
         let bitrate = 896_000;
 
-        let mut camera = Camera::new(
-            config
-                .device
-                .as_os_str()
-                .to_str()
-                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
-        )?;
-
-        let controls: HashMap<String, u32> = camera
-            .controls()
-            .filter_map(Result::ok)
-            .map(|ctl| (ctl.name, ctl.id))
-            .collect();
-
-        for (name, val) in &config.v4l2_controls {
-            if let Some(id) = controls.get(name) {
-                camera.set_control(*id, val).unwrap_or(()); // ignore failure
-            } else {
-                log::warn!("Couldn't find control {}", name);
-                // TODO: handle errors by returning a 400 for PUT /api/config
-                // or printing an error message if loaded from the config file
-            }
-        }
-
-        camera.start(&rscam::Config {
-            interval: config.interval,
-            resolution: config.resolution,
-            format: b"YUYV",
-            ..Default::default()
-        })?;
+        let mut frames = FrameIter::new(&config).unwrap();
 
         let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
 
@@ -484,12 +576,13 @@ pub fn stream_media_segments(
             let mut buf = vec![];
 
             for _ in 0..60 {
-                let frame = match camera.capture() {
-                    Ok(f) => f,
-                    Err(e) => {
+                let frame = match frames.next() {
+                    Some(Ok(f)) => f,
+                    Some(Err(e)) => {
                         warn!("Capturing frame failed with error {:?}", e);
                         continue 'outer;
                     }
+                    None => unreachable!(),
                 };
 
                 let image = x264::Image::new(

@@ -87,6 +87,7 @@ impl Default for Config {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Format {
+    H264 = u32::from_be_bytes(*b"H264"),
     YUYV = u32::from_be_bytes(*b"YUYV"),
     YV12 = u32::from_be_bytes(*b"YV12"),
     RGB3 = u32::from_be_bytes(*b"RGB3"),
@@ -104,6 +105,7 @@ impl TryFrom<u32> for Format {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match &value.to_be_bytes() {
+            b"H264" => Ok(Self::H264),
             b"YUYV" => Ok(Self::YUYV),
             b"YV12" => Ok(Self::YV12),
             b"RGB3" => Ok(Self::RGB3),
@@ -273,11 +275,12 @@ mod qc {
 
     impl Arbitrary for Format {
         fn arbitrary(g: &mut Gen) -> Self {
-            match u32::arbitrary(g) % 4 {
+            match u32::arbitrary(g) % 5 {
                 0 => Self::YUYV,
                 1 => Self::YV12,
                 2 => Self::RGB3,
                 3 => Self::BGR3,
+                4 => Self::H264,
                 _ => unreachable!(),
             }
         }
