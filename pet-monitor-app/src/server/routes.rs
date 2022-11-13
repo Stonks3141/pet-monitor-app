@@ -2,9 +2,9 @@
 
 use super::auth::Token;
 use super::fmp4::capabilities::{check_config, Capabilities};
+use super::fmp4::{StreamSubscriber, VideoStream};
 use super::provider::Provider;
 use crate::config::{Config, Context};
-use crate::server::fmp4::{MediaSegReceiver, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
@@ -178,16 +178,17 @@ impl From<CacheControl> for Header<'_> {
 }
 
 #[get("/stream.mp4")]
-pub fn stream(
+pub async fn stream(
     _token: Token,
     ctx: &State<Provider<Context>>,
-    media_seg_recv: &State<MediaSegReceiver>,
+    stream_sub_tx: &State<flume::Sender<StreamSubscriber>>,
 ) -> StreamResponse<impl Stream<Item = Vec<u8>>> {
     let ctx = ctx.get();
     StreamResponse {
         stream: ByteStream(
-            VideoStream::new(&ctx.config, media_seg_recv.resubscribe()).filter_map(
-                |x| async move {
+            VideoStream::new(&ctx.config, (**stream_sub_tx).clone())
+                .await
+                .filter_map(|x| async move {
                     match x {
                         Ok(x) => Some(x),
                         Err(e) => {
@@ -195,8 +196,7 @@ pub fn stream(
                             None
                         }
                     }
-                },
-            ),
+                }),
         ),
         content_type: ContentType::MP4,
         cache_control: CacheControl {

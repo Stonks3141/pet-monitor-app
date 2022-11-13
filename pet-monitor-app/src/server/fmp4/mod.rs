@@ -8,10 +8,6 @@ use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use log::{trace, warn};
 use rocket::futures::Stream;
-use rocket::tokio::{
-    sync::broadcast::{self, error::TryRecvError},
-    task::spawn_blocking,
-};
 use rscam::Camera;
 use std::{
     collections::HashMap,
@@ -245,15 +241,18 @@ pub struct VideoStream {
     use_headers: bool,
     size: u64,
     sequence_number: u32,
-    media_seg_recv: broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>,
+    media_seg_recv: MediaSegReceiver,
+    other_recv: Option<MediaSegReceiver>,
+    headers: Vec<u8>,
 }
 
 impl VideoStream {
-    pub fn new(
-        config: &Config,
-        media_seg_recv: broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>,
-    ) -> Self {
+    pub async fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Self {
         let init_segment = InitSegment::from(config);
+
+        let (tx, rx) = flume::unbounded();
+        stream_sub_tx.send_async(tx).await.unwrap();
+        let (headers, media_seg_recv) = rx.recv_async().await.unwrap();
 
         Self {
             size: init_segment.size(),
@@ -261,7 +260,33 @@ impl VideoStream {
             use_headers: true,
             sequence_number: 1,
             media_seg_recv,
+            other_recv: None,
+            headers,
         }
+    }
+
+    fn serialize_segment(&mut self, x: Option<MediaSegment>) -> Option<io::Result<Vec<u8>>> {
+        let Some(mut media_segment) = x else {
+            trace!("VideoStream ended");
+            return None;
+        };
+        if self.use_headers {
+            media_segment.add_headers(self.headers.clone());
+            self.use_headers = false;
+        }
+        media_segment.set_base_data_offset(self.size);
+        media_segment.set_sequence_number(self.sequence_number);
+        self.sequence_number += 1;
+        self.size += media_segment.size();
+        let mut buf = Vec::with_capacity(media_segment.size() as usize);
+        if let Err(e) = media_segment.write_to(&mut buf) {
+            return Some(Err(e));
+        }
+        trace!(
+            "VideoStream sent media segment with sequence number {}",
+            self.sequence_number - 1
+        );
+        Some(Ok(buf))
     }
 }
 
@@ -281,207 +306,218 @@ impl Stream for VideoStream {
                 trace!("VideoStream sent init segment");
                 Poll::Ready(Some(Ok(buf)))
             }
-            None => match self.media_seg_recv.try_recv() {
-                Ok(x) => {
-                    let Some((headers, mut media_segment)) = x else {
-                        trace!("VideoStream ended");
-                        return Poll::Ready(None);
-                    };
-                    if self.use_headers {
-                        media_segment.add_headers(headers);
-                        self.use_headers = false;
+            None => {
+                if let Some(rx) = &self.other_recv {
+                    match rx.try_recv() {
+                        Ok(x) => {
+                            self.other_recv = None;
+                            Poll::Ready(self.serialize_segment(x))
+                        }
+                        Err(e) => match e {
+                            flume::TryRecvError::Disconnected => panic!(),
+                            flume::TryRecvError::Empty => Poll::Pending,
+                        },
                     }
-                    media_segment.set_base_data_offset(self.size);
-                    media_segment.set_sequence_number(self.sequence_number);
-                    self.sequence_number += 1;
-                    self.size += media_segment.size();
-                    let mut buf = Vec::with_capacity(media_segment.size() as usize);
-                    if let Err(e) = media_segment.write_to(&mut buf) {
-                        return Poll::Ready(Some(Err(e)));
+                } else {
+                    match self.media_seg_recv.try_recv() {
+                        Ok(x) => Poll::Ready(self.serialize_segment(x)),
+                        Err(e) => match e {
+                            flume::TryRecvError::Disconnected => Poll::Ready(None),
+                            flume::TryRecvError::Empty => {
+                                let waker = cx.waker().clone();
+                                let (return_tx, rx) = flume::unbounded();
+                                self.other_recv = Some(rx);
+                                let rx = self.media_seg_recv.clone();
+                                rocket::tokio::spawn(async move {
+                                    // FIXME
+                                    let seg = rx.recv_async().await.unwrap();
+                                    return_tx.send(seg).unwrap();
+                                    waker.wake();
+                                });
+                                trace!("VideoStream is pending");
+                                Poll::Pending
+                            }
+                        },
                     }
-                    trace!(
-                        "VideoStream sent media segment with sequence number {}",
-                        self.sequence_number - 1
-                    );
-                    Poll::Ready(Some(Ok(buf)))
                 }
-                Err(e) => match e {
-                    TryRecvError::Closed => Poll::Ready(None),
-                    TryRecvError::Empty => {
-                        let mut rx = self.media_seg_recv.resubscribe();
-                        let waker = cx.waker().clone();
-                        rocket::tokio::spawn(async move {
-                            let _x = rx.recv().await;
-                            waker.wake();
-                        });
-                        trace!("VideoStream is pending");
-                        Poll::Pending
-                    }
-                    TryRecvError::Lagged(_) => {
-                        #[allow(clippy::unwrap_used)]
-                        // try_recv should always be `Ok` after it has lagged
-                        let Some((headers, mut media_segment)) = self.media_seg_recv.try_recv().unwrap() else {
-                            trace!("VideoStream ended");
-                            return Poll::Ready(None);
-                        };
-                        if self.use_headers {
-                            media_segment.add_headers(headers);
-                            self.use_headers = false;
-                        }
-                        media_segment.set_base_data_offset(self.size);
-                        media_segment.set_sequence_number(self.sequence_number);
-                        self.sequence_number += 1;
-                        self.size += media_segment.size();
-                        let mut buf = Vec::with_capacity(media_segment.size() as usize);
-                        if let Err(e) = media_segment.write_to(&mut buf) {
-                            return Poll::Ready(Some(Err(e)));
-                        }
-                        trace!(
-                            "VideoStream sent media segment with sequence number {}",
-                            self.sequence_number - 1
-                        );
-                        Poll::Ready(Some(Ok(buf)))
-                    }
-                },
-            },
+            }
         }
     }
 }
 
-pub type MediaSegReceiver = broadcast::Receiver<Option<(Vec<u8>, MediaSegment)>>;
+struct FrameIter {
+    camera: Camera,
+}
 
-pub fn stream_media_segments(ctx: Provider<Context>) -> MediaSegReceiver {
-    let (sender, receiver) = broadcast::channel(1);
+impl FrameIter {
+    fn new(config: &Config) -> anyhow::Result<Self> {
+        let mut camera = Camera::new(
+            config
+                .device
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
+        )?;
+
+        let controls: HashMap<String, u32> = camera
+            .controls()
+            .filter_map(Result::ok)
+            .map(|ctl| (ctl.name, ctl.id))
+            .collect();
+
+        for (name, val) in &config.v4l2_controls {
+            if let Some(id) = controls.get(name) {
+                camera.set_control(*id, val).unwrap_or(()); // ignore failure
+            } else {
+                log::warn!("Couldn't find control {}", name);
+                // TODO: handle errors by returning a 400 for PUT /api/config
+                // or printing an error message if loaded from the config file
+            }
+        }
+
+        camera.start(&rscam::Config {
+            interval: config.interval,
+            resolution: config.resolution,
+            format: b"YUYV",
+            ..Default::default()
+        })?;
+
+        Ok(Self { camera })
+    }
+}
+
+impl Iterator for FrameIter {
+    type Item = std::io::Result<rscam::Frame>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.camera.capture())
+    }
+}
+
+pub type MediaSegReceiver = flume::Receiver<Option<MediaSegment>>;
+pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
+
+pub fn stream_media_segments(
+    rx: flume::Receiver<StreamSubscriber>,
+    ctx: Provider<Context>,
+) -> anyhow::Result<std::convert::Infallible> {
     let mut config = ctx.get().config;
     let mut ctx_recv = ctx.subscribe();
 
-    spawn_blocking(move || -> anyhow::Result<()> {
-        'main: loop {
-            trace!("Starting stream with config {:?}", config);
-            let mut timestamp = 0;
-            let timescale = config.interval.1;
-            let bitrate = 896_000;
+    'main: loop {
+        trace!("Starting stream with config {:?}", config);
+        let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
+        let mut timestamp = 0;
+        let timescale = config.interval.1;
+        let bitrate = 896_000;
 
-            let mut camera =
-                Camera::new(config.device.as_os_str().to_str().ok_or_else(|| {
-                    anyhow::Error::msg("failed to convert device path to string")
-                })?)?;
+        let mut camera = Camera::new(
+            config
+                .device
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
+        )?;
 
-            let controls: HashMap<String, u32> = camera
-                .controls()
-                .filter_map(Result::ok)
-                .map(|ctl| (ctl.name, ctl.id))
-                .collect();
+        let controls: HashMap<String, u32> = camera
+            .controls()
+            .filter_map(Result::ok)
+            .map(|ctl| (ctl.name, ctl.id))
+            .collect();
 
-            for (name, val) in &config.v4l2_controls {
-                if let Some(id) = controls.get(name) {
-                    camera.set_control(*id, val).unwrap_or(()); // ignore failure
-                } else {
-                    log::warn!("Couldn't find control {}", name);
-                    // TODO: handle errors by returning a 400 for PUT /api/config
-                    // or printing an error message if loaded from the config file
-                }
-            }
-
-            camera.start(&rscam::Config {
-                interval: config.interval,
-                resolution: config.resolution,
-                format: b"YUYV",
-                ..Default::default()
-            })?;
-
-            let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
-
-            let mut encoder =
-                x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
-                    .fps(config.interval.0, config.interval.1)
-                    .timebase(1, timescale)
-                    .bitrate(bitrate)
-                    .high()
-                    .annexb(false)
-                    .max_keyframe_interval(60)
-                    .scenecut_threshold(0)
-                    .build(
-                        encoding,
-                        config.resolution.0 as i32,
-                        config.resolution.1 as i32,
-                    )
-                    .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
-
-            let headers = encoder
-                .headers()
-                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
-                .entirety()
-                .to_vec();
-
-            'outer: loop {
-                if let Ok(ctx) = ctx_recv.try_recv() {
-                    config = ctx.config;
-                    sender.send(None).unwrap_or(0);
-                    trace!("Config updated to {:?}, restarting stream", config);
-                    continue 'main;
-                }
-                let time = Instant::now();
-                let mut sample_sizes = vec![];
-                let mut buf = vec![];
-
-                for _ in 0..60 {
-                    let frame = match camera.capture() {
-                        Ok(f) => f,
-                        Err(e) => {
-                            warn!("Capturing frame failed with error {:?}", e);
-                            continue 'outer;
-                        }
-                    };
-
-                    let image = x264::Image::new(
-                        x264::Colorspace::YUYV,
-                        config.resolution.0 as i32,
-                        config.resolution.1 as i32,
-                        &[x264::Plane {
-                            stride: config.resolution.0 as i32 * 2,
-                            data: &frame,
-                        }],
-                    );
-
-                    let (data, _) = match encoder.encode(timestamp, image) {
-                        Ok(x) => x,
-                        Err(e) => {
-                            warn!("Encoding frame failed with error {:?}", e);
-                            continue 'outer;
-                        }
-                    };
-
-                    sample_sizes.push(data.entirety().len() as u32);
-                    buf.extend_from_slice(data.entirety());
-                    timestamp +=
-                        timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
-                }
-
-                let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
-                sender
-                    .send(Some((headers.clone(), media_segment)))
-                    .unwrap_or(0);
-                trace!("Sent media segment, took {:?} to capture", time.elapsed());
+        for (name, val) in &config.v4l2_controls {
+            if let Some(id) = controls.get(name) {
+                camera.set_control(*id, val).unwrap_or(()); // ignore failure
+            } else {
+                log::warn!("Couldn't find control {}", name);
+                // TODO: handle errors by returning a 400 for PUT /api/config
+                // or printing an error message if loaded from the config file
             }
         }
-    });
 
-    receiver
-}
-use rocket::tokio;
-#[tokio::test]
-#[ignore]
-async fn test_mp4() {
-    use rocket::futures::StreamExt;
-    use rocket::tokio::io::AsyncWriteExt;
+        camera.start(&rscam::Config {
+            interval: config.interval,
+            resolution: config.resolution,
+            format: b"YUYV",
+            ..Default::default()
+        })?;
 
-    let ctx = Provider::new(Context::default());
-    let config = ctx.get().config;
-    let seg_recv = stream_media_segments(ctx);
-    let mut stream = VideoStream::new(&config, seg_recv).take(10);
-    let mut file = rocket::tokio::fs::File::create("video.mp4").await.unwrap();
-    while let Some(seg) = stream.next().await {
-        file.write_all(&seg.unwrap()).await.unwrap();
+        let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
+
+        let mut encoder =
+            x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
+                .fps(config.interval.0, config.interval.1)
+                .timebase(1, timescale)
+                .bitrate(bitrate)
+                .high()
+                .annexb(false)
+                .max_keyframe_interval(60)
+                .scenecut_threshold(0)
+                .build(
+                    encoding,
+                    config.resolution.0 as i32,
+                    config.resolution.1 as i32,
+                )
+                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
+
+        let headers = encoder
+            .headers()
+            .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+            .entirety()
+            .to_vec();
+
+        'outer: loop {
+            if let Ok(ctx) = ctx_recv.try_recv() {
+                config = ctx.config;
+                senders.retain(|sender| sender.send(None).is_ok());
+                trace!("Config updated to {:?}, restarting stream", config);
+                continue 'main;
+            }
+            if let Ok(sender) = rx.try_recv() {
+                let (tx, rx) = flume::unbounded();
+                senders.push(tx);
+                sender.send((headers.clone(), rx)).unwrap_or(());
+            }
+
+            let time = Instant::now();
+            let mut sample_sizes = vec![];
+            let mut buf = vec![];
+
+            for _ in 0..60 {
+                let frame = match camera.capture() {
+                    Ok(f) => f,
+                    Err(e) => {
+                        warn!("Capturing frame failed with error {:?}", e);
+                        continue 'outer;
+                    }
+                };
+
+                let image = x264::Image::new(
+                    x264::Colorspace::YUYV,
+                    config.resolution.0 as i32,
+                    config.resolution.1 as i32,
+                    &[x264::Plane {
+                        stride: config.resolution.0 as i32 * 2,
+                        data: &frame,
+                    }],
+                );
+
+                let (data, _) = match encoder.encode(timestamp, image) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        warn!("Encoding frame failed with error {:?}", e);
+                        continue 'outer;
+                    }
+                };
+
+                sample_sizes.push(data.entirety().len() as u32);
+                buf.extend_from_slice(data.entirety());
+                timestamp += timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
+            }
+
+            let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
+            senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
+            trace!("Sent media segment, took {:?} to capture", time.elapsed());
+        }
     }
 }

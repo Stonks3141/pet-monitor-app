@@ -114,8 +114,11 @@ async fn rocket(
         .manage(caps);
 
     if stream {
-        let media_seg_rx = stream_media_segments(ctx_provider);
-        rocket = rocket.manage(media_seg_rx);
+        let (tx, rx) = flume::unbounded();
+        rocket::tokio::task::spawn_blocking(move || {
+            stream_media_segments(rx, ctx_provider).unwrap();
+        });
+        rocket = rocket.manage(tx);
     }
     Ok(rocket)
 }
