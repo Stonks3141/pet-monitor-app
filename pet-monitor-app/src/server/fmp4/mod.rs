@@ -528,37 +528,12 @@ pub fn stream_media_segments(
     'main: loop {
         trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
-        let mut timestamp = 0;
-        let timescale = config.interval.1;
-        let bitrate = 896_000;
 
-        let mut frames = FrameIter::new(&config).unwrap();
+        let frames = FrameIter::new(&config).unwrap();
+        let mut segments = SegmentIter::new(config.clone(), frames).unwrap();
+        let headers = segments.get_headers().unwrap();
 
-        let encoding = x264::Encoding::from(x264::Colorspace::YUYV);
-
-        let mut encoder =
-            x264::Setup::preset(x264::Preset::Superfast, x264::Tune::None, false, true)
-                .fps(config.interval.0, config.interval.1)
-                .timebase(1, timescale)
-                .bitrate(bitrate)
-                .high()
-                .annexb(false)
-                .max_keyframe_interval(60)
-                .scenecut_threshold(0)
-                .build(
-                    encoding,
-                    config.resolution.0 as i32,
-                    config.resolution.1 as i32,
-                )
-                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?;
-
-        let headers = encoder
-            .headers()
-            .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
-            .entirety()
-            .to_vec();
-
-        'outer: loop {
+        loop {
             if let Ok(ctx) = ctx_recv.try_recv() {
                 config = ctx.config;
                 senders.retain(|sender| sender.send(None).is_ok());
@@ -572,43 +547,7 @@ pub fn stream_media_segments(
             }
 
             let time = Instant::now();
-            let mut sample_sizes = vec![];
-            let mut buf = vec![];
-
-            for _ in 0..60 {
-                let frame = match frames.next() {
-                    Some(Ok(f)) => f,
-                    Some(Err(e)) => {
-                        warn!("Capturing frame failed with error {:?}", e);
-                        continue 'outer;
-                    }
-                    None => unreachable!(),
-                };
-
-                let image = x264::Image::new(
-                    x264::Colorspace::YUYV,
-                    config.resolution.0 as i32,
-                    config.resolution.1 as i32,
-                    &[x264::Plane {
-                        stride: config.resolution.0 as i32 * 2,
-                        data: &frame,
-                    }],
-                );
-
-                let (data, _) = match encoder.encode(timestamp, image) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        warn!("Encoding frame failed with error {:?}", e);
-                        continue 'outer;
-                    }
-                };
-
-                sample_sizes.push(data.entirety().len() as u32);
-                buf.extend_from_slice(data.entirety());
-                timestamp += timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
-            }
-
-            let media_segment = MediaSegment::new(&config, 0, sample_sizes, buf);
+            let media_segment = segments.next().unwrap();
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
             trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
