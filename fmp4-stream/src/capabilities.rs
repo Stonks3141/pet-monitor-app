@@ -1,10 +1,12 @@
 use anyhow::anyhow;
-use rocket::tokio::{fs, task::spawn_blocking};
 use rscam::{FormatInfo, IntervalInfo, ResolutionInfo};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsStr,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::config::{Config, Format};
 
@@ -86,21 +88,18 @@ impl Camera for rscam::Camera {
     }
 }
 
-pub async fn get_capabilities_all() -> anyhow::Result<Capabilities> {
+pub fn get_capabilities_all() -> anyhow::Result<Capabilities> {
     let mut caps = HashMap::new();
 
-    let mut dir_items = fs::read_dir(PathBuf::from("/dev")).await?;
-
-    while let Some(f) = dir_items.next_entry().await? {
-        let path = f.path();
+    for f in fs::read_dir(PathBuf::from("/dev"))? {
+        let path = f?.path();
         if path
             .file_name()
             .and_then(OsStr::to_str)
             .map_or(false, |name| name.starts_with("video"))
         {
             let path_clone = path.clone();
-            let path_caps =
-                spawn_blocking(move || get_capabilities_from_path(&path_clone)).await??;
+            let path_caps = get_capabilities_from_path(&path_clone)?;
             caps.insert(path.clone(), path_caps);
         }
     }

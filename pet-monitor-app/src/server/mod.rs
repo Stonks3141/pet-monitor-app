@@ -1,19 +1,21 @@
 //! This module contains all server-related logic.
 
 use crate::config::Context;
-use fmp4::stream_media_segments;
+use fmp4_stream::{
+    capabilities::{check_config, get_capabilities_all},
+    stream_media_segments,
+};
 use provider::Provider;
 use rocket::config::LogLevel;
 use rocket::config::TlsConfig;
 use rocket::futures::future;
 use rocket::{Build, Rocket};
+use routes::*;
 use std::path::PathBuf;
 
 mod auth;
-mod fmp4;
 mod provider;
 mod routes;
-use routes::*;
 
 /// Launches the server
 pub async fn launch(
@@ -105,8 +107,8 @@ async fn rocket(
     #[cfg(not(debug_assertions))]
     routes.append(&mut rocket::routes![files]);
 
-    let caps = fmp4::capabilities::get_capabilities_all().await?;
-    fmp4::capabilities::check_config(&ctx.config, &caps)?;
+    let caps = get_capabilities_all()?;
+    check_config(&ctx.config, &caps)?;
 
     let mut rocket = rocket::custom(&rocket_cfg)
         .mount("/", routes)
@@ -115,10 +117,20 @@ async fn rocket(
 
     if stream {
         let (tx, rx) = flume::unbounded();
+        let (cfg_tx, cfg_rx) = flume::unbounded();
+        let mut ctx_sub = ctx_provider.subscribe();
+        rocket::tokio::spawn(async move {
+            while let Ok(ctx) = ctx_sub.recv().await {
+                if cfg_tx.send_async(ctx.config).await.is_err() {
+                    return;
+                }
+            }
+        });
+        let config = ctx.config.clone();
         rocket::tokio::task::spawn_blocking(move || {
             // not much we can do about an error at this point, the server is already started
             #[allow(clippy::unwrap_used)]
-            stream_media_segments(rx, ctx_provider).unwrap();
+            stream_media_segments(rx, config, cfg_rx).unwrap();
         });
         rocket = rocket.manage(tx);
     }

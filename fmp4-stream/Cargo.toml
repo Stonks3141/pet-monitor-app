@@ -1,0 +1,21 @@
+[package]
+name = "fmp4-stream"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+flume = "0.10"
+anyhow = "1.0"
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_repr = "0.1"
+chrono = "0.4"
+bitflags = "1.3"
+fixed = "1.19"
+rscam = "0.5"
+x264 = { git = "https://github.com/Stonks3141/x264.git" }
+tokio = { version = "1.21", features = ["rt"], optional = true }
+futures-core = { version = "0.3", optional = true }
+
+[features]
+tokio = ["dep:tokio", "dep:futures-core"]

@@ -1,22 +1,32 @@
+#![forbid(unsafe_code)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::dbg_macro)]
+#![deny(non_ascii_idents)]
+
 mod boxes;
 pub mod capabilities;
+mod config;
 
-use crate::config::{Config, Context, Format};
-use crate::server::provider::Provider;
+pub use config::{Config, Format, Rotation};
+
 use anyhow::Context as _;
 use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
+#[cfg(feature = "tokio")]
+use futures_core::Stream;
 use log::{trace, warn};
-use rocket::futures::Stream;
 use rscam::Camera;
 use std::{
     collections::HashMap,
     io::{self, prelude::*},
-    pin::Pin,
-    task::Poll,
     time::Instant,
 };
+#[cfg(feature = "tokio")]
+use std::{pin::Pin, task::Poll};
 
 #[derive(Debug, Clone)]
 pub struct InitSegment {
@@ -243,12 +253,40 @@ pub struct VideoStream {
     size: u64,
     sequence_number: u32,
     media_seg_recv: MediaSegReceiver,
+    #[cfg(feature = "tokio")]
     other_recv: Option<MediaSegReceiver>,
     headers: Vec<u8>,
 }
 
 impl VideoStream {
-    pub async fn new(
+    pub fn new(
+        config: &Config,
+        stream_sub_tx: flume::Sender<StreamSubscriber>,
+    ) -> anyhow::Result<Self> {
+        let init_segment = InitSegment::from(config);
+
+        let (tx, rx) = flume::unbounded();
+        stream_sub_tx
+            .send(tx)
+            .context("`VideoStream::new`: Failed to communicate with streaming task")?;
+        // if the send succeeds, the other side will respond immediately
+        #[allow(clippy::unwrap_used)]
+        let (headers, media_seg_recv) = rx.recv().unwrap();
+
+        Ok(Self {
+            size: init_segment.size(),
+            init_segment: Some(init_segment),
+            use_headers: true,
+            sequence_number: 1,
+            media_seg_recv,
+            #[cfg(feature = "tokio")]
+            other_recv: None,
+            headers,
+        })
+    }
+
+    #[cfg(feature = "tokio")]
+    pub async fn new_async(
         config: &Config,
         stream_sub_tx: flume::Sender<StreamSubscriber>,
     ) -> anyhow::Result<Self> {
@@ -299,6 +337,25 @@ impl VideoStream {
     }
 }
 
+impl Iterator for VideoStream {
+    type Item = io::Result<Vec<u8>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.init_segment.take() {
+            Some(init_segment) => {
+                let mut buf = Vec::with_capacity(init_segment.size() as usize);
+                if let Err(e) = init_segment.write_to(&mut buf) {
+                    return Some(Err(e));
+                }
+                trace!("VideoStream sent init segment");
+                Some(Ok(buf))
+            }
+            None => self.serialize_segment(self.media_seg_recv.recv().unwrap()),
+        }
+    }
+}
+
+#[cfg(feature = "tokio")]
 impl Stream for VideoStream {
     type Item = io::Result<Vec<u8>>;
 
@@ -337,7 +394,7 @@ impl Stream for VideoStream {
                                 let (return_tx, rx) = flume::unbounded();
                                 self.other_recv = Some(rx);
                                 let rx = self.media_seg_recv.clone();
-                                rocket::tokio::spawn(async move {
+                                tokio::spawn(async move {
                                     let Ok(seg) = rx.recv_async().await else {
                                         // wake up the stream one more time so it can detect
                                         // the disconnected channel and return `None`.
@@ -535,11 +592,9 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
-    ctx: Provider<Context>,
+    mut config: Config,
+    config_rx: flume::Receiver<Config>,
 ) -> anyhow::Result<std::convert::Infallible> {
-    let mut config = ctx.get().config;
-    let mut ctx_recv = ctx.subscribe();
-
     'main: loop {
         trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
@@ -549,8 +604,8 @@ pub fn stream_media_segments(
         let headers = segments.get_headers()?;
 
         loop {
-            if let Ok(ctx) = ctx_recv.try_recv() {
-                config = ctx.config;
+            if let Ok(new_config) = config_rx.try_recv() {
+                config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
                 trace!("Config updated to {:?}, restarting stream", config);
                 continue 'main;

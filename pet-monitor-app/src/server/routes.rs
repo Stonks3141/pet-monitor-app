@@ -1,10 +1,10 @@
 //! This module provides Rocket routes for the server.
 
 use super::auth::Token;
-use super::fmp4::capabilities::{check_config, Capabilities};
-use super::fmp4::{StreamSubscriber, VideoStream};
 use super::provider::Provider;
-use crate::config::{Config, Context};
+use crate::config::Context;
+use fmp4_stream::capabilities::{check_config, Capabilities};
+use fmp4_stream::{Config, StreamSubscriber, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
@@ -184,24 +184,22 @@ pub async fn stream(
     stream_sub_tx: &State<flume::Sender<StreamSubscriber>>,
 ) -> Result<StreamResponse<impl Stream<Item = Vec<u8>>>, Status> {
     let ctx = ctx.get();
+    let stream = VideoStream::new_async(&ctx.config, (**stream_sub_tx).clone())
+        .await
+        .map_err(|e| {
+            warn!("Error constructing VideoStream: {:?}", e);
+            Status::InternalServerError
+        })?;
     Ok(StreamResponse {
-        stream: ByteStream(
-            VideoStream::new(&ctx.config, (**stream_sub_tx).clone())
-                .await
-                .map_err(|e| {
-                    warn!("Error constructing VideoStream: {:?}", e);
-                    Status::InternalServerError
-                })?
-                .filter_map(|x| async move {
-                    match x {
-                        Ok(x) => Some(x),
-                        Err(e) => {
-                            warn!("Error streaming segment: {:?}", e);
-                            None
-                        }
-                    }
-                }),
-        ),
+        stream: ByteStream(StreamExt::filter_map(stream, |x| async move {
+            match x {
+                Ok(x) => Some(x),
+                Err(e) => {
+                    warn!("Error streaming segment: {:?}", e);
+                    None
+                }
+            }
+        })),
         content_type: ContentType::MP4,
         cache_control: CacheControl {
             max_age: Some(0),
