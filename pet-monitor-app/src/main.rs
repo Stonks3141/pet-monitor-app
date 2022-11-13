@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 #![deny(clippy::todo)]

@@ -182,12 +182,16 @@ pub async fn stream(
     _token: Token,
     ctx: &State<Provider<Context>>,
     stream_sub_tx: &State<flume::Sender<StreamSubscriber>>,
-) -> StreamResponse<impl Stream<Item = Vec<u8>>> {
+) -> Result<StreamResponse<impl Stream<Item = Vec<u8>>>, Status> {
     let ctx = ctx.get();
-    StreamResponse {
+    Ok(StreamResponse {
         stream: ByteStream(
             VideoStream::new(&ctx.config, (**stream_sub_tx).clone())
                 .await
+                .map_err(|e| {
+                    warn!("Error constructing VideoStream: {:?}", e);
+                    Status::InternalServerError
+                })?
                 .filter_map(|x| async move {
                     match x {
                         Ok(x) => Some(x),
@@ -203,7 +207,7 @@ pub async fn stream(
             max_age: Some(0),
             no_store: true,
         },
-    }
+    })
 }
 
 #[get("/api/capabilities")]

@@ -116,6 +116,8 @@ async fn rocket(
     if stream {
         let (tx, rx) = flume::unbounded();
         rocket::tokio::task::spawn_blocking(move || {
+            // not much we can do about an error at this point, the server is already started
+            #[allow(clippy::unwrap_used)]
             stream_media_segments(rx, ctx_provider).unwrap();
         });
         rocket = rocket.manage(tx);

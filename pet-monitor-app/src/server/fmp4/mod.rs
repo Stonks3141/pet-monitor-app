@@ -3,6 +3,7 @@ pub mod capabilities;
 
 use crate::config::{Config, Context, Format};
 use crate::server::provider::Provider;
+use anyhow::Context as _;
 use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
@@ -247,14 +248,22 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
-    pub async fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Self {
+    pub async fn new(
+        config: &Config,
+        stream_sub_tx: flume::Sender<StreamSubscriber>,
+    ) -> anyhow::Result<Self> {
         let init_segment = InitSegment::from(config);
 
         let (tx, rx) = flume::unbounded();
-        stream_sub_tx.send_async(tx).await.unwrap();
+        stream_sub_tx
+            .send_async(tx)
+            .await
+            .context("`VideoStream::new`: Failed to communicate with streaming task")?;
+        // if the send succeeds, the other side will respond immediately
+        #[allow(clippy::unwrap_used)]
         let (headers, media_seg_recv) = rx.recv_async().await.unwrap();
 
-        Self {
+        Ok(Self {
             size: init_segment.size(),
             init_segment: Some(init_segment),
             use_headers: true,
@@ -262,7 +271,7 @@ impl VideoStream {
             media_seg_recv,
             other_recv: None,
             headers,
-        }
+        })
     }
 
     fn serialize_segment(&mut self, x: Option<MediaSegment>) -> Option<io::Result<Vec<u8>>> {
@@ -329,8 +338,14 @@ impl Stream for VideoStream {
                                 self.other_recv = Some(rx);
                                 let rx = self.media_seg_recv.clone();
                                 rocket::tokio::spawn(async move {
-                                    // FIXME
-                                    let seg = rx.recv_async().await.unwrap();
+                                    let Ok(seg) = rx.recv_async().await else {
+                                        // wake up the stream one more time so it can detect
+                                        // the disconnected channel and return `None`.
+                                        waker.wake();
+                                        return;
+                                    };
+                                    // rx isn't dropped until a value is received
+                                    #[allow(clippy::unwrap_used)]
                                     return_tx.send(seg).unwrap();
                                     waker.wake();
                                 });
@@ -508,7 +523,7 @@ impl Iterator for SegmentIter {
                         *timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
                 }
 
-                Some(MediaSegment::new(&config, 0, sample_sizes, buf))
+                Some(MediaSegment::new(config, 0, sample_sizes, buf))
             }
             Self::Hardware { .. } => panic!(),
         }
@@ -529,9 +544,9 @@ pub fn stream_media_segments(
         trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
 
-        let frames = FrameIter::new(&config).unwrap();
-        let mut segments = SegmentIter::new(config.clone(), frames).unwrap();
-        let headers = segments.get_headers().unwrap();
+        let frames = FrameIter::new(&config)?;
+        let mut segments = SegmentIter::new(config.clone(), frames)?;
+        let headers = segments.get_headers()?;
 
         loop {
             if let Ok(ctx) = ctx_recv.try_recv() {
@@ -547,6 +562,7 @@ pub fn stream_media_segments(
             }
 
             let time = Instant::now();
+            #[allow(clippy::unwrap_used)] // the iterator never returns `None`
             let media_segment = segments.next().unwrap();
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
             trace!("Sent media segment, took {:?} to capture", time.elapsed());
