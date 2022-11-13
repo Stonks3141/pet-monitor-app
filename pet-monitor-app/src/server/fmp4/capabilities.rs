@@ -6,18 +6,18 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use crate::config::Config;
+use crate::config::{Config, Format};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capabilities(HashMap<PathBuf, Formats>);
 
-pub type Formats = HashMap<[u8; 4], Resolutions>;
+pub type Formats = HashMap<Format, Resolutions>;
 pub type Resolutions = HashMap<(u32, u32), Intervals>;
 pub type Intervals = Vec<(u32, u32)>;
 
 impl Serialize for Capabilities {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let map: HashMap<PathBuf, HashMap<String, Vec<Resolution>>> = self
+        let map: HashMap<PathBuf, HashMap<Format, Vec<Resolution>>> = self
             .0
             .clone()
             .into_iter()
@@ -29,7 +29,7 @@ impl Serialize for Capabilities {
                         .map(|(format, resolutions)| {
                             #[allow(clippy::unwrap_used)] // FourCC codes are always printable ASCII
                             (
-                                std::str::from_utf8(&format).unwrap().to_owned(),
+                                format,
                                 resolutions
                                     .into_iter()
                                     .map(|(resolution, intervals)| Resolution {
@@ -125,7 +125,13 @@ where
     camera
         .formats()
         .filter_map(Result::ok)
-        .map(|fmt| {
+        .filter_map(|fmt| {
+            u32::from_be_bytes(fmt.format)
+                .try_into()
+                .ok()
+                .map(|format| (fmt, format))
+        })
+        .map(|(fmt, format)| {
             let resolutions: anyhow::Result<_> = get_resolutions(camera.resolutions(&fmt.format)?)
                 .into_iter()
                 .map(|resolution| {
@@ -135,7 +141,7 @@ where
                     ))
                 })
                 .collect();
-            Ok((fmt.format, resolutions?))
+            Ok((format, resolutions?))
         })
         .collect()
 }
@@ -165,7 +171,7 @@ pub fn check_config(config: &Config, caps: &Capabilities) -> anyhow::Result<()> 
         .get(&config.device)
         .ok_or_else(|| anyhow!("Invalid device: {:?}", config.device))?
         .get(&config.format)
-        .ok_or_else(|| anyhow!("Invalid format: {:?}", std::str::from_utf8(&config.format)))?
+        .ok_or_else(|| anyhow!("Invalid format: {}", config.format))?
         .get(&config.resolution)
         .ok_or_else(|| anyhow!("Invalid resolution: {:?}", config.resolution))?
         .contains(&config.interval)

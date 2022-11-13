@@ -1,9 +1,10 @@
 use anyhow::Context as _;
 use chrono::Duration;
 use rocket::tokio::task::spawn_blocking;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
+use std::fmt;
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
@@ -57,9 +58,7 @@ pub struct Config {
     /// The v4l2 device to capture video with (eg. "/dev/video0")
     pub device: PathBuf,
     /// The fourCC code to capture in
-    #[serde(serialize_with = "ser_format")]
-    #[serde(deserialize_with = "de_format")]
-    pub format: [u8; 4],
+    pub format: Format,
     /// Pixel resolution (width, height)
     pub resolution: (u32, u32),
     /// A fraction representing the length of time for a frame
@@ -71,28 +70,64 @@ pub struct Config {
     pub v4l2_controls: HashMap<String, String>,
 }
 
-pub fn ser_format<S: Serializer>(format: &[u8; 4], s: S) -> Result<S::Ok, S::Error> {
-    #[allow(clippy::unwrap_used)] // fourCC codes are always printable ASCII
-    let format = std::str::from_utf8(format).unwrap();
-    format.serialize(s)
-}
-
-pub fn de_format<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 4], D::Error> {
-    let format = String::deserialize(d)?;
-    let format = format.as_bytes();
-    Ok([format[0], format[1], format[2], format[3]])
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
             device: PathBuf::from("/dev/video0"),
-            format: *b"YUYV",
+            format: Format::YUYV,
             resolution: (640, 480),
             interval: (1, 30),
             rotation: Rotation::R0,
             v4l2_controls: HashMap::new(),
         }
+    }
+}
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(u32)]
+pub enum Format {
+    YUYV = u32::from_be_bytes(*b"YUYV"),
+    YV12 = u32::from_be_bytes(*b"YV12"),
+    RGB3 = u32::from_be_bytes(*b"RGB3"),
+    BGR3 = u32::from_be_bytes(*b"BGR3"),
+}
+
+impl TryFrom<u32> for Format {
+    type Error = String;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match &value.to_be_bytes() {
+            b"YUYV" => Ok(Self::YUYV),
+            b"YV12" => Ok(Self::YV12),
+            b"RGB3" => Ok(Self::RGB3),
+            b"BGR3" => Ok(Self::BGR3),
+            other => Err(format!("Invalid fourCC: {:?}", std::str::from_utf8(other))),
+        }
+    }
+}
+
+impl fmt::Display for Format {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bytes = &(*self as u32).to_be_bytes();
+        #[allow(clippy::unwrap_used)] // all enum variants are valid UTF-8
+        let format = std::str::from_utf8(bytes).unwrap();
+        write!(f, "{}", format)
+    }
+}
+
+impl Serialize for Format {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.to_string().serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Format {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let format = String::deserialize(d)?;
+        let format = format.as_bytes();
+        let format = [format[0], format[1], format[2], format[3]];
+        Self::try_from(u32::from_be_bytes(format)).map_err(D::Error::custom)
     }
 }
 
@@ -213,16 +248,23 @@ mod qc {
         fn arbitrary(g: &mut Gen) -> Self {
             Self {
                 device: Arbitrary::arbitrary(g),
-                format: [
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                ],
+                format: Arbitrary::arbitrary(g),
                 resolution: Arbitrary::arbitrary(g),
                 interval: Arbitrary::arbitrary(g),
                 rotation: Arbitrary::arbitrary(g),
                 v4l2_controls: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Format {
+        fn arbitrary(g: &mut Gen) -> Self {
+            match u32::arbitrary(g) % 4 {
+                0 => Self::YUYV,
+                1 => Self::YV12,
+                2 => Self::RGB3,
+                3 => Self::BGR3,
+                _ => unreachable!(),
             }
         }
     }

@@ -33,6 +33,13 @@ impl<T: Clone> Provider<T> {
         self.sub.send(new).unwrap_or(0); // Ignore error if there are no receivers
     }
 
+    #[allow(dead_code)]
+    pub fn update<F: FnOnce(&mut T)>(&self, f: F) {
+        let mut val = self.get();
+        f(&mut val);
+        self.set(val);
+    }
+
     /// Returns a `Receiver` that will send every time the inner value is mutated.
     pub fn subscribe(&self) -> broadcast::Receiver<T> {
         self.sub.subscribe()

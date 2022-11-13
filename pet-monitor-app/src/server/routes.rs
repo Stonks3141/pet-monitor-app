@@ -217,13 +217,12 @@ mod tests {
     use quickcheck::{quickcheck, TestResult};
     use ring::rand::SystemRandom;
     use rocket::http::uri::{Origin, Reference};
-    use rocket::local::asynchronous::Client;
+    use rocket::local::asynchronous::Client as AsyncClient;
+    use rocket::local::blocking::Client as BlockingClient;
     use rocket::tokio;
 
     quickcheck! {
         fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
-            use rocket::local::blocking::Client;
-
             let path = "/".to_string() + &path.join("/");
 
             if Reference::parse(&domain).is_err() || Origin::parse(&path).is_err() || domain.len() == 0 || path.len() == 1 {
@@ -239,18 +238,18 @@ mod tests {
                 .mount("/", rocket::routes![redirect])
                 .manage(Provider::new(ctx));
 
-            let client = Client::tracked(rocket).unwrap();
+            let client = BlockingClient::tracked(rocket).unwrap();
             let res = client.get(path.clone()).dispatch();
 
             TestResult::from_bool(
                 res.status() == Status::PermanentRedirect
-                && res.headers().get_one("Location").unwrap() == format!("https://{}/{}/", domain, path)
+                && res.headers().get_one("Location").unwrap() == format!("https://{}{}", domain, path)
             )
         }
     }
 
-    #[tokio::test]
-    async fn redirect() {
+    #[test]
+    fn redirect() {
         let ctx = Context {
             domain: "localhost".to_string(),
             ..Default::default()
@@ -260,16 +259,16 @@ mod tests {
             .mount("/", rocket::routes![redirect])
             .manage(Provider::new(ctx));
 
-        let client = Client::tracked(rocket).await.unwrap();
+        let client = BlockingClient::tracked(rocket).unwrap();
 
-        let res = client.get("/").dispatch().await;
+        let res = client.get("/").dispatch();
         assert_eq!(res.status(), Status::PermanentRedirect);
         assert_eq!(
             res.headers().get_one("Location").unwrap(),
             "https://localhost/"
         );
 
-        let res = client.get("/index.html").dispatch().await;
+        let res = client.get("/index.html").dispatch();
         assert_eq!(res.status(), Status::PermanentRedirect);
         assert_eq!(
             res.headers().get_one("Location").unwrap(),
@@ -289,7 +288,7 @@ mod tests {
             .mount("/", rocket::routes![login])
             .manage(Provider::new(ctx));
 
-        let client = Client::tracked(rocket).await.unwrap();
+        let client = AsyncClient::tracked(rocket).await.unwrap();
 
         let res = client.post("/api/login").body(password).dispatch().await;
         assert_eq!(res.status(), Status::Ok);
@@ -307,7 +306,7 @@ mod tests {
             .mount("/", rocket::routes![login])
             .manage(Provider::new(ctx));
 
-        let client = Client::tracked(rocket).await.unwrap();
+        let client = AsyncClient::tracked(rocket).await.unwrap();
 
         let res = client.post("/api/login").body("bar").dispatch().await;
         assert_eq!(res.status(), Status::Unauthorized);
