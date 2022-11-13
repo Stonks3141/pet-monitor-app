@@ -93,6 +93,12 @@ pub enum Format {
     BGR3 = u32::from_be_bytes(*b"BGR3"),
 }
 
+impl From<Format> for [u8; 4] {
+    fn from(format: Format) -> Self {
+        (format as u32).to_be_bytes()
+    }
+}
+
 impl TryFrom<u32> for Format {
     type Error = String;
 
@@ -104,6 +110,14 @@ impl TryFrom<u32> for Format {
             b"BGR3" => Ok(Self::BGR3),
             other => Err(format!("Invalid fourCC: {:?}", std::str::from_utf8(other))),
         }
+    }
+}
+
+impl TryFrom<[u8; 4]> for Format {
+    type Error = String;
+
+    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
+        u32::from_be_bytes(value).try_into()
     }
 }
 
