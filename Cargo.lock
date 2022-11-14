@@ -3153,8 +3153,8 @@ dependencies = [
 
 [[package]]
 name = "x264"
-version = "0.3.0"
-source = "git+https://github.com/Stonks3141/x264.git#158a2290653266b33a2a4541b3272ae7f3a6e945"
+version = "0.4.0"
+source = "git+https://github.com/Stonks3141/x264.git#bd7d80aba83ec97d5c0f85fa6af2ea133e90dd3c"
 dependencies = [
  "pkg-config",
  "x264-sys",
