@@ -775,6 +775,7 @@ dependencies = [
  "flume",
  "futures-core",
  "log",
+ "quickcheck",
  "rscam",
  "serde",
  "serde_repr",
@@ -3153,8 +3154,9 @@ dependencies = [
 
 [[package]]
 name = "x264"
-version = "0.3.0"
-source = "git+https://github.com/Stonks3141/x264.git#158a2290653266b33a2a4541b3272ae7f3a6e945"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8ae5d5999da79234b4fc50053f8df03822c3a2a53decfa00e430add5d22212f"
 dependencies = [
  "pkg-config",
  "x264-sys",

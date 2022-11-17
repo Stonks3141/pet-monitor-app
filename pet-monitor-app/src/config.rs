@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use chrono::Duration;
-use fmp4_stream::Config;
+use fmp4_stream::config::Config;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
@@ -150,44 +150,6 @@ mod qc {
                 port: Arbitrary::arbitrary(g),
                 config: Arbitrary::arbitrary(g),
                 tls: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    impl Arbitrary for Config {
-        fn arbitrary(g: &mut Gen) -> Self {
-            Self {
-                device: Arbitrary::arbitrary(g),
-                format: Arbitrary::arbitrary(g),
-                resolution: Arbitrary::arbitrary(g),
-                interval: Arbitrary::arbitrary(g),
-                rotation: Arbitrary::arbitrary(g),
-                v4l2_controls: Arbitrary::arbitrary(g),
-            }
-        }
-    }
-
-    impl Arbitrary for Format {
-        fn arbitrary(g: &mut Gen) -> Self {
-            match u32::arbitrary(g) % 5 {
-                0 => Self::YUYV,
-                1 => Self::YV12,
-                2 => Self::RGB3,
-                3 => Self::BGR3,
-                4 => Self::H264,
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    impl Arbitrary for Rotation {
-        fn arbitrary(g: &mut Gen) -> Self {
-            match u32::arbitrary(g) % 4 {
-                0 => Self::R0,
-                1 => Self::R90,
-                2 => Self::R180,
-                3 => Self::R270,
-                _ => unreachable!(),
             }
         }
     }

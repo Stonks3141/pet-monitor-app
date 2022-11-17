@@ -4,7 +4,7 @@ use super::auth::Token;
 use super::provider::Provider;
 use crate::config::Context;
 use fmp4_stream::capabilities::{check_config, Capabilities};
-use fmp4_stream::{Config, StreamSubscriber, VideoStream};
+use fmp4_stream::{config::Config, StreamSubscriber, VideoStream};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;

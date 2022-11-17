@@ -11,7 +11,7 @@ use std::{
 use crate::config::{Config, Format};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Capabilities(HashMap<PathBuf, Formats>);
+pub struct Capabilities(pub HashMap<PathBuf, Formats>);
 
 pub type Formats = HashMap<Format, Resolutions>;
 pub type Resolutions = HashMap<(u32, u32), Intervals>;

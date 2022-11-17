@@ -1,3 +1,5 @@
+#[cfg(feature = "quickcheck")]
+use quickcheck::{Arbitrary, Gen};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, fmt, path::PathBuf};
@@ -103,4 +105,45 @@ pub enum Rotation {
     R90 = 90,
     R180 = 180,
     R270 = 270,
+}
+
+#[cfg(feature = "quickcheck")]
+impl Arbitrary for Config {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Self {
+            device: Arbitrary::arbitrary(g),
+            format: Arbitrary::arbitrary(g),
+            resolution: Arbitrary::arbitrary(g),
+            interval: Arbitrary::arbitrary(g),
+            rotation: Arbitrary::arbitrary(g),
+            v4l2_controls: Arbitrary::arbitrary(g),
+        }
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+impl Arbitrary for Format {
+    fn arbitrary(g: &mut Gen) -> Self {
+        match u32::arbitrary(g) % 5 {
+            0 => Self::YUYV,
+            1 => Self::YV12,
+            2 => Self::RGB3,
+            3 => Self::BGR3,
+            4 => Self::H264,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+impl Arbitrary for Rotation {
+    fn arbitrary(g: &mut Gen) -> Self {
+        match u32::arbitrary(g) % 4 {
+            0 => Self::R0,
+            1 => Self::R90,
+            2 => Self::R180,
+            3 => Self::R270,
+            _ => unreachable!(),
+        }
+    }
 }

@@ -29,7 +29,7 @@ chrono = "0.4"
 ring = "0.16"
 jsonwebtoken = "8.1"
 rust-argon2 = "1.0"
-fmp4-stream = { version = "0.1.0", features = ["tokio"], path = "../fmp4-stream" }
+fmp4-stream = { version = "0.1.0", features = ["tokio", "quickcheck"], path = "../fmp4-stream" }
 
 [dev-dependencies]
 assert_cmd = "2.0"

@@ -1,3 +1,27 @@
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use fmp4_stream::{config::Config, VideoStream, stream_media_segments};
+//! use std::{fs, thread, io::Write};
+//!
+//! let config = Config::default();
+//! let config_clone = config.clone();
+//! let (tx, rx) = flume::unbounded();
+//! thread::spawn(move || {
+//!     stream_media_segments(rx, config_clone, None).unwrap();
+//! });
+//!
+//! let mut file = fs::File::create("video.mp4")?;
+//! let stream = VideoStream::new(&config, tx)?;
+//! for segment in stream.take(10) {
+//!     file.write_all(&segment?)?;
+//! }
+//! # Ok(()) }
+//! ```
+//!
+
 #![forbid(unsafe_code)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
@@ -8,9 +32,9 @@
 
 mod boxes;
 pub mod capabilities;
-mod config;
+pub mod config;
 
-pub use config::{Config, Format, Rotation};
+use config::{Config, Format};
 
 use anyhow::Context as _;
 use boxes::*;
@@ -29,7 +53,7 @@ use std::{
 use std::{pin::Pin, task::Poll};
 
 #[derive(Debug, Clone)]
-pub struct InitSegment {
+struct InitSegment {
     ftyp: FileTypeBox,
     moov: MovieBox,
 }
@@ -593,7 +617,7 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
     mut config: Config,
-    config_rx: flume::Receiver<Config>,
+    config_rx: Option<flume::Receiver<Config>>,
 ) -> anyhow::Result<std::convert::Infallible> {
     'main: loop {
         trace!("Starting stream with config {:?}", config);
@@ -604,7 +628,7 @@ pub fn stream_media_segments(
         let headers = segments.get_headers()?;
 
         loop {
-            if let Ok(new_config) = config_rx.try_recv() {
+            if let Some(Ok(new_config)) = config_rx.as_ref().map(|x| x.try_recv()) {
                 config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
                 trace!("Config updated to {:?}, restarting stream", config);
