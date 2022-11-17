@@ -374,7 +374,9 @@ impl Iterator for VideoStream {
                 trace!("VideoStream sent init segment");
                 Some(Ok(buf))
             }
-            None => self.serialize_segment(self.media_seg_recv.recv().unwrap()),
+            // `Receiver::recv` returns an error if all senders have been dropped, in
+            // which case we should end the stream.
+            None => self.serialize_segment(self.media_seg_recv.recv().ok()?),
         }
     }
 }
