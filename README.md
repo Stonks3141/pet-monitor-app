@@ -56,21 +56,31 @@ You can now view the page at [https://localhost](https://localhost).
 ## Development
 
 You will need to install [rustup](https://www.rust-lang.org/learn/get-started), [node](https://nodejs.org),
-and [pnpm](https://pnpm.io/installation). To install dependencies, run `pnpm install` in the `client/`
-directory. To start the frontend development server, run `pnpm dev` in the `client/` directory. While the
-frontend is running, you can run `cargo run -- start` in the `pet-monitor-app/` directory to start the
-backend. Vite should proxy to the backend automatically. The client bundle is not included in the binary
-unless you build in release mode.
+and [pnpm](https://pnpm.io/installation).
 
-To build a binary, run these
-commands:
+Clone the repository and set up the pre-commit hook with
+
+```sh
+git clone https://github.com/Stonks3141/pet-monitor-app.git
+cd pet-monitor-app
+ln -s pre-commit.sh .git/hooks/pre-commit
+```
+
+To install dependencies, run `pnpm install` in the `client/` directory. To
+start the frontend development server, run `pnpm dev` in the `client/` directory.
+While the frontend is running, you can run `cargo run -- start` in the
+`pet-monitor-app/` directory to start the backend. Vite should proxy to the
+backend automatically. The client bundle is not included in the binary unless
+you build in release mode.
+
+To build a binary, run these commands:
 
 ```sh
 cd client
 pnpm build
 cd ../pet-monitor-app
 rm -rf dist
-cp -r ../client/dist .
+cp -r ../client/build ./dist
 cargo build --release
 ```
 
