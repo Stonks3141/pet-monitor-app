@@ -1,3 +1,16 @@
+//! A fast and easy to use fMP4 streaming implementation.
+//!
+//! fmp4-stream is an efficient and scalable implementation of fragmented MP4
+//! video streaming. It uses channels to separate video capture from video
+//! encoding, making it possible to stream live video over multiple connections.
+//! It can also handle live configuration updates, which require restarting the
+//! stream, but the video capture worker does not have to be restarted.
+//!
+//! # Features
+//!
+//! - Live configuration update:
+//! - Camera capability detection:
+//! - Many connections and stream
 //!
 //! # Example
 //!
@@ -6,29 +19,39 @@
 //! use fmp4_stream::{config::Config, VideoStream, stream_media_segments};
 //! use std::{fs, thread, io::Write};
 //!
+//! // Create a configuration
 //! let config = Config::default();
 //! let config_clone = config.clone();
+//! // Create a channel to send requests for video data on
 //! let (tx, rx) = flume::unbounded();
+//! // Start another thread to capture video and send it on the channel
 //! thread::spawn(move || {
 //!     stream_media_segments(rx, config_clone, None).unwrap();
 //! });
 //!
 //! let mut file = fs::File::create("video.mp4")?;
+//! // Create a stream from the channel
 //! let stream = VideoStream::new(&config, tx)?;
+//! // Take the first 10 segments and write them to a file
 //! for segment in stream.take(10) {
 //!     file.write_all(&segment?)?;
 //! }
 //! # Ok(()) }
 //! ```
 //!
+//! # Cargo Features
+//!
+//! - `tokio`: provides a `Stream` implementation for the [`VideoStream`](crate::VideoStream)
+//!   type using tokio's runtime.
+//! - `quickcheck`: Provides implementations of `Arbitrary` for types in the
+//!   [`config`](crate::config) module.
+//!
 
-#![forbid(unsafe_code)]
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
-#![deny(clippy::todo)]
-#![deny(clippy::unimplemented)]
-#![deny(clippy::dbg_macro)]
-#![deny(non_ascii_idents)]
+#![warn(clippy::todo)]
+#![warn(clippy::unimplemented)]
+#![warn(clippy::dbg_macro)]
 
 mod boxes;
 pub mod capabilities;
@@ -616,6 +639,10 @@ impl Iterator for SegmentIter {
 pub type MediaSegReceiver = flume::Receiver<Option<MediaSegment>>;
 pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 
+/// Start capturing video
+///
+/// This function may block indefinitely, and should be called in its own thread
+/// or tokio's `spawn_blocking`.
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
     mut config: Config,
