@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://opensource.org/licenses/MIT)
 [![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
 
-This project is a combination of several components: a browser client, a backend, and a command-line interface. It provides a locally hosted, authenticated, and configurable video streaming application.
+pet-monitor-app is a simple video streaming server for Linux. It provides out-of-the-box support for HTTPS and password authentication.
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
@@ -116,7 +116,7 @@ video recording.
 - [x] Proxy authenticated video requests to fmp4streamer as an intermediate solution
 - [x] CLI and config file
 - [x] Bundle static files into release binary
-- [ ] Rust v4l2 (libcamera?) streaming
+- [x] Rust v4l2 (libcamera?) streaming
 - [ ] Audio support
 - [ ] Recording video/audio to view later
 - [x] Documentation
