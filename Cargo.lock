@@ -765,25 +765,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmp4-stream"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bitflags",
- "chrono",
- "fixed",
- "flume",
- "futures-core",
- "log",
- "quickcheck",
- "rscam",
- "serde",
- "serde_repr",
- "tokio",
- "x264",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1384,6 +1365,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "mp4-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "chrono",
+ "fixed",
+ "flume",
+ "futures-core",
+ "log",
+ "quickcheck",
+ "rscam",
+ "serde",
+ "serde_repr",
+ "tokio",
+ "x264",
+]
+
+[[package]]
 name = "multer"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1652,10 +1652,10 @@ dependencies = [
  "clap 4.0.26",
  "confy",
  "flume",
- "fmp4-stream",
  "include_dir",
  "jsonwebtoken",
  "log",
+ "mp4-stream",
  "once_cell",
  "parking_lot",
  "predicates",

@@ -1,5 +1,5 @@
 [workspace]
-members = ["pet-monitor-app", "fmp4-stream"]
+members = ["pet-monitor-app", "mp4-stream"]
 default-members = ["pet-monitor-app"]
 
 [profile.release]

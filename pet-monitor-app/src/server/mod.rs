@@ -1,15 +1,17 @@
 //! This module contains all server-related logic.
 
 use crate::config::Context;
-use fmp4_stream::{
+use mp4_stream::{
     capabilities::{check_config, get_capabilities_all},
     stream_media_segments,
 };
 use provider::Provider;
-use rocket::config::LogLevel;
-use rocket::config::TlsConfig;
-use rocket::futures::future;
-use rocket::{Build, Rocket};
+use rocket::{
+    config::{LogLevel, TlsConfig},
+    futures::future,
+    Build,
+    Rocket,
+};
 use routes::*;
 use std::path::PathBuf;
 

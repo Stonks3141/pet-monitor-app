@@ -1,5 +1,5 @@
 [package]
-name = "fmp4-stream"
+name = "mp4-stream"
 version = "0.1.0"
 authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
 edition = "2021"

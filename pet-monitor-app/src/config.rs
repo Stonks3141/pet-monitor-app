@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use chrono::Duration;
-use fmp4_stream::config::Config;
+use mp4_stream::config::Config;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};

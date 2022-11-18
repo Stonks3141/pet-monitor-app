@@ -1,6 +1,6 @@
 //! A fast and easy to use fMP4 streaming implementation.
 //!
-//! fmp4-stream is an efficient and scalable implementation of fragmented MP4
+//! mp4-stream is an efficient and scalable implementation of fragmented MP4
 //! video streaming. It uses channels to separate video capture from video
 //! encoding, making it possible to stream live video over multiple connections.
 //! It can also handle live configuration updates, which require restarting the
@@ -16,7 +16,7 @@
 //!
 //! ```rust,no_run
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! use fmp4_stream::{config::Config, VideoStream, stream_media_segments};
+//! use mp4_stream::{config::Config, VideoStream, stream_media_segments};
 //! use std::{fs, thread, io::Write};
 //!
 //! // Create a configuration

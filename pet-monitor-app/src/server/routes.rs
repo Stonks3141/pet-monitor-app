@@ -1,20 +1,23 @@
 //! This module provides Rocket routes for the server.
 
-use super::auth::Token;
-use super::provider::Provider;
+use super::{auth::Token, provider::Provider};
 use crate::config::Context;
-use fmp4_stream::capabilities::{check_config, Capabilities};
-use fmp4_stream::{config::Config, StreamSubscriber, VideoStream};
+use mp4_stream::{
+    config::Config,
+    capabilities::{check_config, Capabilities},
+    StreamSubscriber,
+    VideoStream,
+};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
-use rocket::futures::{Stream, StreamExt};
-use rocket::http::{ContentType, Cookie, CookieJar, Header, SameSite, Status};
-use rocket::response::stream::ByteStream;
-use rocket::response::Redirect;
-use rocket::serde::json::Json;
-use rocket::Responder;
-use rocket::{get, post, put, State};
+use rocket::{
+    futures::{Stream, StreamExt},
+    http::{ContentType, Cookie, CookieJar, Header, SameSite, Status},
+    response::{stream::ByteStream, Redirect},
+    serde::json::Json,
+    {get, post, put, State, Responder},
+};
 use std::path::PathBuf;
 
 /// Redirects any request to HTTPS. It preserves the original path and uses
