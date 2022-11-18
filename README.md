@@ -23,10 +23,10 @@ for a reverse proxy.
 
 Download the binary for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
-move it into your `$PATH`. Run these commands to start the server:
+move it into `~/.local/bin`. Run these commands to start the server:
 
 ```sh
-pet-monitor-app configure --password MY_PASSWORD
+pet-monitor-app configure --password MY_PASSWORD --regen-secret
 sudo pet-monitor-app start
 ```
 
