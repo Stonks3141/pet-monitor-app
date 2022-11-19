@@ -2,21 +2,20 @@
 
 use super::{auth::Token, provider::Provider};
 use crate::config::Context;
-use mp4_stream::{
-    config::Config,
-    capabilities::{check_config, Capabilities},
-    StreamSubscriber,
-    VideoStream,
-};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
+use mp4_stream::{
+    capabilities::{check_config, Capabilities},
+    config::Config,
+    StreamSubscriber, VideoStream,
+};
 use rocket::{
     futures::{Stream, StreamExt},
     http::{ContentType, Cookie, CookieJar, Header, SameSite, Status},
     response::{stream::ByteStream, Redirect},
     serde::json::Json,
-    {get, post, put, State, Responder},
+    {get, post, put, Responder, State},
 };
 use std::path::PathBuf;
 

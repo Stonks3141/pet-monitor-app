@@ -9,8 +9,7 @@ use provider::Provider;
 use rocket::{
     config::{LogLevel, TlsConfig},
     futures::future,
-    Build,
-    Rocket,
+    Build, Rocket,
 };
 use routes::*;
 use std::path::PathBuf;

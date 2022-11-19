@@ -21,9 +21,11 @@ The only component needed to run pet-monitor-app is the binary. It handles
 config file management, static file serving, and TLS/HTTPS. There is no need
 for a reverse proxy.
 
-Download the binary for your OS/architecture from the
-[releases](https://github.com/Stonks3141/pet-monitor-app/releases) page and
-move it into `~/.local/bin`. Run these commands to start the server:
+Download the binary and corresponding `.sha256` file for your OS/architecture from
+the [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
+Run `sha256sum --check pet-monitor-app-VERSION-ARCH.sha256` to verify the
+checksum. If it is correct, move the binary into `~/.local/bin`. Run these
+commands to start the server:
 
 ```sh
 pet-monitor-app configure --password MY_PASSWORD --regen-secret

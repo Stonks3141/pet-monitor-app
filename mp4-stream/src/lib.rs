@@ -1,16 +1,11 @@
 //! A fast and easy to use fMP4 streaming implementation.
 //!
 //! mp4-stream is an efficient and scalable implementation of fragmented MP4
-//! video streaming. It uses channels to separate video capture from video
-//! encoding, making it possible to stream live video over multiple connections.
-//! It can also handle live configuration updates, which require restarting the
-//! stream, but the video capture worker does not have to be restarted.
-//!
-//! # Features
-//!
-//! - Live configuration update:
-//! - Camera capability detection:
-//! - Many connections and stream
+//! video streaming. It uses channels to separate video capture and encoding from
+//! container muxing, making it possible to stream live video over multiple
+//! connections. It can also handle live configuration updates, which require
+//! restarting the stream, but the video capture worker does not have to be
+//! restarted.
 //!
 //! # Example
 //!
