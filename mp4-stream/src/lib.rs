@@ -570,7 +570,7 @@ impl SegmentIter {
                 .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
                 .entirety()
                 .to_vec(),
-            Self::Hardware { .. } => panic!(),
+            Self::Hardware { .. } => todo!(),
         })
     }
 }
@@ -626,7 +626,7 @@ impl Iterator for SegmentIter {
 
                 Some(MediaSegment::new(config, 0, sample_sizes, buf))
             }
-            Self::Hardware { .. } => panic!(),
+            Self::Hardware { .. } => todo!(),
         }
     }
 }

@@ -6,76 +6,38 @@ use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use std::io::{self, prelude::*};
 
-pub const MATRIX_0: [[I16F16; 3]; 3] = [
-    [
-        I16F16::from_bits(0x0001_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0001_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x4000_0000),
-    ],
+macro_rules! matrix {
+    ( $( [ $($val:literal),* $(,)? ] ),* $(,)? ) => {
+        [
+            $([
+                $( I16F16::from_bits($val), )*
+            ],)*
+        ]
+    }
+}
+
+pub const MATRIX_0: [[I16F16; 3]; 3] = matrix![
+    [0x0001_0000, 0x0000_0000, 0x0000_0000],
+    [0x0000_0000, 0x0001_0000, 0x0000_0000],
+    [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
-pub const MATRIX_90: [[I16F16; 3]; 3] = [
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0001_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(-0x4000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x4000_0000),
-    ],
+pub const MATRIX_90: [[I16F16; 3]; 3] = matrix![
+    [0x0000_0000, 0x0001_0000, 0x0000_0000],
+    [-0x4000_0000, 0x0000_0000, 0x0000_0000],
+    [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
-pub const MATRIX_180: [[I16F16; 3]; 3] = [
-    [
-        I16F16::from_bits(-0x4000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(-0x4000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x4000_0000),
-    ],
+pub const MATRIX_180: [[I16F16; 3]; 3] = matrix![
+    [-0x4000_0000, 0x0000_0000, 0x0000_0000],
+    [0x0000_0000, 0x4000_0000, 0x0000_0000],
+    [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
-pub const MATRIX_270: [[I16F16; 3]; 3] = [
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(-0x4000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0001_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-    ],
-    [
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x0000_0000),
-        I16F16::from_bits(0x4000_0000),
-    ],
+pub const MATRIX_270: [[I16F16; 3]; 3] = matrix![
+    [0x0000_0000, -0x4000_0000, 0x0000_0000],
+    [0x0001_0000, 0x0000_0000, 0x0000_0000],
+    [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
 pub const fn matrix(rotation: Rotation) -> [[I16F16; 3]; 3] {

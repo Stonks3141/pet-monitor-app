@@ -12,3 +12,7 @@ target/
 *.mp4
 *.h264
 *.m4s
+
+# Profiling artifacts
+flamegraph.svg
+perf.data
