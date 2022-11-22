@@ -1,10 +1,57 @@
 use anyhow::Context as _;
 use chrono::Duration;
 use mp4_stream::config::Config;
+use parking_lot::RwLock;
+use rocket::tokio::sync::broadcast;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+/// A wrapper for `Context` that syncs it with the config file and provides
+/// interior mutability.
+#[derive(Debug, Clone)]
+pub struct ContextManager {
+    ctx: Arc<RwLock<Context>>,
+    sender: broadcast::Sender<Context>,
+    conf_path: Option<PathBuf>,
+}
+
+impl ContextManager {
+    pub fn new(context: Context, conf_path: Option<PathBuf>) -> Self {
+        let (sender, _) = broadcast::channel(16);
+        Self {
+            ctx: Arc::new(RwLock::new(context)),
+            sender,
+            conf_path,
+        }
+    }
+
+    pub fn get(&self) -> Context {
+        (*self.ctx.read()).clone()
+    }
+
+    pub async fn set(&self, context: Context) -> anyhow::Result<()> {
+        *self.ctx.write() = context.clone();
+
+        // Don't mess with the global config file if we don't have a specific path
+        // for tests
+        #[cfg(not(test))]
+        store(&self.conf_path, &context).await?;
+        #[cfg(test)]
+        if self.conf_path.is_some() {
+            store(&self.conf_path, &context).await?;
+        }
+
+        self.sender.send(context).unwrap_or(0);
+        Ok(())
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<Context> {
+        self.sender.subscribe()
+    }
+}
 
 /// Application state and configuration
 #[serde_with::serde_as]
@@ -119,7 +166,7 @@ mod tests {
 
     #[tokio::test]
     async fn config_load_store() {
-        let tmp = NamedTempFile::new("pet-monitor-app.toml").unwrap();
+        let tmp = NamedTempFile::new("config.toml").unwrap();
 
         let ctx = Context::default();
 
@@ -130,6 +177,27 @@ mod tests {
         assert_eq!(ctx, ctx_file);
 
         tmp.close().unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_context_manager() {
+        let mut val = Context::default();
+        let ctx_manager = ContextManager::new(val.clone(), None);
+        let mut sub = ctx_manager.subscribe();
+
+        assert_eq!(val, ctx_manager.get());
+
+        val.jwt_secret = [42; 32];
+        ctx_manager.set(val.clone()).await.unwrap();
+
+        assert_eq!(val, ctx_manager.get());
+        assert_eq!(val, sub.recv().await.unwrap());
+
+        val.domain = "ferris.crab".to_string();
+        ctx_manager.set(val.clone()).await.unwrap();
+
+        assert_eq!(val, ctx_manager.get());
+        assert_eq!(val, sub.recv().await.unwrap());
     }
 }
 

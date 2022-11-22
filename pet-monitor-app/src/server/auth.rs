@@ -4,8 +4,7 @@
 //! and represents a JWT, and the [`validate`] function, which verifies a
 //! password against a hash.
 
-use super::provider::Provider;
-use crate::config::Context;
+use crate::config::ContextManager;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
@@ -112,8 +111,8 @@ impl<'r> FromRequest<'r> for Token {
                     }
                 }
             }
-            let Some(ctx) = req.rocket().state::<Provider<Context>>() else {
-                warn!("Rocket is not managing a `Provider<Context>`");
+            let Some(ctx) = req.rocket().state::<ContextManager>() else {
+                warn!("Rocket is not managing a `ContextManager`");
                 return Outcome::Failure((
                     Status::InternalServerError,
                     Error::from(ErrorKind::InvalidToken),

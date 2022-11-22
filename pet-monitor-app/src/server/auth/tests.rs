@@ -1,6 +1,5 @@
 use super::*;
-use crate::config::Context;
-use crate::server::provider::Provider;
+use crate::config::{Context, ContextManager};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use quickcheck::{quickcheck, Arbitrary, Gen};
@@ -83,7 +82,7 @@ static CLIENT: Lazy<Mutex<Client>> = Lazy::new(|| {
                 options_route,
             ],
         )
-        .manage(Provider::new(Context::default()));
+        .manage(ContextManager::new(Context::default(), None));
     Mutex::new(Client::tracked(rocket).unwrap())
 });
 

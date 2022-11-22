@@ -37,7 +37,7 @@ fn level_from_int(x: u32) -> Level {
         2 => Level::Info,
         3 => Level::Warn,
         4 => Level::Error,
-        _ => panic!(),
+        _ => unreachable!(),
     }
 }
 
