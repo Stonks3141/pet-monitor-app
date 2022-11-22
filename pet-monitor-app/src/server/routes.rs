@@ -1,7 +1,7 @@
 //! This module provides Rocket routes for the server.
 
-use super::{auth::Token, provider::Provider};
-use crate::config::Context;
+use super::auth::Token;
+use crate::config::{Context, ContextManager};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
 use log::warn;
@@ -22,7 +22,7 @@ use std::path::PathBuf;
 /// Redirects any request to HTTPS. It preserves the original path and uses
 /// Context.domain to construct the new URL.
 #[get("/<path..>")]
-pub fn redirect(path: PathBuf, ctx: &State<Provider<Context>>) -> Result<Redirect, Status> {
+pub fn redirect(path: PathBuf, ctx: &State<ContextManager>) -> Result<Redirect, Status> {
     let path = path.to_str().ok_or_else(|| {
         warn!("Failed to convert path {:?} to string", path);
         Status::InternalServerError
@@ -86,7 +86,7 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
 pub async fn login(
     password: String,
     cookies: &CookieJar<'_>,
-    ctx: &State<Provider<Context>>,
+    ctx: &State<ContextManager>,
 ) -> Status {
     let ctx = ctx.get();
 
@@ -124,16 +124,16 @@ pub async fn login(
 
 /// Retrieves the current configuration. The request must have a valid JWT.
 #[get("/api/config")]
-pub fn get_config(_token: Token, ctx: &State<Provider<Context>>) -> Json<Config> {
+pub fn get_config(_token: Token, ctx: &State<ContextManager>) -> Json<Config> {
     let ctx = ctx.get();
     Json(ctx.config)
 }
 
 /// Updates the current configuration. The request must have a valid JWT.
 #[put("/api/config", format = "json", data = "<new_config>")]
-pub fn put_config(
+pub async fn put_config(
     _token: Token,
-    ctx: &State<Provider<Context>>,
+    ctx: &State<ContextManager>,
     caps: &State<Capabilities>,
     new_config: Json<Config>,
 ) -> Result<(), Status> {
@@ -148,7 +148,10 @@ pub fn put_config(
 
     let new_ctx = Context { config, ..ctx_read };
 
-    ctx.set(new_ctx);
+    ctx.set(new_ctx).await.map_err(|e| {
+        warn!("Writing to configuration file failed with error {:?}", e);
+        Status::InternalServerError
+    })?;
     Ok(())
 }
 
@@ -182,7 +185,7 @@ impl From<CacheControl> for Header<'_> {
 #[get("/stream.mp4")]
 pub async fn stream(
     _token: Token,
-    ctx: &State<Provider<Context>>,
+    ctx: &State<ContextManager>,
     stream_sub_tx: &State<flume::Sender<StreamSubscriber>>,
 ) -> Result<StreamResponse<impl Stream<Item = Vec<u8>>>, Status> {
     let ctx = ctx.get();
@@ -218,32 +221,56 @@ pub fn capabilities(_token: Token, caps: &State<Capabilities>) -> Json<Capabilit
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::executor::block_on;
+    use once_cell::sync::Lazy;
+    use parking_lot::Mutex;
     use quickcheck::{quickcheck, TestResult};
     use ring::rand::SystemRandom;
-    use rocket::http::uri::{Origin, Reference};
     use rocket::local::asynchronous::Client as AsyncClient;
     use rocket::local::blocking::Client as BlockingClient;
     use rocket::tokio;
 
+    static REDIR_CLIENT: Lazy<Mutex<BlockingClient>> = Lazy::new(|| {
+        let rocket = rocket::build()
+            .mount("/", rocket::routes![redirect])
+            .manage(ContextManager::new(Context::default(), None));
+        Mutex::new(BlockingClient::tracked(rocket).unwrap())
+    });
+
     quickcheck! {
         fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
-            let path = "/".to_string() + &path.join("/");
+            let mut domain = domain;
+            let mut path = path;
 
-            if Reference::parse(&domain).is_err() || Origin::parse(&path).is_err() || domain.len() == 0 || path.len() == 1 {
+            // remove non-alphanumeric chars
+            domain.retain(|c| c.is_ascii_alphanumeric());
+            path.iter_mut().for_each(|seg| seg.retain(|c| c.is_ascii_alphanumeric()));
+
+            // limit the size for performance reasons
+            if let Some((i, _)) = domain.char_indices().nth(100) {
+                domain.truncate(i);
+            }
+            path.truncate(4);
+            path.iter_mut().for_each(|seg| {
+                if let Some((i, _)) = seg.char_indices().nth(100) {
+                    seg.truncate(i);
+                }
+            });
+
+            if domain.len() == 0 || path.iter().map(|s| s.len() == 0).any(|x| x) {
                 return TestResult::discard();
             }
+
+            let path = "/".to_string() + &path.join("/");
 
             let ctx = Context {
                 domain: domain.clone(),
                 ..Default::default()
             };
 
-            let rocket = rocket::build()
-                .mount("/", rocket::routes![redirect])
-                .manage(Provider::new(ctx));
-
-            let client = BlockingClient::tracked(rocket).unwrap();
-            let res = client.get(path.clone()).dispatch();
+            let lock = (*REDIR_CLIENT).lock();
+            block_on(lock.rocket().state::<ContextManager>().unwrap().set(ctx)).unwrap();
+            let res = lock.get(path.clone()).dispatch();
 
             TestResult::from_bool(
                 res.status() == Status::PermanentRedirect
@@ -261,7 +288,7 @@ mod tests {
 
         let rocket = rocket::build()
             .mount("/", rocket::routes![redirect])
-            .manage(Provider::new(ctx));
+            .manage(ContextManager::new(ctx, None));
 
         let client = BlockingClient::tracked(rocket).unwrap();
 
@@ -290,7 +317,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx));
+            .manage(ContextManager::new(ctx, None));
 
         let client = AsyncClient::tracked(rocket).await.unwrap();
 
@@ -308,7 +335,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(Provider::new(ctx));
+            .manage(ContextManager::new(ctx, None));
 
         let client = AsyncClient::tracked(rocket).await.unwrap();
 
