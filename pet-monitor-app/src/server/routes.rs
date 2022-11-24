@@ -37,7 +37,7 @@ pub fn redirect(path: PathBuf, ctx: &State<ContextManager>) -> Result<Redirect, 
 
 /// Static HTML/CSS/JS frontend files
 #[cfg(not(debug_assertions))]
-const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
+const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/build");
 
 /// A file server route that uses the static files compiled into the binary.
 #[cfg(not(debug_assertions))]

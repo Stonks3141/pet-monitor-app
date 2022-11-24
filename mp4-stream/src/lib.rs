@@ -41,7 +41,6 @@
 //!   [`config`] module.
 //! - `serde`: Add implementations of [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)
 //!   for types in the [`config`] and [`capabilities`] modules.
-//!
 
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
@@ -706,8 +705,8 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 /// # Errors
 ///
 /// This function may return an [`Error::Camera`] if interacting with the provided camera
-/// device fails, an [`Error::Other`] if converting the device path to a string fails,
-/// or an [`Error::Encoding`] if constructing an encoder fails.
+/// device fails, an [`Error::Other`] if the device path is invalid UTF-8, or an
+/// [`Error::Encoding`] if constructing an encoder fails.
 #[allow(clippy::missing_panics_doc)]
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,

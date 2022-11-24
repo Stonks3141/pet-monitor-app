@@ -81,8 +81,8 @@ To build a binary, run these commands:
 cd client
 pnpm build
 cd ../pet-monitor-app
-rm -rf dist
-cp -r ../client/build ./dist
+rm -rf build
+cp -r ../client/build .
 cargo build --release
 ```
 
