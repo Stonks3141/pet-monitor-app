@@ -82,7 +82,7 @@ static CLIENT: Lazy<Mutex<Client>> = Lazy::new(|| {
                 options_route,
             ],
         )
-        .manage(ContextManager::new(Context::default(), None));
+        .manage(ContextManager::new(Context::default(), None).0);
     Mutex::new(Client::tracked(rocket).unwrap())
 });
 

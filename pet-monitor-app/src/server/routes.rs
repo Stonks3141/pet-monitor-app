@@ -259,7 +259,7 @@ mod tests {
             static CLIENT: Lazy<Mutex<BlockingClient>> = Lazy::new(|| {
                 let rocket = rocket::build()
                     .mount("/", rocket::routes![redirect])
-                    .manage(ContextManager::new(Context::default(), None));
+                    .manage(ContextManager::new(Context::default(), None).0);
                 Mutex::new(BlockingClient::tracked(rocket).unwrap())
             });
 
@@ -289,7 +289,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(ContextManager::new(ctx, None));
+            .manage(ContextManager::new(ctx, None).0);
 
         let client = AsyncClient::tracked(rocket).await.unwrap();
 
@@ -307,7 +307,7 @@ mod tests {
         };
         let rocket = rocket::build()
             .mount("/", rocket::routes![login])
-            .manage(ContextManager::new(ctx, None));
+            .manage(ContextManager::new(ctx, None).0);
 
         let client = AsyncClient::tracked(rocket).await.unwrap();
 
