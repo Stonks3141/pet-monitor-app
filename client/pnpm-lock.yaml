@@ -3,7 +3,7 @@ lockfileVersion: 5.4
 specifiers:
   '@fontsource/fira-mono': ^4.5.0
   '@neoconfetti/svelte': ^1.0.0
-  '@playwright/test': 1.28.0
+  '@playwright/test': next
   '@sveltejs/adapter-static': next
   '@sveltejs/kit': next
   '@types/cookie': ^0.5.1
@@ -28,9 +28,9 @@ specifiers:
 devDependencies:
   '@fontsource/fira-mono': 4.5.10
   '@neoconfetti/svelte': 1.0.0
-  '@playwright/test': 1.28.0
+  '@playwright/test': 1.29.0-alpha-nov-24-2022
   '@sveltejs/adapter-static': 1.0.0-next.48
-  '@sveltejs/kit': 1.0.0-next.551_svelte@3.52.0+vite@3.2.2
+  '@sveltejs/kit': 1.0.0-next.560_svelte@3.52.0+vite@3.2.2
   '@types/cookie': 0.5.1
   '@typescript-eslint/eslint-plugin': 5.42.0_6xw5wg2354iw4zujk2f3vyfrzu
   '@typescript-eslint/parser': 5.42.0_wyqvi574yv7oiwfeinomdzmc3m
@@ -152,13 +152,13 @@ packages:
       fastq: 1.13.0
     dev: true
 
-  /@playwright/test/1.28.0:
-    resolution: {integrity: sha512-vrHs5DFTPwYox5SGKq/7TDn/S4q6RA1zArd7uhO6EyP9hj3XgZBBM12ktMbnDQNxh/fL1IUKsTNLxihmsU38lQ==}
+  /@playwright/test/1.29.0-alpha-nov-24-2022:
+    resolution: {integrity: sha512-ZNSfoOGu9GHAniuUgAbW83X1fWnQ0jpNRsdHEe48UT/vpj3PhvGV9ChwRB+0YL9SKy+6VMai/jbJNf+zLvIUcA==}
     engines: {node: '>=14'}
     hasBin: true
     dependencies:
       '@types/node': 18.11.9
-      playwright-core: 1.28.0
+      playwright-core: 1.29.0-alpha-nov-24-2022
     dev: true
 
   /@polka/url/1.0.0-next.21:
@@ -169,8 +169,8 @@ packages:
     resolution: {integrity: sha512-Z5Z+QZOav6D0KDeU3ReksGERJg/sX1k5OKWWXyQ11OwGErEEwSXHYRUyjaBmZEPeGzpVVGwwMUK8YWJlG/MKeA==}
     dev: true
 
-  /@sveltejs/kit/1.0.0-next.551_svelte@3.52.0+vite@3.2.2:
-    resolution: {integrity: sha512-pZXPoKHFcEXCEN64bw87Xv3cZO7sGztPKYXyLuzceie4qNzAQOMejxewm1xSYcaublleYXLdBWcrWwGlaSWnyw==}
+  /@sveltejs/kit/1.0.0-next.560_svelte@3.52.0+vite@3.2.2:
+    resolution: {integrity: sha512-ldZJyd+jfQWVkOkRHq25cXMffhL5MgB1Uzhhw1ngF8ezB38P/g4T+5ohP8wuk2lxPJIjbY3S6BeXN5mod9XOhA==}
     engines: {node: '>=16.14'}
     hasBin: true
     requiresBuild: true
@@ -1539,8 +1539,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /playwright-core/1.28.0:
-    resolution: {integrity: sha512-nJLknd28kPBiCNTbqpu6Wmkrh63OEqJSFw9xOfL9qxfNwody7h6/L3O2dZoWQ6Oxcm0VOHjWmGiCUGkc0X3VZA==}
+  /playwright-core/1.29.0-alpha-nov-24-2022:
+    resolution: {integrity: sha512-03ravolSF2o8ZRUBCXay1EvOIMCCj0h4h586GWRWw22DdpOV1N6DRyxP/0KTuGTYfl2T+FgVQy6zu1zunkJUeg==}
     engines: {node: '>=14'}
     hasBin: true
     dev: true
