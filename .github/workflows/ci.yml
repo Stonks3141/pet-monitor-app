@@ -36,7 +36,7 @@ jobs:
       - name: Create dummy `dist` directory
         run: |
           cd pet-monitor-app
-          mkdir dist
+          mkdir build
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
