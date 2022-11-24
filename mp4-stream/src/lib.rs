@@ -10,7 +10,6 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use mp4_stream::{config::Config, VideoStream, stream_media_segments};
 //! use std::{fs, thread, io::Write};
 //!
@@ -31,7 +30,7 @@
 //! for segment in stream.take(10) {
 //!     file.write_all(&segment?)?;
 //! }
-//! # Ok(()) }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! # Cargo Features
@@ -47,6 +46,9 @@
 #![warn(clippy::todo)]
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
+#![warn(missing_docs)]
+#![warn(clippy::missing_panics_doc)]
+#![warn(clippy::missing_errors_doc)]
 
 mod boxes;
 pub mod capabilities;
@@ -54,13 +56,13 @@ pub mod config;
 
 use config::{Config, Format};
 
-use anyhow::Context as _;
 use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 #[cfg(feature = "tokio")]
 use futures_core::Stream;
 use log::{trace, warn};
+use quick_error::quick_error;
 use rscam::Camera;
 use std::{
     collections::HashMap,
@@ -69,6 +71,34 @@ use std::{
 };
 #[cfg(feature = "tokio")]
 use std::{pin::Pin, task::Poll};
+
+quick_error! {
+    #[derive(Debug)]
+    #[non_exhaustive]
+    pub enum Error {
+        Io(err: std::io::Error) {
+            source(err)
+            display("{}", err)
+            from()
+        }
+        Encoding(err: x264::Error) {
+            display("Encoding error: {:?}", err)
+            from()
+        }
+        Camera(err: rscam::Error) {
+            source(err)
+            display("{}", err)
+            from()
+        }
+
+        Other(err: String) {
+            display("{}", err)
+            from()
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 struct InitSegment {
@@ -301,16 +331,14 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
-    pub fn new(
-        config: &Config,
-        stream_sub_tx: flume::Sender<StreamSubscriber>,
-    ) -> anyhow::Result<Self> {
+    #[allow(clippy::missing_panics_doc)]
+    pub fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Result<Self> {
         let init_segment = InitSegment::from(config);
 
         let (tx, rx) = flume::unbounded();
-        stream_sub_tx
-            .send(tx)
-            .context("`VideoStream::new`: Failed to communicate with streaming task")?;
+        stream_sub_tx.send(tx).map_err(|_| {
+            "`VideoStream::new`: Failed to communicate with streaming task".to_string()
+        })?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
         let (headers, media_seg_recv) = rx.recv().unwrap();
@@ -331,14 +359,13 @@ impl VideoStream {
     pub async fn new_async(
         config: &Config,
         stream_sub_tx: flume::Sender<StreamSubscriber>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let init_segment = InitSegment::from(config);
 
         let (tx, rx) = flume::unbounded();
-        stream_sub_tx
-            .send_async(tx)
-            .await
-            .context("`VideoStream::new`: Failed to communicate with streaming task")?;
+        stream_sub_tx.send_async(tx).await.map_err(|_| {
+            "`VideoStream::new`: Failed to communicate with streaming task".to_string()
+        })?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
         let (headers, media_seg_recv) = rx.recv_async().await.unwrap();
@@ -424,7 +451,7 @@ impl Stream for VideoStream {
                             Poll::Ready(self.serialize_segment(x))
                         }
                         Err(e) => match e {
-                            flume::TryRecvError::Disconnected => panic!(),
+                            flume::TryRecvError::Disconnected => Poll::Ready(None),
                             flume::TryRecvError::Empty => Poll::Pending,
                         },
                     }
@@ -466,18 +493,18 @@ struct FrameIter {
 }
 
 impl FrameIter {
-    fn new(config: &Config) -> anyhow::Result<Self> {
+    fn new(config: &Config) -> Result<Self> {
         let mut camera = Camera::new(
             config
                 .device
                 .as_os_str()
                 .to_str()
-                .ok_or_else(|| anyhow::Error::msg("failed to convert device path to string"))?,
+                .ok_or_else(|| "failed to convert device path to string".to_string())?,
         )?;
 
         let controls: HashMap<String, u32> = camera
             .controls()
-            .filter_map(Result::ok)
+            .filter_map(|x| x.ok())
             .map(|ctl| (ctl.name, ctl.id))
             .collect();
 
@@ -524,7 +551,7 @@ enum SegmentIter {
 }
 
 impl SegmentIter {
-    fn new(config: Config, frames: FrameIter) -> anyhow::Result<Self> {
+    fn new(config: Config, frames: FrameIter) -> x264::Result<Self> {
         Ok(match config.format {
             Format::H264 => Self::Hardware { frames },
             format => Self::Software {
@@ -553,8 +580,7 @@ impl SegmentIter {
                             encoding,
                             config.resolution.0 as i32,
                             config.resolution.1 as i32,
-                        )
-                        .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
+                        )?
                 },
                 timestamp: 0,
                 config,
@@ -563,13 +589,9 @@ impl SegmentIter {
         })
     }
 
-    fn get_headers(&mut self) -> anyhow::Result<Vec<u8>> {
+    fn get_headers(&mut self) -> x264::Result<Vec<u8>> {
         Ok(match self {
-            Self::Software { encoder, .. } => encoder
-                .headers()
-                .map_err(|e| anyhow::Error::msg(format!("{:?}", e)))?
-                .entirety()
-                .to_vec(),
+            Self::Software { encoder, .. } => encoder.headers()?.entirety().to_vec(),
             Self::Hardware { .. } => todo!(),
         })
     }
@@ -638,11 +660,12 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 ///
 /// This function may block indefinitely, and should be called in its own thread
 /// or tokio's `spawn_blocking`.
+#[allow(clippy::missing_panics_doc)]
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
     mut config: Config,
     config_rx: Option<flume::Receiver<Config>>,
-) -> anyhow::Result<std::convert::Infallible> {
+) -> Result<std::convert::Infallible> {
     'main: loop {
         trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
@@ -652,7 +675,7 @@ pub fn stream_media_segments(
         let headers = segments.get_headers()?;
 
         loop {
-            if let Some(Ok(new_config)) = config_rx.as_ref().map(|x| x.try_recv()) {
+            if let Some(Ok(new_config)) = config_rx.as_ref().map(flume::Receiver::try_recv) {
                 config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
                 trace!("Config updated to {:?}, restarting stream", config);

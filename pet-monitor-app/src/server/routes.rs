@@ -230,13 +230,6 @@ mod tests {
     use rocket::local::blocking::Client as BlockingClient;
     use rocket::tokio;
 
-    static REDIR_CLIENT: Lazy<Mutex<BlockingClient>> = Lazy::new(|| {
-        let rocket = rocket::build()
-            .mount("/", rocket::routes![redirect])
-            .manage(ContextManager::new(Context::default(), None));
-        Mutex::new(BlockingClient::tracked(rocket).unwrap())
-    });
-
     quickcheck! {
         fn qc_redirect(domain: String, path: Vec<String>) -> TestResult {
             let mut domain = domain;
@@ -263,12 +256,19 @@ mod tests {
 
             let path = "/".to_string() + &path.join("/");
 
+            static CLIENT: Lazy<Mutex<BlockingClient>> = Lazy::new(|| {
+                let rocket = rocket::build()
+                    .mount("/", rocket::routes![redirect])
+                    .manage(ContextManager::new(Context::default(), None));
+                Mutex::new(BlockingClient::tracked(rocket).unwrap())
+            });
+
             let ctx = Context {
                 domain: domain.clone(),
                 ..Default::default()
             };
 
-            let lock = (*REDIR_CLIENT).lock();
+            let lock = (*CLIENT).lock();
             block_on(lock.rocket().state::<ContextManager>().unwrap().set(ctx)).unwrap();
             let res = lock.get(path.clone()).dispatch();
 
@@ -277,34 +277,6 @@ mod tests {
                 && res.headers().get_one("Location").unwrap() == format!("https://{}{}", domain, path)
             )
         }
-    }
-
-    #[test]
-    fn redirect() {
-        let ctx = Context {
-            domain: "localhost".to_string(),
-            ..Default::default()
-        };
-
-        let rocket = rocket::build()
-            .mount("/", rocket::routes![redirect])
-            .manage(ContextManager::new(ctx, None));
-
-        let client = BlockingClient::tracked(rocket).unwrap();
-
-        let res = client.get("/").dispatch();
-        assert_eq!(res.status(), Status::PermanentRedirect);
-        assert_eq!(
-            res.headers().get_one("Location").unwrap(),
-            "https://localhost/"
-        );
-
-        let res = client.get("/index.html").dispatch();
-        assert_eq!(res.status(), Status::PermanentRedirect);
-        assert_eq!(
-            res.headers().get_one("Location").unwrap(),
-            "https://localhost/index.html"
-        );
     }
 
     #[tokio::test]

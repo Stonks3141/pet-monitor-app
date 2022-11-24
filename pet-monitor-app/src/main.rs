@@ -4,9 +4,6 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-#[cfg(not(target_os = "linux"))]
-compile_error!("Linux is required for V4L2");
-
 use log::{info, Level};
 use rocket::config::LogLevel;
 

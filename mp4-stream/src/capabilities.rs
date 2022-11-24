@@ -1,5 +1,34 @@
-use anyhow::anyhow;
-use rscam::{FormatInfo, IntervalInfo, ResolutionInfo};
+//! Utilities to detect a camera's capabilities.
+//!
+//! The easiest way to get the capabilities is with the [`get_capabilities_all`]
+//! function. It will look for all camera devices (paths that match `/dev/video*`) and get the
+//! available formats, resolutions, and framerates for each. If you want to get capabilities
+//! for device paths that don't match that pattern, you can use [`get_capabilities_from_path`].
+//!
+//! This module also provides a [`check_config`] function to check whether a [`Config`](crate::config::Config)
+//! is supported by a set of capabilities. You should always validate a config with [`check_config`]
+//! before giving it to [`stream_media_segments`](crate::stream_media_segments).
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use mp4_stream::{
+//!     capabilities::{get_capabilities_all, check_config},
+//!     config::Config,
+//! };
+//!
+//! let config = Config::default();
+//! let capabilities = get_capabilities_all()?;
+//! if check_config(&config, &capabilities).is_ok() {
+//!     println!("All good!");
+//! }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
+use crate::config::{Config, Format};
+use crate::Error;
+use rscam::{IntervalInfo, ResolutionInfo};
+#[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::{
@@ -8,15 +37,39 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::config::{Config, Format};
-
+/// A map of device paths to available formats.
+///
+/// It serializes like this since JSON only supports string keys:
+///
+/// ```json
+/// {
+///   "/dev/video0": {
+///     "YUYV": [
+///       {
+///         "resolution": [640, 480],
+///         "intervals": [
+///           [1, 30]
+///         ]
+///       }
+///     ]
+///   }
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capabilities(pub HashMap<PathBuf, Formats>);
 
+/// A map of format codes to available resolutions.
 pub type Formats = HashMap<Format, Resolutions>;
+/// A map of resolutions to available intervals.
+///
+/// The resolutions are in (width, height) format.
 pub type Resolutions = HashMap<(u32, u32), Intervals>;
+/// A list of available intervals.
+///
+/// The framerate for an interval is the first tuple field divided by the second.
 pub type Intervals = Vec<(u32, u32)>;
 
+#[cfg(feature = "serde")]
 impl Serialize for Capabilities {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let map: HashMap<PathBuf, HashMap<Format, Vec<Resolution>>> = self
@@ -49,46 +102,14 @@ impl Serialize for Capabilities {
     }
 }
 
+#[cfg(feature = "serde")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct Resolution {
     resolution: (u32, u32),
     intervals: Vec<(u32, u32)>,
 }
 
-trait Camera {
-    type Error: std::error::Error;
-    fn formats(&self) -> Box<dyn Iterator<Item = Result<FormatInfo, Self::Error>>>;
-    fn resolutions(&self, format: &[u8]) -> Result<ResolutionInfo, Self::Error>;
-    fn intervals(&self, format: &[u8], resolution: (u32, u32))
-        -> Result<IntervalInfo, Self::Error>;
-}
-
-impl Camera for rscam::Camera {
-    type Error = rscam::Error;
-
-    fn formats(&self) -> Box<dyn Iterator<Item = Result<FormatInfo, Self::Error>>> {
-        Box::new(
-            self.formats()
-                .map(|x| x.map_err(rscam::Error::from))
-                .collect::<Vec<_>>()
-                .into_iter(),
-        )
-    }
-
-    fn resolutions(&self, format: &[u8]) -> Result<ResolutionInfo, Self::Error> {
-        self.resolutions(format)
-    }
-
-    fn intervals(
-        &self,
-        format: &[u8],
-        resolution: (u32, u32),
-    ) -> Result<IntervalInfo, Self::Error> {
-        self.intervals(format, resolution)
-    }
-}
-
-pub fn get_capabilities_all() -> anyhow::Result<Capabilities> {
+pub fn get_capabilities_all() -> Result<Capabilities, Error> {
     let mut caps = HashMap::new();
 
     for f in fs::read_dir(PathBuf::from("/dev"))? {
@@ -107,23 +128,19 @@ pub fn get_capabilities_all() -> anyhow::Result<Capabilities> {
     Ok(Capabilities(caps))
 }
 
-pub fn get_capabilities_from_path(device: &Path) -> anyhow::Result<Formats> {
+pub fn get_capabilities_from_path(device: &Path) -> Result<Formats, Error> {
     let camera = rscam::Camera::new(
         device
             .to_str()
-            .ok_or_else(|| anyhow::Error::msg("Failed to convert device path to string"))?,
+            .ok_or_else(|| "Failed to convert device path to string".to_string())?,
     )?;
     get_capabilities(&camera)
 }
 
-fn get_capabilities<C>(camera: &C) -> anyhow::Result<Formats>
-where
-    C: Camera,
-    C::Error: Send + Sync + 'static,
-{
+fn get_capabilities(camera: &rscam::Camera) -> Result<Formats, Error> {
     camera
         .formats()
-        .filter_map(Result::ok)
+        .filter_map(|x| x.ok())
         .filter_map(|fmt| {
             u32::from_be_bytes(fmt.format)
                 .try_into()
@@ -131,7 +148,7 @@ where
                 .map(|format| (fmt, format))
         })
         .map(|(fmt, format)| {
-            let resolutions: anyhow::Result<_> = get_resolutions(camera.resolutions(&fmt.format)?)
+            let resolutions: Result<_, Error> = get_resolutions(camera.resolutions(&fmt.format)?)
                 .into_iter()
                 .map(|resolution| {
                     Ok((
@@ -165,15 +182,16 @@ fn get_intervals(intervals: IntervalInfo) -> Vec<(u32, u32)> {
     }
 }
 
-pub fn check_config(config: &Config, caps: &Capabilities) -> anyhow::Result<()> {
+pub fn check_config(config: &Config, caps: &Capabilities) -> Result<(), Error> {
     caps.0
         .get(&config.device)
-        .ok_or_else(|| anyhow!("Invalid device: {:?}", config.device))?
+        .ok_or_else(|| format!("Invalid device: {:?}", config.device))?
         .get(&config.format)
-        .ok_or_else(|| anyhow!("Invalid format: {}", config.format))?
+        .ok_or(rscam::Error::BadFormat)?
         .get(&config.resolution)
-        .ok_or_else(|| anyhow!("Invalid resolution: {:?}", config.resolution))?
+        .ok_or(rscam::Error::BadResolution)?
         .contains(&config.interval)
         .then_some(())
-        .ok_or_else(|| anyhow!("Invalid interval: {:?}", config.interval))
+        .ok_or(rscam::Error::BadInterval)?;
+    Ok(())
 }

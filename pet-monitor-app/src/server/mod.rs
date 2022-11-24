@@ -3,6 +3,7 @@
 use crate::config::{Context, ContextManager};
 use mp4_stream::{
     capabilities::{check_config, get_capabilities_all},
+    config::Config,
     stream_media_segments,
 };
 use rocket::{
@@ -23,7 +24,7 @@ pub async fn launch(
     log_level: LogLevel,
     stream: bool,
 ) -> anyhow::Result<()> {
-    let ctx_manager = ContextManager::new(ctx.clone(), conf_path.clone());
+    let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let http_rocket = if ctx.tls.is_some() {
         Some(http_rocket(&ctx, ctx_manager.clone(), log_level).launch())
@@ -31,7 +32,7 @@ pub async fn launch(
         None
     };
 
-    let rocket = rocket(&ctx, ctx_manager, log_level, stream).await?.launch();
+    let rocket = rocket(&ctx, ctx_manager, cfg_rx, log_level, stream)?.launch();
 
     if let Some(http_rocket) = http_rocket {
         let result = future::join(http_rocket, rocket).await;
@@ -61,9 +62,10 @@ fn http_rocket(ctx: &Context, ctx_manager: ContextManager, log_level: LogLevel) 
 }
 
 /// Returns the main server rocket
-async fn rocket(
+fn rocket(
     ctx: &Context,
     ctx_manager: ContextManager,
+    cfg_rx: flume::Receiver<Config>,
     log_level: LogLevel,
     stream: bool,
 ) -> anyhow::Result<Rocket<Build>> {
@@ -101,20 +103,11 @@ async fn rocket(
 
     let mut rocket = rocket::custom(&rocket_cfg)
         .mount("/", routes)
-        .manage(ctx_manager.clone())
+        .manage(ctx_manager)
         .manage(caps);
 
     if stream {
         let (tx, rx) = flume::unbounded();
-        let (cfg_tx, cfg_rx) = flume::unbounded();
-        let mut ctx_sub = ctx_manager.subscribe();
-        rocket::tokio::spawn(async move {
-            while let Ok(ctx) = ctx_sub.recv().await {
-                if cfg_tx.send_async(ctx.config).await.is_err() {
-                    return;
-                }
-            }
-        });
         let config = ctx.config.clone();
         rocket::tokio::task::spawn_blocking(move || {
             // not much we can do about an error at this point, the server is already started

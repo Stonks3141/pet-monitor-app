@@ -29,7 +29,7 @@ chrono = "0.4"
 ring = "0.16"
 jsonwebtoken = "8.1"
 rust-argon2 = "1.0"
-mp4-stream = { version = "0.1.0", features = ["tokio", "quickcheck"], path = "../mp4-stream" }
+mp4-stream = { version = "0.1.0", features = ["tokio", "quickcheck", "serde"], path = "../mp4-stream" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
@@ -39,6 +39,7 @@ quickcheck = "1.0"
 reqwest = { version = "0.11", features = ["cookies"] }
 tokio = { version = "1.22", features = ["rt", "macros", "time", "process"] }
 futures = { version = "0.3", features = ["executor"] }
+mp4-stream = { version = "0.1.0", features = ["quickcheck"], path = "../mp4-stream" }
 once_cell = "1.16"
 
 [[bin]]

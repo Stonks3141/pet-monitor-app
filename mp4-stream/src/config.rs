@@ -1,10 +1,13 @@
 #[cfg(feature = "quickcheck")]
 use quickcheck::{Arbitrary, Gen};
+#[cfg(feature = "serde")]
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "serde")]
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, fmt, path::PathBuf};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     /// The v4l2 device to capture video with (eg. "/dev/video0")
     pub device: PathBuf,
@@ -17,7 +20,7 @@ pub struct Config {
     /// Rotation in degrees (0, 90, 180, or 270)
     pub rotation: Rotation,
     /// Additional options to pass to v4l2
-    #[serde(rename = "v4l2Controls")]
+    #[cfg_attr(feature = "serde", serde(rename = "v4l2Controls"))]
     pub v4l2_controls: HashMap<String, String>,
 }
 
@@ -83,12 +86,14 @@ impl fmt::Display for Format {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for Format {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         self.to_string().serialize(s)
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Format {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let format = String::deserialize(d)?;
@@ -98,7 +103,8 @@ impl<'de> Deserialize<'de> for Format {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[cfg_attr(feature = "serde", derive(Serialize_repr, Deserialize_repr))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Rotation {
     R0 = 0,

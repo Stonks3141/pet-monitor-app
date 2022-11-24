@@ -2,7 +2,6 @@ use anyhow::Context as _;
 use chrono::Duration;
 use mp4_stream::config::Config;
 use parking_lot::RwLock;
-use rocket::tokio::sync::broadcast;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
@@ -14,18 +13,21 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct ContextManager {
     ctx: Arc<RwLock<Context>>,
-    sender: broadcast::Sender<Context>,
+    sender: flume::Sender<Config>,
     conf_path: Option<PathBuf>,
 }
 
 impl ContextManager {
-    pub fn new(context: Context, conf_path: Option<PathBuf>) -> Self {
-        let (sender, _) = broadcast::channel(16);
-        Self {
-            ctx: Arc::new(RwLock::new(context)),
-            sender,
-            conf_path,
-        }
+    pub fn new(context: Context, conf_path: Option<PathBuf>) -> (Self, flume::Receiver<Config>) {
+        let (sender, rx) = flume::unbounded();
+        (
+            Self {
+                ctx: Arc::new(RwLock::new(context)),
+                sender,
+                conf_path,
+            },
+            rx,
+        )
     }
 
     pub fn get(&self) -> Context {
@@ -44,12 +46,8 @@ impl ContextManager {
             store(&self.conf_path, &context).await?;
         }
 
-        self.sender.send(context).unwrap_or(0);
+        self.sender.send(context.config).unwrap_or(());
         Ok(())
-    }
-
-    pub fn subscribe(&self) -> broadcast::Receiver<Context> {
-        self.sender.subscribe()
     }
 }
 
@@ -182,8 +180,7 @@ mod tests {
     #[tokio::test]
     async fn test_context_manager() {
         let mut val = Context::default();
-        let ctx_manager = ContextManager::new(val.clone(), None);
-        let mut sub = ctx_manager.subscribe();
+        let (ctx_manager, sub) = ContextManager::new(val.clone(), None);
 
         assert_eq!(val, ctx_manager.get());
 
@@ -191,13 +188,13 @@ mod tests {
         ctx_manager.set(val.clone()).await.unwrap();
 
         assert_eq!(val, ctx_manager.get());
-        assert_eq!(val, sub.recv().await.unwrap());
+        assert_eq!(val.config, sub.recv_async().await.unwrap());
 
         val.domain = "ferris.crab".to_string();
         ctx_manager.set(val.clone()).await.unwrap();
 
         assert_eq!(val, ctx_manager.get());
-        assert_eq!(val, sub.recv().await.unwrap());
+        assert_eq!(val.config, sub.recv_async().await.unwrap());
     }
 }
 
