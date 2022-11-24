@@ -1,10 +1,9 @@
-use std::num::NonZeroU32;
-
 use crate::config::Rotation;
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use std::io::{self, prelude::*};
+use std::num::NonZeroU32;
 
 macro_rules! matrix {
     ( $( [ $($val:literal),* $(,)? ] ),* $(,)? ) => {

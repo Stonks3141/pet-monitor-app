@@ -30,7 +30,7 @@ use crate::Error;
 use rscam::{IntervalInfo, ResolutionInfo};
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{
     ffi::OsStr,
     fs,
@@ -206,7 +206,8 @@ fn get_intervals(intervals: IntervalInfo) -> Vec<(u32, u32)> {
 ///
 /// # Errors
 ///
-/// This function may return a [`Error::Other`] if any part of the config is invalid.
+/// This function may return a [`Error::Other`] if any part of the config is invalid,
+/// including the V4L2 controls.
 pub fn check_config(config: &Config, caps: &Capabilities) -> crate::Result<()> {
     caps.0
         .get(&config.device)
@@ -218,5 +219,28 @@ pub fn check_config(config: &Config, caps: &Capabilities) -> crate::Result<()> {
         .contains(&config.interval)
         .then_some(())
         .ok_or_else(|| format!("Invalid interval: {:?}", config.interval))?;
+
+    let camera = rscam::Camera::new(
+        config
+            .device
+            .as_os_str()
+            .to_str()
+            .ok_or_else(|| "failed to convert device path to string".to_string())?,
+    )?;
+
+    let controls: HashSet<String> = config.v4l2_controls.keys().cloned().collect();
+    let valid_controls: HashSet<String> = camera
+        .controls()
+        .filter_map(|x| x.ok())
+        .map(|ctl| ctl.name)
+        .collect();
+
+    // all controls that are in `controls` but not `valid_controls`.
+    for name in controls.difference(&valid_controls) {
+        if controls.get(name).is_none() {
+            return Err(Error::Other(format!("Invalid V4L2 control: '{}'", name)));
+        }
+    }
+
     Ok(())
 }

@@ -541,8 +541,6 @@ impl FrameIter {
                 camera.set_control(*id, val).unwrap_or(()); // ignore failure
             } else {
                 log::warn!("Couldn't find control {}", name);
-                // TODO: handle errors by returning a 400 for PUT /api/config
-                // or printing an error message if loaded from the config file
             }
         }
 
