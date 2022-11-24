@@ -60,10 +60,12 @@ pub struct Capabilities(pub HashMap<PathBuf, Formats>);
 
 /// A map of format codes to available resolutions.
 pub type Formats = HashMap<Format, Resolutions>;
+
 /// A map of resolutions to available intervals.
 ///
 /// The resolutions are in (width, height) format.
 pub type Resolutions = HashMap<(u32, u32), Intervals>;
+
 /// A list of available intervals.
 ///
 /// The framerate for an interval is the first tuple field divided by the second.
@@ -109,7 +111,15 @@ struct Resolution {
     intervals: Vec<(u32, u32)>,
 }
 
-pub fn get_capabilities_all() -> Result<Capabilities, Error> {
+/// Gets the camera devices and capabilities for each.
+///
+/// See the [module-level docs](self) for more information.
+///
+/// # Errors
+///
+/// This function may return a [`Error::Io`] if interaction with the filesystem
+/// fails or a [`Error::Camera`] if the camera returns an error.
+pub fn get_capabilities_all() -> crate::Result<Capabilities> {
     let mut caps = HashMap::new();
 
     for f in fs::read_dir(PathBuf::from("/dev"))? {
@@ -128,7 +138,15 @@ pub fn get_capabilities_all() -> Result<Capabilities, Error> {
     Ok(Capabilities(caps))
 }
 
-pub fn get_capabilities_from_path(device: &Path) -> Result<Formats, Error> {
+/// Gets the capabilities of a camera at a certain path.
+///
+/// See the [module-level docs](self) for more information.
+///
+/// # Errors
+///
+/// This function may return a [`Error::Io`] if interaction with the filesystem
+/// fails or a [`Error::Camera`] if the camera returns an error.
+pub fn get_capabilities_from_path(device: &Path) -> crate::Result<Formats> {
     let camera = rscam::Camera::new(
         device
             .to_str()
@@ -137,7 +155,7 @@ pub fn get_capabilities_from_path(device: &Path) -> Result<Formats, Error> {
     get_capabilities(&camera)
 }
 
-fn get_capabilities(camera: &rscam::Camera) -> Result<Formats, Error> {
+fn get_capabilities(camera: &rscam::Camera) -> crate::Result<Formats> {
     camera
         .formats()
         .filter_map(|x| x.ok())
@@ -182,16 +200,23 @@ fn get_intervals(intervals: IntervalInfo) -> Vec<(u32, u32)> {
     }
 }
 
-pub fn check_config(config: &Config, caps: &Capabilities) -> Result<(), Error> {
+/// Verifies that a config is valid using a given set of capabilities.
+///
+/// See the [module-level docs](self) for more information.
+///
+/// # Errors
+///
+/// This function may return a [`Error::Other`] if any part of the config is invalid.
+pub fn check_config(config: &Config, caps: &Capabilities) -> crate::Result<()> {
     caps.0
         .get(&config.device)
         .ok_or_else(|| format!("Invalid device: {:?}", config.device))?
         .get(&config.format)
-        .ok_or(rscam::Error::BadFormat)?
+        .ok_or_else(|| format!("Invalid format: {}", config.format))?
         .get(&config.resolution)
-        .ok_or(rscam::Error::BadResolution)?
+        .ok_or_else(|| format!("Invalid resolution: {:?}", config.resolution))?
         .contains(&config.interval)
         .then_some(())
-        .ok_or(rscam::Error::BadInterval)?;
+        .ok_or_else(|| format!("Invalid interval: {:?}", config.interval))?;
     Ok(())
 }

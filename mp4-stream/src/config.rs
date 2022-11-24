@@ -1,3 +1,5 @@
+//! Types for stream and camera configuration.
+
 #[cfg(feature = "quickcheck")]
 use quickcheck::{Arbitrary, Gen};
 #[cfg(feature = "serde")]
@@ -6,20 +8,21 @@ use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, fmt, path::PathBuf};
 
+/// The main configuration struct.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
-    /// The v4l2 device to capture video with (eg. "/dev/video0")
+    /// The v4l2 device to capture video with (eg. "/dev/video0").
     pub device: PathBuf,
-    /// The fourCC code to capture in
+    /// The fourCC code to capture in (eg. "YUYV").
     pub format: Format,
-    /// Pixel resolution (width, height)
+    /// Pixel resolution (width, height).
     pub resolution: (u32, u32),
-    /// A fraction representing the length of time for a frame
+    /// A fraction representing the framerate.
     pub interval: (u32, u32),
-    /// Rotation in degrees (0, 90, 180, or 270)
+    /// The rotation for the MP4 matrix. This is not supported by some media players.
     pub rotation: Rotation,
-    /// Additional options to pass to v4l2
+    /// Additional controls to pass to V4L2.
     #[cfg_attr(feature = "serde", serde(rename = "v4l2Controls"))]
     pub v4l2_controls: HashMap<String, String>,
 }
@@ -37,14 +40,31 @@ impl Default for Config {
     }
 }
 
+/// The fourCC code to capture in.
+///
+/// Currently supported formats are H264 and those supported by libx264.
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Format {
+    /// H264 format. Selecting this option will disable software encoding, which is
+    /// generally much faster but can reduce quality or compression ratio.
     H264 = u32::from_be_bytes(*b"H264"),
+    /// YUYV format. In this format, 4 bytes encode 2 pixels, with the first encoding the
+    /// Y or luminance component for the first pixel, the second encoding the U or Cb component for
+    /// both pixels, the third encoding the Y component for the second pixel, and the fourth
+    /// encoding the V or Cr component for both pixels.
     YUYV = u32::from_be_bytes(*b"YUYV"),
+    /// YV12 format. 6 bytes encode 4 pixels, with the first 4 bytes encoding the Y
+    /// component for each pixel, the fith byte encoding the V component for all 4 pixels,
+    /// and the last byte encoding the U component for all 4 pixels. The "12" refers to the
+    /// format's bit depth.
     YV12 = u32::from_be_bytes(*b"YV12"),
+    /// RGB format. 3 bytes encode 1 pixel, with the first encoding the red component,
+    /// the second encoding the green component, and the third encoding the blue component.
     RGB3 = u32::from_be_bytes(*b"RGB3"),
+    /// BGR format. 3 bytes encode 1 pixel, with the first encoding the blue component,
+    /// the second encoding the green component, and the third encoding the red component.
     BGR3 = u32::from_be_bytes(*b"BGR3"),
 }
 
@@ -103,13 +123,20 @@ impl<'de> Deserialize<'de> for Format {
     }
 }
 
+/// The rotation for the MP4 rotation matrix.
+///
+/// This is not supported by some media players.
 #[cfg_attr(feature = "serde", derive(Serialize_repr, Deserialize_repr))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Rotation {
+    /// 0 degrees of rotation.
     R0 = 0,
+    /// 90 degrees of rotation.
     R90 = 90,
+    /// 180 degrees of rotation.
     R180 = 180,
+    /// 270 degrees of rotation.
     R270 = 270,
 }
 

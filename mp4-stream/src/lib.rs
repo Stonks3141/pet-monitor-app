@@ -2,10 +2,10 @@
 //!
 //! mp4-stream is an efficient and scalable implementation of fragmented MP4
 //! video streaming. It uses channels to separate video capture and encoding from
-//! container muxing, making it possible to stream live video over multiple
+//! MP4 muxing, making it possible to stream live video over multiple
 //! connections. It can also handle live configuration updates, which require
-//! restarting the stream, but the video capture worker does not have to be
-//! restarted.
+//! restarting the individual streams, but the video capture worker does not
+//! have to be restarted.
 //!
 //! # Example
 //!
@@ -36,7 +36,7 @@
 //! # Cargo Features
 //!
 //! - `tokio`: provides a [`Stream`](futures_core::Stream) implementation for the [`VideoStream`](crate::VideoStream)
-//!   type using tokio's runtime.
+//!   type using Tokio's runtime.
 //! - `quickcheck`: Provides implementations of [`Arbitrary`](quickcheck::Arbitrary) for types in the
 //!   [`config`] module.
 //! - `serde`: Add implementations of [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)
@@ -75,24 +75,29 @@ use std::{
 use std::{pin::Pin, task::Poll};
 
 quick_error! {
+    /// The error type for `mp4-stream`.
     #[derive(Debug)]
     #[non_exhaustive]
     pub enum Error {
+        /// I/O error. This wraps an [`std::io::Error`].
         Io(err: std::io::Error) {
             source(err)
             display("{}", err)
             from()
         }
+        /// Software encoding error. This wraps an [`x264::Error`], which carries
+        /// no additional information.
         Encoding(err: x264::Error) {
             display("Encoding error: {:?}", err)
             from()
         }
+        /// Camera or video capture error. This wraps an [`rscam::Error`].
         Camera(err: rscam::Error) {
             source(err)
             display("{}", err)
             from()
         }
-
+        /// Another unspecified error.
         Other(err: String) {
             display("{}", err)
             from()
@@ -100,6 +105,7 @@ quick_error! {
     }
 }
 
+/// A `Result` type alias for `mp4-stream`'s [`Error`] type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
@@ -245,6 +251,9 @@ impl From<&Config> for InitSegment {
     }
 }
 
+/// An opaque type representing an fMP4 media segment.
+///
+/// It is passed between the streaming thread and [`VideoStream`]s.
 #[derive(Debug, Clone)]
 pub struct MediaSegment {
     moof: MovieFragmentBox,
@@ -320,6 +329,11 @@ impl WriteTo for MediaSegment {
     }
 }
 
+/// A stream of fMP4 segments.
+///
+/// This struct implements [`Iterator`] and [`Stream`](futures_core::Stream).
+/// The `Iterator` implementation will block until a segment is received, and the
+/// `Stream` implementation is non-blocking and fully async.
 #[derive(Debug)]
 pub struct VideoStream {
     init_segment: Option<InitSegment>,
@@ -333,14 +347,20 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
+    /// Creates a new `VideoStream`. This function will block until after the video capture task
+    /// finishes a [`MediaSegment`], which can take several seconds.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
     #[allow(clippy::missing_panics_doc)]
     pub fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Result<Self> {
         let init_segment = InitSegment::from(config);
 
         let (tx, rx) = flume::unbounded();
-        stream_sub_tx.send(tx).map_err(|_| {
-            "`VideoStream::new`: Failed to communicate with streaming task".to_string()
-        })?;
+        stream_sub_tx
+            .send(tx)
+            .map_err(|_| "Failed to communicate with streaming task".to_string())?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
         let (headers, media_seg_recv) = rx.recv().unwrap();
@@ -357,6 +377,12 @@ impl VideoStream {
         })
     }
 
+    /// Creates a new `VideoSteam` without blocking.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
+    #[allow(clippy::missing_panics_doc)]
     #[cfg(feature = "tokio")]
     pub async fn new_async(
         config: &Config,
@@ -365,9 +391,10 @@ impl VideoStream {
         let init_segment = InitSegment::from(config);
 
         let (tx, rx) = flume::unbounded();
-        stream_sub_tx.send_async(tx).await.map_err(|_| {
-            "`VideoStream::new`: Failed to communicate with streaming task".to_string()
-        })?;
+        stream_sub_tx
+            .send_async(tx)
+            .await
+            .map_err(|_| "Failed to communicate with streaming task".to_string())?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
         let (headers, media_seg_recv) = rx.recv_async().await.unwrap();
@@ -594,7 +621,7 @@ impl SegmentIter {
     fn get_headers(&mut self) -> x264::Result<Vec<u8>> {
         Ok(match self {
             Self::Software { encoder, .. } => encoder.headers()?.entirety().to_vec(),
-            Self::Hardware { .. } => todo!(),
+            Self::Hardware { .. } => unimplemented!(),
         })
     }
 }
@@ -650,18 +677,37 @@ impl Iterator for SegmentIter {
 
                 Some(MediaSegment::new(config, 0, sample_sizes, buf))
             }
-            Self::Hardware { .. } => todo!(),
+            Self::Hardware { .. } => unimplemented!(),
         }
     }
 }
 
+/// A channel receiver for [`MediaSegment`]s.
+///
+/// `None` is a marker indicating that the config has changed and the stream
+/// has restarted.
 pub type MediaSegReceiver = flume::Receiver<Option<MediaSegment>>;
+
+/// A channel for adding a subscriber to the stream.
+///
+/// The main capture and encoding thread will receive these and respond with a
+/// tuple of a [`MediaSegReceiver`] and the H264 headers for the stream.
 pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 
-/// Start capturing video
+/// Start capturing video.
+///
+/// The optional `config_rx` parameter can be used to send configuration updates. The
+/// function will send `None` to all subscribed channels to indicate that the config has
+/// changed and then restart the stream with the new config.
 ///
 /// This function may block indefinitely, and should be called in its own thread
-/// or tokio's `spawn_blocking`.
+/// or with Tokio's [`spawn_blocking`](tokio::task::spawn_blocking) function or similar.
+///
+/// # Errors
+///
+/// This function may return an [`Error::Camera`] if interacting with the provided camera
+/// device fails, an [`Error::Other`] if converting the device path to a string fails,
+/// or an [`Error::Encoding`] if constructing an encoder fails.
 #[allow(clippy::missing_panics_doc)]
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
