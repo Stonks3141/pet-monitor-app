@@ -41,6 +41,7 @@
 //!   [`config`] module.
 //! - `serde`: Add implementations of [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)
 //!   for types in the [`config`] and [`capabilities`] modules.
+//! - `log`: Enable logging with the [`log`] crate.
 
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
@@ -62,7 +63,6 @@ use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 #[cfg(feature = "tokio")]
 use futures_core::Stream;
-use log::{trace, warn};
 use quick_error::quick_error;
 use rscam::Camera;
 use std::{
@@ -411,7 +411,8 @@ impl VideoStream {
 
     fn serialize_segment(&mut self, x: Option<MediaSegment>) -> Option<io::Result<Vec<u8>>> {
         let Some(mut media_segment) = x else {
-            trace!("VideoStream ended");
+            #[cfg(feature = "log")]
+            log::trace!("VideoStream ended");
             return None;
         };
         if self.use_headers {
@@ -426,7 +427,8 @@ impl VideoStream {
         if let Err(e) = media_segment.write_to(&mut buf) {
             return Some(Err(e));
         }
-        trace!(
+        #[cfg(feature = "log")]
+        log::trace!(
             "VideoStream sent media segment with sequence number {}",
             self.sequence_number - 1
         );
@@ -444,7 +446,8 @@ impl Iterator for VideoStream {
                 if let Err(e) = init_segment.write_to(&mut buf) {
                     return Some(Err(e));
                 }
-                trace!("VideoStream sent init segment");
+                #[cfg(feature = "log")]
+                log::trace!("VideoStream sent init segment");
                 Some(Ok(buf))
             }
             // `Receiver::recv` returns an error if all senders have been dropped, in
@@ -468,7 +471,8 @@ impl Stream for VideoStream {
                 if let Err(e) = init_segment.write_to(&mut buf) {
                     return Poll::Ready(Some(Err(e)));
                 }
-                trace!("VideoStream sent init segment");
+                #[cfg(feature = "log")]
+                log::trace!("VideoStream sent init segment");
                 Poll::Ready(Some(Ok(buf)))
             }
             None => {
@@ -505,7 +509,8 @@ impl Stream for VideoStream {
                                     return_tx.send(seg).unwrap();
                                     waker.wake();
                                 });
-                                trace!("VideoStream is pending");
+                                #[cfg(feature = "log")]
+                                log::trace!("VideoStream is pending");
                                 Poll::Pending
                             }
                         },
@@ -540,6 +545,7 @@ impl FrameIter {
             if let Some(id) = controls.get(name) {
                 camera.set_control(*id, val).unwrap_or(()); // ignore failure
             } else {
+                #[cfg(feature = "log")]
                 log::warn!("Couldn't find control {}", name);
             }
         }
@@ -642,7 +648,8 @@ impl Iterator for SegmentIter {
                     let frame = match frames.next() {
                         Some(Ok(f)) => f,
                         Some(Err(e)) => {
-                            warn!("Capturing frame failed with error {:?}", e);
+                            #[cfg(feature = "log")]
+                            log::warn!("Capturing frame failed with error {:?}", e);
                             panic!();
                         }
                         None => unreachable!(),
@@ -661,7 +668,8 @@ impl Iterator for SegmentIter {
                     let (data, _) = match encoder.encode(*timestamp, image) {
                         Ok(x) => x,
                         Err(e) => {
-                            warn!("Encoding frame failed with error {:?}", e);
+                            #[cfg(feature = "log")]
+                            log::warn!("Encoding frame failed with error {:?}", e);
                             panic!();
                         }
                     };
@@ -712,7 +720,8 @@ pub fn stream_media_segments(
     config_rx: Option<flume::Receiver<Config>>,
 ) -> Result<std::convert::Infallible> {
     'main: loop {
-        trace!("Starting stream with config {:?}", config);
+        #[cfg(feature = "log")]
+        log::trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
 
         let frames = FrameIter::new(&config)?;
@@ -723,7 +732,8 @@ pub fn stream_media_segments(
             if let Some(Ok(new_config)) = config_rx.as_ref().map(flume::Receiver::try_recv) {
                 config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
-                trace!("Config updated to {:?}, restarting stream", config);
+                #[cfg(feature = "log")]
+                log::trace!("Config updated to {:?}, restarting stream", config);
                 continue 'main;
             }
             if let Ok(sender) = rx.try_recv() {
@@ -736,7 +746,8 @@ pub fn stream_media_segments(
             #[allow(clippy::unwrap_used)] // the iterator never returns `None`
             let media_segment = segments.next().unwrap();
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
-            trace!("Sent media segment, took {:?} to capture", time.elapsed());
+            #[cfg(feature = "log")]
+            log::trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
     }
 }
