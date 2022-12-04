@@ -301,17 +301,17 @@ impl MediaSegment {
         self.moof.size() + self.mdat.size()
     }
 
-    fn set_base_data_offset(&mut self, offset: u64) {
-        self.moof.traf[0].tfhd.base_data_offset = Some(offset);
+    fn base_data_offset(&mut self) -> &mut Option<u64> {
+        &mut self.moof.traf[0].tfhd.base_data_offset
     }
 
-    fn set_sequence_number(&mut self, sequence_number: u32) {
-        self.moof.mfhd.sequence_number = sequence_number;
+    fn sequence_number(&mut self) -> &mut u32 {
+        &mut self.moof.mfhd.sequence_number
     }
 
     fn add_headers(&mut self, mut headers: Vec<u8>) {
-        #[allow(clippy::unwrap_used)]
         // MediaSegments constructed with `new` should always have sample_sizes
+        #[allow(clippy::unwrap_used)]
         {
             self.moof.traf[0].trun[0].sample_sizes.as_mut().unwrap()[0] += headers.len() as u32;
         }
@@ -419,8 +419,8 @@ impl VideoStream {
             media_segment.add_headers(self.headers.clone());
             self.use_headers = false;
         }
-        media_segment.set_base_data_offset(self.size);
-        media_segment.set_sequence_number(self.sequence_number);
+        *media_segment.base_data_offset() = Some(self.size);
+        *media_segment.sequence_number() = self.sequence_number;
         self.sequence_number += 1;
         self.size += media_segment.size();
         let mut buf = Vec::with_capacity(media_segment.size() as usize);
@@ -553,7 +553,7 @@ impl FrameIter {
         camera.start(&rscam::Config {
             interval: config.interval,
             resolution: config.resolution,
-            format: b"YUYV",
+            format: &<[u8; 4]>::from(config.format),
             ..Default::default()
         })?;
 
@@ -578,6 +578,7 @@ enum SegmentIter {
         frames: FrameIter,
     },
     Hardware {
+        config: Config,
         frames: FrameIter,
     },
 }
@@ -585,7 +586,7 @@ enum SegmentIter {
 impl SegmentIter {
     fn new(config: Config, frames: FrameIter) -> x264::Result<Self> {
         Ok(match config.format {
-            Format::H264 => Self::Hardware { frames },
+            Format::H264 => Self::Hardware { frames, config },
             format => Self::Software {
                 timescale: config.interval.1,
                 encoder: {
@@ -624,7 +625,7 @@ impl SegmentIter {
     fn get_headers(&mut self) -> x264::Result<Vec<u8>> {
         Ok(match self {
             Self::Software { encoder, .. } => encoder.headers()?.entirety().to_vec(),
-            Self::Hardware { .. } => unimplemented!(),
+            Self::Hardware { .. } => Ok(Vec::new()),
         })
     }
 }
@@ -682,7 +683,24 @@ impl Iterator for SegmentIter {
 
                 Some(MediaSegment::new(config, 0, sample_sizes, buf))
             }
-            Self::Hardware { .. } => unimplemented!(),
+            Self::Hardware { frames, config } => {
+                let mut sample_sizes = Vec::new();
+                let mut buf = Vec::new();
+                for _ in 0..60 {
+                    let frame = match frames.next() {
+                        Some(Ok(f)) => f,
+                        Some(Err(e)) => {
+                            #[cfg(feature = "log")]
+                            log::warn!("Capturing frame failed with error {:?}", e);
+                            panic!();
+                        }
+                        None => unreachable!(),
+                    };
+                    sample_sizes.push(frame.len() as u32);
+                    buf.extend_from_slice(&*frame);
+                }
+                Some(MediaSegment::new(config, 0, sample_sizes, buf))
+            }
         }
     }
 }
@@ -742,6 +760,7 @@ pub fn stream_media_segments(
                 sender.send((headers.clone(), rx)).unwrap_or(());
             }
 
+            #[cfg(feature = "log")]
             let time = Instant::now();
             #[allow(clippy::unwrap_used)] // the iterator never returns `None`
             let media_segment = segments.next().unwrap();
