@@ -3257,9 +3257,9 @@ dependencies = [
 
 [[package]]
 name = "x264"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8ae5d5999da79234b4fc50053f8df03822c3a2a53decfa00e430add5d22212f"
+checksum = "bc93ffd258cebeced05f02b73fb291e17fe78a6a99bfcff1091e6606ed0dec92"
 dependencies = [
  "pkg-config",
  "x264-sys",
