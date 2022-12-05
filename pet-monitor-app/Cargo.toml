@@ -27,7 +27,7 @@ serde_with = { version = "2.1", features = ["base64", "chrono_0_4"] }
 anyhow = "1.0"
 chrono = "0.4"
 ring = "0.16"
-jsonwebtoken = "8.1"
+jsonwebtoken = "8.2"
 rust-argon2 = "1.0"
 mp4-stream = { version = "0.1.0", features = ["tokio", "serde", "log"], path = "../mp4-stream" }
 
