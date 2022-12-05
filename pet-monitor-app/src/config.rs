@@ -85,9 +85,6 @@ impl Default for Context {
             jwt_timeout: Duration::days(4),
             domain: "localhost".to_string(),
             host: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            #[cfg(not(debug_assertions))]
-            port: 80,
-            #[cfg(debug_assertions)]
             port: 8080,
             config: Config::default(),
             tls: None,
@@ -109,9 +106,6 @@ pub struct Tls {
 impl Default for Tls {
     fn default() -> Self {
         Self {
-            #[cfg(not(debug_assertions))]
-            port: 443,
-            #[cfg(debug_assertions)]
             port: 8443,
             cert: PathBuf::from("path/to/cert.pem"),
             key: PathBuf::from("path/to/key.key"),
