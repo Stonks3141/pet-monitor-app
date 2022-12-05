@@ -625,7 +625,7 @@ impl SegmentIter {
     fn get_headers(&mut self) -> x264::Result<Vec<u8>> {
         Ok(match self {
             Self::Software { encoder, .. } => encoder.headers()?.entirety().to_vec(),
-            Self::Hardware { .. } => Ok(Vec::new()),
+            Self::Hardware { .. } => Vec::new(),
         })
     }
 }
