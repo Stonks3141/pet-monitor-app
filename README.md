@@ -17,24 +17,21 @@ pet-monitor-app is a simple video streaming server for Linux. It provides out-of
 
 ## Quickstart
 
-The only component needed to run pet-monitor-app is the binary. It handles
-config file management, static file serving, and TLS/HTTPS. There is no need
-for a reverse proxy.
-
-Download the binary and corresponding `.sha256` file for your OS/architecture from
-the [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
-Run `sha256sum --check pet-monitor-app-VERSION-ARCH.sha256` to verify the
+Install libx264 using your system's package manager. Download the binary
+and corresponding `.sha256` file for your OS/architecture from the
+[releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
+Run `sha256sum --check pet-monitor-app-VERSION-TARGET.sha256` to verify the
 checksum. If it is correct, move the binary into `~/.local/bin`. Run these
 commands to start the server:
 
 ```sh
 pet-monitor-app configure --password MY_PASSWORD --regen-secret
-sudo pet-monitor-app start
+pet-monitor-app start
 ```
 
 This first sets the password with the `configure` subcommand, and then starts
-the server. Sudo is needed to listen on port 80. You can view the page at
-[http://localhost](http://localhost). To reset your password, run
+the server. You can view the page at [http://localhost:8080](http://localhost:8080).
+To reset your password, run
 
 ```sh
 pet-monitor-app configure --password NEW_PASSWORD
@@ -48,12 +45,17 @@ the config file:
 
 ```toml
 [tls]
-port = 443
+port = 8443
 cert = "path/to/cert.pem"
 key = "path/to/key.key"
 ```
 
-You can now view the page at [https://localhost](https://localhost).
+You can now view the page at [https://localhost:8443](https://localhost:8443).
+
+Running pet-monitor-app as root is not necessary and should be avoided. If you
+want your server to listen on port 80 or 443, you should set up NAT forwarding
+to forward external port 80 to internal port 8080. If this is not possible,
+install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
 
 ## Development
 
@@ -81,13 +83,12 @@ To build a binary, run these commands:
 cd client
 pnpm build
 cd ../pet-monitor-app
-rm -rf build
 cp -r ../client/build .
 cargo build --release
 ```
 
 This builds the frontend bundle, copies it into the `pet-monitor-app/` directory, and builds the binary.
-The binary should be located at `pet-monitor-app/target/release/pet-monitor-app`.
+The binary should be located at `target/release/pet-monitor-app`.
 
 ## Motivation
 
@@ -104,7 +105,6 @@ video recording.
 - Secure
 - Simple to install/use/configure
 - Locally hosted
-- Featureful and attractive
 - Tested
 - Documented
 
@@ -132,13 +132,12 @@ any new functionality.
 
 ## Testing
 
-pet-monitor-app uses [proptest](https://crates.io/crates/proptest),
-[quickcheck](https://crates.io/crates/quickcheck), and Rust's built-in unit and integration
-testing framework. To run tests, clone the repo and run
+pet-monitor-app uses [quickcheck](https://crates.io/crates/quickcheck)
+and Rust's built-in unit and integration testing framework. To run
+tests, clone the repo and run
 
 ```sh
-cd pet-monitor-app
-cargo test
+cargo test --workspace
 ```
 
 ## Inspiration
