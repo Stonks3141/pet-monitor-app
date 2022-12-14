@@ -61,7 +61,7 @@ use config::{Config, Format};
 use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
-#[cfg(feature = "tokio")]
+use flume::r#async::RecvStream;
 use futures_core::Stream;
 use quick_error::quick_error;
 use rscam::Camera;
@@ -71,7 +71,6 @@ use std::{
     sync::Arc,
     time::Instant,
 };
-#[cfg(feature = "tokio")]
 use std::{pin::Pin, task::Poll};
 
 quick_error! {
@@ -336,15 +335,12 @@ impl WriteTo for MediaSegment {
 /// This struct implements [`Iterator`] and [`Stream`](futures_core::Stream).
 /// The `Iterator` implementation will block until a segment is received, and the
 /// `Stream` implementation is non-blocking and fully async.
-#[derive(Debug)]
 pub struct VideoStream {
     init_segment: Option<InitSegment>,
     use_headers: bool,
     size: u64,
     sequence_number: u32,
-    media_seg_recv: MediaSegReceiver,
-    #[cfg(feature = "tokio")]
-    other_recv: Option<MediaSegReceiver>,
+    segment_stream: RecvStream<'static, Option<MediaSegment>>,
     headers: Vec<u8>,
 }
 
@@ -356,7 +352,10 @@ impl VideoStream {
     ///
     /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
     #[allow(clippy::missing_panics_doc)]
-    pub fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Result<Self> {
+    pub async fn new(
+        config: &Config,
+        stream_sub_tx: flume::Sender<StreamSubscriber>,
+    ) -> Result<Self> {
         let init_segment = InitSegment::new(config);
 
         let (tx, rx) = flume::unbounded();
@@ -365,49 +364,14 @@ impl VideoStream {
             .map_err(|_| "Failed to communicate with streaming task".to_string())?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
-        let (headers, media_seg_recv) = rx.recv().unwrap();
+        let (headers, segment_rx) = rx.recv().unwrap();
 
         Ok(Self {
             size: init_segment.size(),
             init_segment: Some(init_segment),
             use_headers: true,
             sequence_number: 1,
-            media_seg_recv,
-            #[cfg(feature = "tokio")]
-            other_recv: None,
-            headers,
-        })
-    }
-
-    /// Creates a new `VideoSteam` without blocking.
-    ///
-    /// # Errors
-    ///
-    /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
-    #[allow(clippy::missing_panics_doc)]
-    #[cfg(feature = "tokio")]
-    pub async fn new_async(
-        config: &Config,
-        stream_sub_tx: flume::Sender<StreamSubscriber>,
-    ) -> Result<Self> {
-        let init_segment = InitSegment::new(config);
-
-        let (tx, rx) = flume::unbounded();
-        stream_sub_tx
-            .send_async(tx)
-            .await
-            .map_err(|_| "Failed to communicate with streaming task".to_string())?;
-        // if the send succeeds, the other side will respond immediately
-        #[allow(clippy::unwrap_used)]
-        let (headers, media_seg_recv) = rx.recv_async().await.unwrap();
-
-        Ok(Self {
-            size: init_segment.size(),
-            init_segment: Some(init_segment),
-            use_headers: true,
-            sequence_number: 1,
-            media_seg_recv,
-            other_recv: None,
+            segment_stream: segment_rx.into_stream(),
             headers,
         })
     }
@@ -442,28 +406,6 @@ impl VideoStream {
     }
 }
 
-impl Iterator for VideoStream {
-    type Item = io::Result<Vec<u8>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.init_segment.take() {
-            Some(init_segment) => {
-                let mut buf = Vec::with_capacity(init_segment.size() as usize);
-                if let Err(e) = init_segment.write_to(&mut buf) {
-                    return Some(Err(e));
-                }
-                #[cfg(feature = "log")]
-                log::trace!("VideoStream sent init segment");
-                Some(Ok(buf))
-            }
-            // `Receiver::recv` returns an error if all senders have been dropped, in
-            // which case we should end the stream.
-            None => self.serialize_segment(self.media_seg_recv.recv().ok()?),
-        }
-    }
-}
-
-#[cfg(feature = "tokio")]
 impl Stream for VideoStream {
     type Item = io::Result<Vec<u8>>;
 
@@ -477,50 +419,13 @@ impl Stream for VideoStream {
                 if let Err(e) = init_segment.write_to(&mut buf) {
                     return Poll::Ready(Some(Err(e)));
                 }
-                #[cfg(feature = "log")]
-                log::trace!("VideoStream sent init segment");
                 Poll::Ready(Some(Ok(buf)))
             }
             None => {
-                if let Some(rx) = &self.other_recv {
-                    match rx.try_recv() {
-                        Ok(x) => {
-                            self.other_recv = None;
-                            Poll::Ready(self.serialize_segment(x))
-                        }
-                        Err(e) => match e {
-                            flume::TryRecvError::Disconnected => Poll::Ready(None),
-                            flume::TryRecvError::Empty => Poll::Pending,
-                        },
-                    }
-                } else {
-                    match self.media_seg_recv.try_recv() {
-                        Ok(x) => Poll::Ready(self.serialize_segment(x)),
-                        Err(e) => match e {
-                            flume::TryRecvError::Disconnected => Poll::Ready(None),
-                            flume::TryRecvError::Empty => {
-                                let waker = cx.waker().clone();
-                                let (return_tx, rx) = flume::unbounded();
-                                self.other_recv = Some(rx);
-                                let rx = self.media_seg_recv.clone();
-                                tokio::spawn(async move {
-                                    let Ok(seg) = rx.recv_async().await else {
-                                        // wake up the stream one more time so it can detect
-                                        // the disconnected channel and return `None`.
-                                        waker.wake();
-                                        return;
-                                    };
-                                    // rx isn't dropped until a value is received
-                                    #[allow(clippy::unwrap_used)]
-                                    return_tx.send(seg).unwrap();
-                                    waker.wake();
-                                });
-                                #[cfg(feature = "log")]
-                                log::trace!("VideoStream is pending");
-                                Poll::Pending
-                            }
-                        },
-                    }
+                let pin = Pin::new(&mut self.segment_stream);
+                match pin.poll_next(cx) {
+                    Poll::Ready(seg) => Poll::Ready(self.serialize_segment(seg.flatten())),
+                    Poll::Pending => Poll::Pending,
                 }
             }
         }

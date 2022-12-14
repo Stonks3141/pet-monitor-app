@@ -29,7 +29,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 ring = "0.16"
 jsonwebtoken = "8.2"
 rust-argon2 = "1.0"
-mp4-stream = { version = "0.1.0", features = ["tokio", "serde", "log"], path = "../mp4-stream" }
+mp4-stream = { version = "0.1.0", features = ["serde", "log"], path = "../mp4-stream" }
 
 [dev-dependencies]
 assert_cmd = "2.0"

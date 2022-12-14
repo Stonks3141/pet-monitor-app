@@ -192,7 +192,7 @@ pub async fn stream(
     stream_sub_tx: &State<flume::Sender<StreamSubscriber>>,
 ) -> Result<StreamResponse<impl Stream<Item = Vec<u8>>>, Status> {
     let ctx = ctx.get();
-    let stream = VideoStream::new_async(&ctx.config, (**stream_sub_tx).clone())
+    let stream = VideoStream::new(&ctx.config, (**stream_sub_tx).clone())
         .await
         .map_err(|e| {
             warn!("Error constructing VideoStream: {:?}", e);
