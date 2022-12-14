@@ -4,6 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use std::io::{self, prelude::*};
 use std::num::NonZeroU32;
+use std::sync::Arc;
 
 macro_rules! matrix {
     ( $( [ $($val:literal),* $(,)? ] ),* $(,)? ) => {
@@ -1558,7 +1559,8 @@ impl FullBox for TrackExtendsBox {
 
 #[derive(Debug, Clone)]
 pub struct MediaDataBox {
-    pub data: Vec<u8>,
+    pub headers: Option<Vec<u8>>,
+    pub data: Arc<Vec<u8>>,
 }
 
 impl BmffBox for MediaDataBox {
@@ -1566,10 +1568,13 @@ impl BmffBox for MediaDataBox {
 
     #[inline]
     fn size(&self) -> u64 {
-        8 + self.data.len() as u64
+        8 + self.headers.as_ref().map_or(0, Vec::len) as u64 + self.data.len() as u64
     }
 
     fn write_box(&self, mut w: impl Write) -> io::Result<()> {
+        if let Some(headers) = &self.headers {
+            w.write_all(headers)?;
+        }
         w.write_all(&self.data)?;
         Ok(())
     }

@@ -68,6 +68,7 @@ use rscam::Camera;
 use std::{
     collections::HashMap,
     io::{self, prelude::*},
+    sync::Arc,
     time::Instant,
 };
 #[cfg(feature = "tokio")]
@@ -127,8 +128,8 @@ impl WriteTo for InitSegment {
     }
 }
 
-impl From<&Config> for InitSegment {
-    fn from(config: &Config) -> Self {
+impl InitSegment {
+    fn new(config: &Config) -> Self {
         let sps = vec![
             0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x80, 0x50, 0x05, 0xbb, 0x01, 0x6a, 0x02, 0x02,
             0x02, 0x80, 0x00, 0x00, 0x03, 0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18, 0xcd,
@@ -293,7 +294,10 @@ impl MediaSegment {
 
         Self {
             moof,
-            mdat: MediaDataBox { data },
+            mdat: MediaDataBox {
+                headers: None,
+                data: Arc::new(data),
+            },
         }
     }
 
@@ -309,14 +313,13 @@ impl MediaSegment {
         &mut self.moof.mfhd.sequence_number
     }
 
-    fn add_headers(&mut self, mut headers: Vec<u8>) {
+    fn add_headers(&mut self, headers: Vec<u8>) {
         // MediaSegments constructed with `new` should always have sample_sizes
         #[allow(clippy::unwrap_used)]
         {
             self.moof.traf[0].trun[0].sample_sizes.as_mut().unwrap()[0] += headers.len() as u32;
         }
-        headers.append(&mut self.mdat.data);
-        self.mdat.data = headers;
+        self.mdat.headers = Some(headers);
     }
 }
 
@@ -354,7 +357,7 @@ impl VideoStream {
     /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
     #[allow(clippy::missing_panics_doc)]
     pub fn new(config: &Config, stream_sub_tx: flume::Sender<StreamSubscriber>) -> Result<Self> {
-        let init_segment = InitSegment::from(config);
+        let init_segment = InitSegment::new(config);
 
         let (tx, rx) = flume::unbounded();
         stream_sub_tx
@@ -387,7 +390,7 @@ impl VideoStream {
         config: &Config,
         stream_sub_tx: flume::Sender<StreamSubscriber>,
     ) -> Result<Self> {
-        let init_segment = InitSegment::from(config);
+        let init_segment = InitSegment::new(config);
 
         let (tx, rx) = flume::unbounded();
         stream_sub_tx
@@ -409,8 +412,11 @@ impl VideoStream {
         })
     }
 
-    fn serialize_segment(&mut self, x: Option<MediaSegment>) -> Option<io::Result<Vec<u8>>> {
-        let Some(mut media_segment) = x else {
+    fn serialize_segment(
+        &mut self,
+        media_segment: Option<MediaSegment>,
+    ) -> Option<io::Result<Vec<u8>>> {
+        let Some(mut media_segment) = media_segment else {
             #[cfg(feature = "log")]
             log::trace!("VideoStream ended");
             return None;
