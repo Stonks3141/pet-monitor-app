@@ -360,11 +360,12 @@ impl VideoStream {
 
         let (tx, rx) = flume::unbounded();
         stream_sub_tx
-            .send(tx)
+            .send_async(tx)
+            .await
             .map_err(|_| "Failed to communicate with streaming task".to_string())?;
         // if the send succeeds, the other side will respond immediately
         #[allow(clippy::unwrap_used)]
-        let (headers, segment_rx) = rx.recv().unwrap();
+        let (headers, segment_rx) = rx.recv_async().await.unwrap();
 
         Ok(Self {
             size: init_segment.size(),
@@ -608,7 +609,7 @@ impl Iterator for SegmentIter {
                         None => unreachable!(),
                     };
                     sample_sizes.push(frame.len() as u32);
-                    buf.extend_from_slice(&*frame);
+                    buf.extend_from_slice(&frame);
                 }
                 Some(MediaSegment::new(config, 0, sample_sizes, buf))
             }
@@ -679,5 +680,37 @@ pub fn stream_media_segments(
             #[cfg(feature = "log")]
             log::trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
+    }
+}
+
+#[test]
+fn hw_encode() {
+    use std::{fs, path::PathBuf};
+    let config = Config {
+        device: PathBuf::from("/dev/video10"),
+        format: Format::H264,
+        resolution: (640, 360),
+        interval: (1, 30),
+        rotation: config::Rotation::R0,
+        v4l2_controls: HashMap::new(),
+    };
+
+    let caps = capabilities::get_capabilities_all().unwrap();
+    capabilities::check_config(&config, &caps).unwrap();
+
+    let mut file = fs::File::create("video.mp4").unwrap();
+    let mut size = 0;
+
+    let init_segment = InitSegment::new(&config);
+    size += init_segment.size();
+    init_segment.write_to(&mut file).unwrap();
+
+    let frames = FrameIter::new(&config).unwrap();
+    let segments = SegmentIter::new(config, frames).unwrap();
+    for (i, mut segment) in segments.take(5).enumerate() {
+        *segment.base_data_offset() = Some(size);
+        *segment.sequence_number() = i as u32 + 1;
+        size += segment.size();
+        segment.write_to(&mut file).unwrap();
     }
 }
