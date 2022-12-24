@@ -168,20 +168,31 @@ pub struct StreamResponse<S: Stream<Item = Vec<u8>>> {
 #[derive(Debug)]
 struct CacheControl {
     max_age: Option<u32>,
+    s_maxage: Option<u32>,
     no_store: bool,
 }
 
 impl From<CacheControl> for Header<'_> {
     fn from(cache_control: CacheControl) -> Self {
-        let mut value = String::new();
+        let mut header = String::new();
         if let Some(max_age) = cache_control.max_age {
-            value.push_str("max-age=");
-            value.push_str(&max_age.to_string());
+            header.push_str("max-age=");
+            header.push_str(&max_age.to_string());
+        }
+        if let Some(s_maxage) = cache_control.s_maxage {
+            if cache_control.max_age.is_some() {
+                header.push_str(", ");
+            }
+            header.push_str("s-maxage=");
+            header.push_str(&s_maxage.to_string());
         }
         if cache_control.no_store {
-            value.push_str(", no-store");
+            if cache_control.s_maxage.is_some() {
+                header.push_str(", ");
+            }
+            header.push_str("no-store");
         }
-        Header::new("cache-control", value)
+        Header::new("cache-control", header)
     }
 }
 
@@ -211,6 +222,7 @@ pub async fn stream(
         content_type: ContentType::MP4,
         cache_control: CacheControl {
             max_age: Some(0),
+            s_maxage: Some(0),
             no_store: true,
         },
     })
