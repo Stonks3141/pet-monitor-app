@@ -241,8 +241,7 @@ mod tests {
     use parking_lot::Mutex;
     use quickcheck::{quickcheck, TestResult};
     use ring::rand::SystemRandom;
-    use rocket::local::asynchronous::Client as AsyncClient;
-    use rocket::local::blocking::Client as BlockingClient;
+    use rocket::local::{asynchronous::Client as AsyncClient, blocking::Client as BlockingClient};
     use rocket::tokio;
 
     quickcheck! {

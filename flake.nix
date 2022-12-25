@@ -12,9 +12,11 @@
           name = "pet-monitor-app";
           packages = with pkgs; [
             cargo
+            rustc
             clippy
             rustfmt
             rust-analyzer
+            cargo-flamegraph
             libclang
             pkg-config
             x264

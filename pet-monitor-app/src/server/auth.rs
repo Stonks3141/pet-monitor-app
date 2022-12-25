@@ -40,7 +40,7 @@ impl Claims {
 const ALG: jwt::Algorithm = jwt::Algorithm::HS256;
 
 /// A struct representing a JWT.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Token {
     header: jwt::Header,
     claims: Claims,
