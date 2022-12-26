@@ -1,0 +1,1 @@
+import{S as o,i as a,s as n,D as d,h as c,B as e}from"../../chunks/index-a4c379a0.js";function h(s){return{c(){this.h()},l(t){d("svelte-1jend46",document.head).forEach(c),this.h()},h(){document.title="Pet Monitor"},m:e,p:e,i:e,o:e,d:e}}class l extends o{constructor(t){super(),a(this,t,null,h,n,{})}}export{l as default};

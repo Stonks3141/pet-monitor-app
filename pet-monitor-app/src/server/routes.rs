@@ -176,15 +176,13 @@ impl From<CacheControl> for Header<'_> {
     fn from(cache_control: CacheControl) -> Self {
         let mut header = String::new();
         if let Some(max_age) = cache_control.max_age {
-            header.push_str("max-age=");
-            header.push_str(&max_age.to_string());
+            header.push_str(&format!("max-age={}", max_age));
         }
         if let Some(s_maxage) = cache_control.s_maxage {
             if cache_control.max_age.is_some() {
                 header.push_str(", ");
             }
-            header.push_str("s-maxage=");
-            header.push_str(&s_maxage.to_string());
+            header.push_str(&format!("s-maxage={}", s_maxage));
         }
         if cache_control.no_store {
             if cache_control.s_maxage.is_some() {

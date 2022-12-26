@@ -1,0 +1,1 @@
+const e=async({fetch:a})=>{const s=await(await a("/api/config")).json(),t=await(await a("/api/capabilities")).json();return{config:s,capabilities:t}},c=Object.freeze(Object.defineProperty({__proto__:null,load:e},Symbol.toStringTag,{value:"Module"}));export{c as _,e as l};
