@@ -4,9 +4,12 @@ use mp4_stream::config::Config;
 use parking_lot::RwLock;
 use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, Ipv4Addr};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    path::{Path, PathBuf},
+    sync::Arc,
+    thread::sleep,
+};
 
 /// A wrapper for `Context` that syncs it with the config file and provides
 /// interior mutability for Rocket state.
@@ -118,15 +121,33 @@ pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::R
     match path {
         Some(path) => {
             let path = path.as_ref().to_owned();
-            spawn_blocking(move || {
-                confy::store_path(path, ctx).context("Failed to store configuration file")
+            spawn_blocking(move || match confy::store_path(&path, ctx.clone()) {
+                Ok(x) => Ok(x),
+                Err(e) => {
+                    log::warn!(
+                        "Writing config failed with error: {:?}, retrying in 10 ms",
+                        e
+                    );
+                    sleep(std::time::Duration::from_millis(10));
+                    confy::store_path(path, ctx).context("Failed to store configuration file")
+                }
             })
             .await?
         }
         None => {
             spawn_blocking(move || {
-                confy::store("pet-monitor-app", Some("config"), ctx)
-                    .context("Failed to store configuration file")
+                match confy::store("pet-monitor-app", Some("config"), ctx.clone()) {
+                    Ok(x) => Ok(x),
+                    Err(e) => {
+                        log::warn!(
+                            "Writing config failed with error: {:?}, retrying in 10 ms",
+                            e
+                        );
+                        sleep(std::time::Duration::from_millis(10));
+                        confy::store("pet-monitor-app", Some("config"), ctx)
+                            .context("Failed to store configuration file")
+                    }
+                }
             })
             .await?
         }
@@ -135,17 +156,39 @@ pub async fn store<P: AsRef<Path>>(path: &Option<P>, ctx: &Context) -> anyhow::R
 
 /// Loads the config file.
 pub async fn load<P: AsRef<Path>>(path: &Option<P>) -> anyhow::Result<Context> {
-    use anyhow::Context;
-    if let Some(path) = path {
-        let path = path.as_ref().to_owned();
-        spawn_blocking(move || confy::load_path(path).context("Failed to load configuration file"))
+    match path {
+        Some(path) => {
+            let path = path.as_ref().to_owned();
+            spawn_blocking(move || match confy::load_path(&path) {
+                Ok(x) => Ok(x),
+                Err(e) => {
+                    log::warn!(
+                        "Writing config failed with error: {:?}, retrying in 10 ms",
+                        e
+                    );
+                    sleep(std::time::Duration::from_millis(10));
+                    confy::load_path(path).context("Failed to store configuration file")
+                }
+            })
             .await?
-    } else {
-        spawn_blocking(move || {
-            confy::load("pet-monitor-app", Some("config"))
-                .context("Failed to load configuration file")
-        })
-        .await?
+        }
+        None => {
+            spawn_blocking(
+                move || match confy::load("pet-monitor-app", Some("config")) {
+                    Ok(x) => Ok(x),
+                    Err(e) => {
+                        log::warn!(
+                            "Writing config failed with error: {:?}, retrying in 10 ms",
+                            e
+                        );
+                        sleep(std::time::Duration::from_millis(10));
+                        confy::load("pet-monitor-app", Some("config"))
+                            .context("Failed to store configuration file")
+                    }
+                },
+            )
+            .await?
+        }
     }
 }
 
