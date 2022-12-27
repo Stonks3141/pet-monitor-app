@@ -1,1 +1,0 @@
-import{R as o}from"./control-fd2e9251.js";function r(e,t){return new o(e,t)}const n=!0,s=async({fetch:e})=>{throw(await e("/api/config",{method:"HEAD"})).status===200?r(307,"/stream"):r(307,"/login")},c=Object.freeze(Object.defineProperty({__proto__:null,prerender:n,load:s},Symbol.toStringTag,{value:"Module"}));export{c as _,s as l,n as p};
