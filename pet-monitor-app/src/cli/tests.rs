@@ -9,9 +9,7 @@ macro_rules! is_valid {
         })
     }};
     (@string $val:expr) => {{
-        !($val)
-            .clone()
-            .map_or(false, |x| x.starts_with("-") || x.is_empty())
+        !$val.starts_with("-") && !$val.is_empty()
     }};
 }
 
@@ -24,7 +22,8 @@ impl Cmd {
 impl SubCmd {
     fn is_valid(&self) -> bool {
         match self.clone() {
-            Self::Configure { password, .. } => is_valid!(@string password),
+            Self::RegenSecret => true,
+            Self::SetPassword(password) => is_valid!(@string password),
             Self::Start { cert, key, .. } => is_valid!(@path cert) && is_valid!(@path key),
         }
     }
@@ -85,33 +84,26 @@ impl Arbitrary for Cmd {
 
 impl Arbitrary for SubCmd {
     fn arbitrary(g: &mut Gen) -> Self {
-        if bool::arbitrary(g) {
-            Self::Configure {
-                password: Arbitrary::arbitrary(g),
-                regen_secret: Arbitrary::arbitrary(g),
-            }
-        } else {
-            Self::Start {
+        match u32::arbitrary(g) % 3 {
+            0 => Self::RegenSecret,
+            1 => Self::SetPassword(Arbitrary::arbitrary(g)),
+            2 => Self::Start {
                 tls: Arbitrary::arbitrary(g),
                 tls_port: Arbitrary::arbitrary(g),
                 cert: Arbitrary::arbitrary(g),
                 key: Arbitrary::arbitrary(g),
                 port: Arbitrary::arbitrary(g),
                 stream: Arbitrary::arbitrary(g),
-            }
+            },
+            _ => unreachable!(),
         }
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        use SubCmd::{Configure, Start};
+        use SubCmd::Start;
         match self.clone() {
-            Self::Configure {
-                password,
-                regen_secret,
-            } => shrink_tuple!(Configure {
-                password,
-                regen_secret
-            }),
+            Self::RegenSecret => Box::new(std::iter::empty()),
+            Self::SetPassword(password) => Box::new(password.shrink().map(Self::SetPassword)),
             Self::Start {
                 tls,
                 tls_port,
@@ -148,18 +140,10 @@ fn make_args(cmd: &Cmd) -> Vec<String> {
     }
 
     match &cmd.command {
-        SubCmd::Configure {
-            password,
-            regen_secret,
-        } => {
-            args.push("configure".to_string());
-            if *regen_secret {
-                args.push("--regen-secret".to_string());
-            }
-            if let Some(password) = password {
-                args.push("--password".to_string());
-                args.push(password.clone());
-            }
+        SubCmd::RegenSecret => args.push("regen-secret".to_string()),
+        SubCmd::SetPassword(password) => {
+            args.push("set-password".to_string());
+            args.push(password.to_string());
         }
         SubCmd::Start {
             tls,
@@ -302,10 +286,7 @@ async fn merge_invalid_tls() {
 #[tokio::test]
 async fn merge_jwt_regen() -> anyhow::Result<()> {
     let cmd = Cmd {
-        command: SubCmd::Configure {
-            password: None,
-            regen_secret: true,
-        },
+        command: SubCmd::RegenSecret,
         conf_path: None,
         log_level: Level::Info,
     };
@@ -323,10 +304,7 @@ async fn merge_new_password() -> anyhow::Result<()> {
     let password = "foo";
 
     let cmd = Cmd {
-        command: SubCmd::Configure {
-            password: Some(password.to_string()),
-            regen_secret: false,
-        },
+        command: SubCmd::SetPassword(password.to_string()),
         conf_path: None,
         log_level: Level::Info,
     };

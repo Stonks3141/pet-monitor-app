@@ -15,27 +15,26 @@ pet-monitor-app is a simple video streaming server for Linux. It provides out-of
   - [Contributing](#contributing)
   - [Inspiration](#inspiration)
 
-## Quickstart
+## Installation
 
-Install libx264 using your system's package manager. Download the binary
-and corresponding `.sha256` file for your OS/architecture from the
+Install libx264 and openssl using your system's package manager. Download the
+binary and corresponding `.sha256` file for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
 Run `sha256sum --check pet-monitor-app-VERSION-TARGET.sha256` to verify the
-checksum. If it is correct, move the binary into `~/.local/bin`. Run these
-commands to start the server:
+checksum. If it is correct, move the binary into `~/.local/bin`.
+
+## Usage
+
+Run these commands to start the server:
 
 ```sh
-pet-monitor-app configure --password MY_PASSWORD
+pet-monitor-app set-password MY_PASSWORD
 pet-monitor-app start
 ```
 
-This first sets the password with the `configure` subcommand, and then starts
+This first sets the password with the `set-password` subcommand, and then starts
 the server. You can view the page at [http://localhost:8080](http://localhost:8080).
-To reset your password, run
-
-```sh
-pet-monitor-app configure --password NEW_PASSWORD
-```
+To reset your password, run the `set-password` subcommand again.
 
 For a full list of command-line options, run with the `--help` flag.
 

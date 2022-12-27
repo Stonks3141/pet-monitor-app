@@ -23,13 +23,13 @@ async fn main() -> anyhow::Result<()> {
     let mut ctx = cli::merge_ctx(&cmd, ctx).await?;
 
     if ctx.jwt_secret == [0; 32] {
-        let mut rng = ring::rand::SystemRandom::new();
-        ctx.jwt_secret = secrets::new_secret(&mut rng)?;
+        let rng = ring::rand::SystemRandom::new();
+        ctx.jwt_secret = secrets::new_secret(&rng)?;
         config::store(&cmd.conf_path, &ctx).await?;
     }
 
     match cmd.command {
-        cli::SubCmd::Configure { .. } => {
+        cli::SubCmd::SetPassword(_) | cli::SubCmd::RegenSecret => {
             config::store(&cmd.conf_path, &ctx).await?;
             info!("Successfully updated configuration!");
         }

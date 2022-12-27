@@ -30,10 +30,8 @@ pub enum SubCmd {
         port: Option<u16>,
         stream: bool,
     },
-    Configure {
-        password: Option<String>,
-        regen_secret: bool,
-    },
+    SetPassword(String),
+    RegenSecret,
 }
 
 /// Returns the application's clap [`Command`](clap::builder::Command).
@@ -43,11 +41,13 @@ pub fn cmd() -> Command {
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
         .subcommand(
-            Command::new("configure")
-                .about("Set configuration options")
-                .arg(arg!(--password <PASSWORD> "The new password to set").required(false))
-                .arg(arg!(--"regen-secret" "Regenerates the secret used for signing JWTs")
-                    .action(ArgAction::SetTrue)),
+            Command::new("set-password")
+                .about("Set the password")
+                .arg(arg!(password: <PASSWORD> "The new password to set"))
+        )
+        .subcommand(
+            Command::new("regen-secret")
+                .about("Regenerate the secret used to sign JSON web tokens.")
         )
         .subcommand(
             Command::new("start")
@@ -90,10 +90,11 @@ where
     let matches = cmd().get_matches_from(args);
     Cmd {
         command: match matches.subcommand() {
-            Some(("configure", matches)) => SubCmd::Configure {
-                password: matches.get_one::<String>("password").cloned(),
-                regen_secret: matches.get_flag("regen-secret"),
-            },
+            Some(("set-password", matches)) => {
+                #[allow(clippy::unwrap_used)] // the "password" arg is required
+                SubCmd::SetPassword(matches.get_one::<String>("password").cloned().unwrap())
+            }
+            Some(("regen-secret", _)) => SubCmd::RegenSecret,
             Some(("start", matches)) => SubCmd::Start {
                 tls: matches.get_one::<bool>("tls").copied(),
                 tls_port: matches.get_one::<u16>("tls-port").copied(),
@@ -123,19 +124,13 @@ where
 
 pub async fn merge_ctx(cmd: &Cmd, mut ctx: Context) -> anyhow::Result<Context> {
     match &cmd.command {
-        SubCmd::Configure {
-            password,
-            regen_secret,
-        } => {
+        SubCmd::RegenSecret => {
             let rng = SystemRandom::new();
-
-            if let Some(pwd) = password {
-                ctx.password_hash = secrets::init_password(&rng, pwd).await?;
-            }
-
-            if *regen_secret {
-                ctx.jwt_secret = secrets::new_secret(&rng)?;
-            }
+            ctx.jwt_secret = secrets::new_secret(&rng)?;
+        }
+        SubCmd::SetPassword(password) => {
+            let rng = SystemRandom::new();
+            ctx.password_hash = secrets::init_password(&rng, password).await?;
         }
         SubCmd::Start {
             tls,

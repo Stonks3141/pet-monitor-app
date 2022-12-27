@@ -10,8 +10,7 @@ async fn test_login() {
         .unwrap()
         .arg("--config")
         .arg(tmp.path())
-        .arg("configure")
-        .arg("--password")
+        .arg("set-password")
         .arg("123")
         .assert()
         .success();
