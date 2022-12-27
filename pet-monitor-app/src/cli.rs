@@ -40,6 +40,15 @@ pub fn cmd() -> Command {
         .about("A simple and secure pet monitor for Linux")
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
+        .arg(arg!(-c --config <CONFIG> "Path to the configuration file to use.")
+            .required(false)
+            .value_parser(value_parser!(PathBuf))
+            .value_hint(ValueHint::FilePath)
+            .global(true))
+        .arg(arg!(verbosity: -v... "Log verbosity level, use 0, 1, or 2 times to set the log level to `info`, `debug`, or `trace`, respectively. This flag is overrided by the `-q` flag.")
+            .global(true))
+        .arg(arg!(quiet: -q... "Silent mode, use 1 or 2 times to set the log level to `warn` or `error`, respectively. This flag overrides any use of the `-v` flag.")
+            .global(true))
         .subcommand(
             Command::new("set-password")
                 .about("Set the password")
@@ -47,7 +56,7 @@ pub fn cmd() -> Command {
         )
         .subcommand(
             Command::new("regen-secret")
-                .about("Regenerate the secret used to sign JSON web tokens.")
+                .about("Regenerate the secret used to sign JWTs")
         )
         .subcommand(
             Command::new("start")
@@ -73,12 +82,6 @@ pub fn cmd() -> Command {
                     .action(ArgAction::SetFalse))
         )
         .subcommand_required(true)
-        .arg(arg!(-c --config <CONFIG> "Path to the configuration file to use.")
-            .required(false)
-            .value_parser(value_parser!(PathBuf))
-            .value_hint(ValueHint::FilePath))
-        .arg(arg!(verbosity: -v... "Log verbosity level, use 0, 1, or 2 times to set the log level to `info`, `debug`, or `trace`, respectively. This flag is overrided by the `-q` flag."))
-        .arg(arg!(quiet: -q... "Silent mode, use 1 or 2 times to set the log level to `warn` or `error`, respectively. This flag overrides any use of the `-v` flag."))
 }
 
 /// Parses an iterator over CLI args into a [`Cmd`] struct.
