@@ -37,49 +37,55 @@ pub enum SubCmd {
 /// Returns the application's clap [`Command`](clap::builder::Command).
 pub fn cmd() -> Command {
     Command::new("pet-monitor-app")
-        .about("A simple and secure pet monitor for Linux")
+        .about("A simple and secure pet monitor for Linux.")
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
-        .arg(arg!(-c --config <CONFIG> "Path to the configuration file to use.")
-            .required(false)
-            .value_parser(value_parser!(PathBuf))
-            .value_hint(ValueHint::FilePath)
-            .global(true))
-        .arg(arg!(verbosity: -v... "Log verbosity level, use 0, 1, or 2 times to set the log level to `info`, `debug`, or `trace`, respectively. This flag is overrided by the `-q` flag.")
-            .global(true))
-        .arg(arg!(quiet: -q... "Silent mode, use 1 or 2 times to set the log level to `warn` or `error`, respectively. This flag overrides any use of the `-v` flag.")
-            .global(true))
+        .arg(
+            arg!(-c --config <CONFIG> "Path to the configuration file to use")
+                .required(false)
+                .value_parser(value_parser!(PathBuf))
+                .value_hint(ValueHint::FilePath)
+                .global(true),
+        )
+        .arg(arg!(-v --verbose... "Increase the log level").global(true))
+        .arg(arg!(-q --quiet... "Reduce the log level").global(true))
         .subcommand(
             Command::new("set-password")
                 .about("Set the password")
-                .arg(arg!(password: <PASSWORD> "The new password to set"))
+                .arg(arg!(password: <PASSWORD> "The new password to set")),
         )
-        .subcommand(
-            Command::new("regen-secret")
-                .about("Regenerate the secret used to sign JWTs")
-        )
+        .subcommand(Command::new("regen-secret").about("Regenerate the secret used to sign JWTs"))
         .subcommand(
             Command::new("start")
-                .about("Starts the server")
-                .arg(arg!(-p --port <PORT> "Set the port to listen on")
-                    .required(false)
-                    .value_parser(value_parser!(u16)))
-                .arg(arg!(--"tls-port" <PORT> "Set the port to listen on for HTTPS")
-                    .required(false)
-                    .value_parser(value_parser!(u16)))
-                .arg(arg!(--tls <ENABLED> "Enable or disable TLS. Overrides the config file.")
-                    .required(false)
-                    .value_parser(value_parser!(bool)))
-                .arg(arg!(--cert <CERT_PATH> "Path to an SSL certificate. Overrides the value in the config file. If the config file does not set an SSL cert key path, one must be specified in the CLI.")
-                    .required(false)
-                    .value_parser(value_parser!(PathBuf))
-                    .value_hint(ValueHint::FilePath))
-                .arg(arg!(--key <KEY_PATH> "Path to an SSL certificate key. Overrides the value in the config file.")
-                    .required(false)
-                    .value_parser(value_parser!(PathBuf))
-                    .value_hint(ValueHint::FilePath))
-                .arg(arg!(--"no-stream" "Disable video streaming.")
-                    .action(ArgAction::SetFalse))
+                .about("Start the server")
+                .arg(
+                    arg!(-p --port <PORT> "Set the port to listen on")
+                        .required(false)
+                        .value_parser(value_parser!(u16)),
+                )
+                .arg(
+                    arg!(--"tls-port" <PORT> "Set the port to listen on for HTTPS")
+                        .required(false)
+                        .value_parser(value_parser!(u16)),
+                )
+                .arg(
+                    arg!(--tls <ENABLED> "Enable or disable TLS.")
+                        .required(false)
+                        .value_parser(value_parser!(bool)),
+                )
+                .arg(
+                    arg!(--cert <CERT_PATH> "Path to an SSL certificate")
+                        .required(false)
+                        .value_parser(value_parser!(PathBuf))
+                        .value_hint(ValueHint::FilePath),
+                )
+                .arg(
+                    arg!(--key <KEY_PATH> "Path to an SSL certificate key")
+                        .required(false)
+                        .value_parser(value_parser!(PathBuf))
+                        .value_hint(ValueHint::FilePath),
+                )
+                .arg(arg!(--"no-stream" "Disable video streaming").action(ArgAction::SetFalse)),
         )
         .subcommand_required(true)
 }
@@ -116,7 +122,7 @@ where
         log_level: match matches.get_count("quiet") {
             2.. => Level::Error,
             1 => Level::Warn,
-            0 => match matches.get_count("verbosity") {
+            0 => match matches.get_count("verbose") {
                 0 => Level::Info,
                 1 => Level::Debug,
                 2.. => Level::Trace,
