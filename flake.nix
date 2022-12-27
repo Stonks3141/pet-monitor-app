@@ -6,7 +6,7 @@
   };
   outputs = inputs@{ self, nixpkgs, utils, ... }: utils.lib.mkFlake {
     inherit self inputs;
-    # supportedSystems = [ "x86_64-linux" "arm-linux" ];
+    supportedSystems = [ "x86_64-linux" "arm-linux" ];
     outputsBuilder = channels:
       let pkgs = channels.nixpkgs; in {
         devShell = pkgs.mkShell {
@@ -21,6 +21,7 @@
             libclang
             pkg-config
             x264
+            openssl
             nodePackages.pnpm
             nixpkgs-fmt
             nil
@@ -30,6 +31,7 @@
             "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
             "-I${pkgs.glibc.dev}/include"
           ];
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
         defaultPackage = with import nixpkgs { system = "x86_64-linux"; };
           # let

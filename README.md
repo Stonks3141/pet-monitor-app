@@ -25,7 +25,7 @@ checksum. If it is correct, move the binary into `~/.local/bin`. Run these
 commands to start the server:
 
 ```sh
-pet-monitor-app configure --password MY_PASSWORD --regen-secret
+pet-monitor-app configure --password MY_PASSWORD
 pet-monitor-app start
 ```
 

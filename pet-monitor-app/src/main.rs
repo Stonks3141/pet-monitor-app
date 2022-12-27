@@ -20,7 +20,13 @@ async fn main() -> anyhow::Result<()> {
     simple_logger::init_with_level(cmd.log_level)?;
 
     let ctx = config::load(&cmd.conf_path).await?;
-    let ctx = cli::merge_ctx(&cmd, ctx).await?;
+    let mut ctx = cli::merge_ctx(&cmd, ctx).await?;
+
+    if ctx.jwt_secret == [0; 32] {
+        let mut rng = ring::rand::SystemRandom::new();
+        ctx.jwt_secret = secrets::new_secret(&mut rng)?;
+        config::store(&cmd.conf_path, &ctx).await?;
+    }
 
     match cmd.command {
         cli::SubCmd::Configure { .. } => {

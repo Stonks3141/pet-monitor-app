@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// A wrapper for `Context` that syncs it with the config file and provides
-/// interior mutability.
+/// interior mutability for Rocket state.
 #[derive(Debug, Clone)]
 pub struct ContextManager {
     ctx: Arc<RwLock<Context>>,
@@ -38,7 +38,6 @@ impl ContextManager {
         *self.ctx.write() = context.clone();
 
         // Don't mess with the global config file if we don't have a specific path
-        // for tests
         #[cfg(not(test))]
         store(&self.conf_path, &context).await?;
         #[cfg(test)]
