@@ -17,11 +17,31 @@ pet-monitor-app is a simple video streaming server for Linux. It provides out-of
 
 ## Installation
 
+### Precompiled Binary
+
 Install libx264 and openssl using your system's package manager. Download the
 binary and corresponding `.sha256` file for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
 Run `sha256sum --check pet-monitor-app-VERSION-TARGET.sha256` to verify the
 checksum. If it is correct, move the binary into `~/.local/bin`.
+
+### With Cargo
+
+Install the [Rust toolchain](https://www.rust-lang.org/tools/install) and
+run `cargo install --git https://github.com/Stonks3141/pet-monitor-app`.
+
+### Building from Source
+
+Install [rustup](https://www.rust-lang.org/learn/get-started), [node](https://nodejs.org),
+and [pnpm](https://pnpm.io/installation), and run these commands:
+
+```sh
+cd client
+pnpm build
+cd ../pet-monitor-app
+cp -r ../client/build .
+cargo build --release
+```
 
 ## Usage
 
