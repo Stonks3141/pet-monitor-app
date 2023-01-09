@@ -28,7 +28,7 @@ checksum. If it is correct, move the binary into `~/.local/bin`.
 ### With Cargo
 
 Install the [Rust toolchain](https://www.rust-lang.org/tools/install) and
-run `cargo install --git https://github.com/Stonks3141/pet-monitor-app`.
+run `cargo install pet-monitor-app --git https://github.com/Stonks3141/pet-monitor-app`.
 
 ### Building from Source
 
@@ -38,9 +38,10 @@ and [pnpm](https://pnpm.io/installation), and run these commands:
 ```sh
 cd client
 pnpm build
-cd ../pet-monitor-app
-cp -r ../client/build .
+cd ..
+cp -r client/build ./pet-monitor-app
 cargo build --release
+cp target/release/pet-monitor-app ~/.local/bin
 ```
 
 ## Usage
@@ -58,9 +59,8 @@ To reset your password, run the `set-password` subcommand again.
 
 For a full list of command-line options, run with the `--help` flag.
 
-The configuration file is located at
-`~/.config/pet-monitor-app/config.toml`. To enable TLS, add this to
-the config file:
+The configuration file is located at `~/.config/pet-monitor-app/config.toml`.
+To enable TLS, add this to the config file:
 
 ```toml
 [tls]
@@ -78,8 +78,8 @@ install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
 
 ## Development
 
-You will need to install [rustup](https://www.rust-lang.org/learn/get-started), [node](https://nodejs.org),
-and [pnpm](https://pnpm.io/installation).
+You will need to install [rustup](https://www.rust-lang.org/learn/get-started),
+[node](https://nodejs.org), and [pnpm](https://pnpm.io/installation).
 
 Clone the repository and set up the pre-commit hook with
 
@@ -91,30 +91,28 @@ ln -s pre-commit.sh .git/hooks/pre-commit
 
 To install dependencies, run `pnpm install` in the `client/` directory. To
 start the frontend development server, run `pnpm dev` in the `client/` directory.
-While the frontend is running, you can run `cargo run -- start` in the
-`pet-monitor-app/` directory to start the backend. Vite should proxy to the
-backend automatically. The client bundle is not included in the binary unless
-you build in release mode.
+While the frontend is running, you can run `cargo run -- start` in the base
+directory to start the backend. Vite should proxy to the backend automatically.
+The client bundle is not included in the binary unless you build in release mode.
 
 To build a binary, run these commands:
 
 ```sh
 cd client
 pnpm build
-cd ../pet-monitor-app
-cp -r ../client/build .
+cd ..
+cp -r ../client/build ./pet-monitor-app
 cargo build --release
 ```
 
-This builds the frontend bundle, copies it into the `pet-monitor-app/` directory, and builds the binary.
-The binary should be located at `target/release/pet-monitor-app`.
+This builds the frontend bundle, copies it into the `pet-monitor-app/` directory,
+and builds the binary. The binary should be located at `target/release/pet-monitor-app`.
 
 ## Motivation
 
 I wanted to have a pet monitor without buying one, so I used my Raspberry Pi Zero
-and [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I was
-unsatisfied with the lack of security and features (It wasn't designed for this
-anyway, not their fault). This project aims to remedy that, with support for
+and [fmp4streamer](https://github.com/soyersoyer/fmp4streamer). However, I didn't
+like the lack of authentication. This project aims to remedy that, with support for
 TLS/HTTPS, secure authentication, and secure password storage with argon2. In the
 future, I hope to expand it with additional features, such as audio support and
 video recording.
@@ -153,7 +151,7 @@ any new functionality.
 
 pet-monitor-app uses [quickcheck](https://crates.io/crates/quickcheck)
 and Rust's built-in unit and integration testing framework. To run
-tests, clone the repo and run
+tests, clone the repository and run
 
 ```sh
 cargo test --workspace
