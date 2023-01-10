@@ -23,7 +23,7 @@ include_dir = "0.7"
 confy = "0.5"
 clap = "4.0"
 serde = "1.0"
-serde_with = { version = "2.1", features = ["base64", "chrono_0_4"] }
+serde_with = { version = "2.2", features = ["base64", "chrono_0_4"] }
 anyhow = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 ring = "0.16"
