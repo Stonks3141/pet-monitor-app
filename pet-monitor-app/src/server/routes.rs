@@ -4,7 +4,6 @@ use super::auth::Token;
 use crate::config::{Context, ContextManager};
 #[cfg(not(debug_assertions))]
 use include_dir::{include_dir, Dir};
-use log::{error, warn};
 use mp4_stream::{
     capabilities::{check_config, Capabilities},
     config::Config,
@@ -25,7 +24,7 @@ use std::path::PathBuf;
 #[get("/<path..>")]
 pub fn redirect(path: PathBuf, ctx: &State<ContextManager>) -> Result<Redirect, Status> {
     let path = path.to_str().ok_or_else(|| {
-        warn!("Failed to convert path {:?} to string", path);
+        log::warn!("Failed to convert path {:?} to string", path);
         Status::InternalServerError
     })?;
     let ctx = ctx.get();
@@ -47,7 +46,7 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
     Ok(
         if let Some(s) = STATIC_FILES.get_file(&path).map(|f| {
             f.contents_utf8().ok_or_else(|| {
-                error!("Failed to convert included file {:?} to UTF-8", path);
+                log::error!("Failed to convert included file {:?} to UTF-8", path);
                 Status::InternalServerError
             })
         }) {
@@ -65,12 +64,12 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
                 STATIC_FILES
                     .get_file("index.html")
                     .ok_or_else(|| {
-                        error!("Failed to get index.html from included bundle");
+                        log::error!("Failed to get index.html from included bundle");
                         Status::InternalServerError
                     })?
                     .contents_utf8()
                     .ok_or_else(|| {
-                        error!("Failed to convert index.html to UTF-8");
+                        log::error!("Failed to convert index.html to UTF-8");
                         Status::InternalServerError
                     })?
                     .to_string(),
@@ -108,7 +107,7 @@ pub async fn login(
                         Status::Ok
                     }
                     Err(e) => {
-                        warn!("Stringifying token failed with error '{:?}'", e);
+                        log::warn!("Stringifying token failed with error '{:?}'", e);
                         Status::InternalServerError
                     }
                 }
@@ -117,7 +116,7 @@ pub async fn login(
             }
         }
         Err(e) => {
-            warn!("Validating login attempt failed with error '{:?}'", e);
+            log::warn!("Validating login attempt failed with error '{:?}'", e);
             Status::InternalServerError
         }
     }
@@ -145,14 +144,14 @@ pub async fn put_config(
     let caps = caps.inner().clone();
 
     if let Err(e) = spawn_blocking(move || check_config(&config_clone, &caps)).await {
-        warn!("Config validation failed with error {:?}", e);
+        log::warn!("Config validation failed with error {:?}", e);
         return Err(Status::BadRequest);
     }
 
     let new_ctx = Context { config, ..ctx_read };
 
     ctx.set(new_ctx).await.map_err(|e| {
-        error!("Writing to configuration file failed with error {:?}", e);
+        log::error!("Writing to configuration file failed with error {:?}", e);
         Status::InternalServerError
     })?;
     Ok(())
@@ -204,7 +203,7 @@ pub async fn stream(
     let stream = VideoStream::new(&ctx.config, (**stream_sub_tx).clone())
         .await
         .map_err(|e| {
-            warn!("Error constructing VideoStream: {:?}", e);
+            log::warn!("Error constructing VideoStream: {:?}", e);
             Status::InternalServerError
         })?;
     Ok(StreamResponse {
@@ -212,7 +211,7 @@ pub async fn stream(
             match x {
                 Ok(x) => Some(x),
                 Err(e) => {
-                    warn!("Error streaming segment: {:?}", e);
+                    log::warn!("Error streaming segment: {:?}", e);
                     None
                 }
             }

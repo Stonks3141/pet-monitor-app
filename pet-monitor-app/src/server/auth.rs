@@ -8,7 +8,6 @@ use crate::config::ContextManager;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{Error, ErrorKind, Result};
-use log::warn;
 use rocket::http::{Cookie, Method, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 use serde::{Deserialize, Serialize};
@@ -112,7 +111,7 @@ impl<'r> FromRequest<'r> for Token {
                 }
             }
             let Some(ctx) = req.rocket().state::<ContextManager>() else {
-                warn!("Rocket is not managing a `ContextManager`");
+                log::warn!("Rocket is not managing a `ContextManager`");
                 return Outcome::Failure((
                     Status::InternalServerError,
                     Error::from(ErrorKind::InvalidToken),
@@ -133,10 +132,10 @@ impl<'r> FromRequest<'r> for Token {
                 }
                 Err(e) => {
                     match e.kind() {
-                        ErrorKind::Base64(e) => warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Crypto(e) => warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Json(e) => warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Utf8(e) => warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Base64(e) => log::warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Crypto(e) => log::warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Json(e) => log::warn!("Parsing JWT failed with error {:?}", e),
+                        ErrorKind::Utf8(e) => log::warn!("Parsing JWT failed with error {:?}", e),
                         _ => (),
                     }
                     match e.kind() {

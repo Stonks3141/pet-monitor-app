@@ -4,7 +4,8 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-use log::{info, Level};
+use clap::Parser;
+use log::Level;
 use rocket::config::LogLevel;
 
 mod cli;
@@ -16,8 +17,8 @@ mod tests;
 
 #[rocket::main]
 async fn main() -> anyhow::Result<()> {
-    let cmd = cli::parse_args(std::env::args());
-    simple_logger::init_with_level(cmd.log_level)?;
+    let cmd = cli::Cmd::parse();
+    simple_logger::init_with_env()?;
 
     let ctx = config::load(&cmd.conf_path).await?;
     let mut ctx = cli::merge_ctx(&cmd, ctx).await?;
@@ -29,12 +30,12 @@ async fn main() -> anyhow::Result<()> {
     }
 
     match cmd.command {
-        cli::SubCmd::SetPassword(_) | cli::SubCmd::RegenSecret => {
+        cli::SubCmd::SetPassword { .. } | cli::SubCmd::RegenSecret => {
             config::store(&cmd.conf_path, &ctx).await?;
-            info!("Successfully updated configuration!");
+            log::info!("Successfully updated configuration!");
         }
         cli::SubCmd::Start { stream, .. } => {
-            let level = match cmd.log_level {
+            let level = match log::max_level().to_level().unwrap_or(Level::Error) {
                 Level::Error | Level::Warn => LogLevel::Critical,
                 Level::Info => LogLevel::Normal,
                 Level::Debug | Level::Trace => LogLevel::Debug,
