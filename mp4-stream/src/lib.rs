@@ -62,7 +62,7 @@ use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use flume::r#async::RecvStream;
-use futures_core::Stream;
+use futures_lite::Stream;
 use quick_error::quick_error;
 use rscam::Camera;
 use std::{

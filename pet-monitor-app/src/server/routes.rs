@@ -233,7 +233,7 @@ pub fn capabilities(_token: Token, caps: &State<Capabilities>) -> Json<Capabilit
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::executor::block_on;
+    use futures_lite::future::block_on;
     use once_cell::sync::Lazy;
     use parking_lot::Mutex;
     use quickcheck::{quickcheck, TestResult};

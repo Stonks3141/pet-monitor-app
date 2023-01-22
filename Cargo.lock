@@ -1472,7 +1472,7 @@ dependencies = [
  "chrono",
  "fixed",
  "flume",
- "futures-core",
+ "futures-lite",
  "log",
  "quick-error 2.0.1",
  "quickcheck",
