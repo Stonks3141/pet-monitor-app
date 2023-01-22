@@ -21,7 +21,7 @@ log = "0.4"
 simple_logger = "4.0"
 include_dir = "0.7"
 confy = "0.5"
-clap = "4.0"
+clap = "4.1"
 serde = "1.0"
 serde_with = { version = "2.2", features = ["base64", "chrono_0_4"] }
 anyhow = "1.0"
