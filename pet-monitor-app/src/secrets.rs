@@ -1,7 +1,7 @@
 use ring::rand::SecureRandom;
 use tokio::task::spawn_blocking;
 
-#[cfg(not(test))]
+#[cfg(not(all(test, debug_assertions)))]
 pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     ad: &[],
     hash_length: 32, // bytes
@@ -14,7 +14,7 @@ pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     version: argon2::Version::Version13,
 };
 
-#[cfg(test)]
+#[cfg(all(test, debug_assertions))]
 pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     ad: &[],
     hash_length: 32, // bytes
