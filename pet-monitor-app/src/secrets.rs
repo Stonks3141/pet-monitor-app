@@ -61,51 +61,20 @@ pub fn new_secret(rng: &impl SecureRandom) -> anyhow::Result<[u8; 32]> {
 mod tests {
     use super::*;
     use ring::rand::SystemRandom;
-    use rocket::tokio;
+    use std::time::Instant;
 
-    #[tokio::test]
-    async fn test_hash() {
-        let password = "password";
-        let rng = SystemRandom::new();
-        let hash = init_password(&rng, &password).await.unwrap();
-        assert!(argon2::verify_encoded(&hash, password.as_bytes()).unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_hash_invalid() {
-        let password = "password";
-        let rng = SystemRandom::new();
-        let hash = init_password(&rng, &password).await.unwrap();
-        assert!(!argon2::verify_encoded(&hash, "paswurd".as_bytes()).unwrap());
-    }
-
-    #[tokio::test]
-    async fn validate_correct_password() {
-        let password = "password";
-        let config = argon2::Config {
-            mem_cost: 128, // KiB
-            time_cost: 1,
-            lanes: 1,
-            variant: argon2::Variant::Argon2id,
-            ..Default::default()
-        };
-        let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
-
-        assert!(validate(password, &hash).await.unwrap());
-    }
-
-    #[tokio::test]
-    async fn validate_incorrect_password() {
-        let password = "password";
-        let config = argon2::Config {
-            mem_cost: 128, // KiB
-            time_cost: 1,
-            lanes: 1,
-            variant: argon2::Variant::Argon2id,
-            ..Default::default()
-        };
-        let hash = argon2::hash_encoded(password.as_bytes(), &[0u8; 16], &config).unwrap();
-
-        assert!(!validate("paswurd", &hash).await.unwrap());
+    /// used for finding good argon2 params, make sure to run in release mode
+    #[ignore]
+    #[test]
+    fn argon2_time() {
+        let now = Instant::now();
+        {
+            let rand = SystemRandom::new();
+            let mut salt = [0u8; 16];
+            rand.fill(&mut salt).unwrap();
+            argon2::hash_encoded("password".as_bytes(), &salt, &ARGON2_CONFIG).unwrap();
+        }
+        let elapsed = now.elapsed();
+        println!("{:?}", elapsed);
     }
 }

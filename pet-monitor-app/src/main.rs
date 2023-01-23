@@ -10,8 +10,6 @@ mod cli;
 mod config;
 mod secrets;
 mod server;
-#[cfg(test)]
-mod tests;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
