@@ -2,7 +2,6 @@ use anyhow::Context as _;
 use chrono::Duration;
 use mp4_stream::config::Config;
 use parking_lot::RwLock;
-use rocket::tokio::task::spawn_blocking;
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, Ipv4Addr},
@@ -10,6 +9,7 @@ use std::{
     sync::Arc,
     thread::sleep,
 };
+use tokio::task::spawn_blocking;
 
 /// A wrapper for `Context` that syncs it with the config file and provides
 /// interior mutability for Rocket state.

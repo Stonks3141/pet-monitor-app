@@ -1,5 +1,5 @@
 use ring::rand::SecureRandom;
-use rocket::tokio::task::spawn_blocking;
+use tokio::task::spawn_blocking;
 
 #[cfg(not(test))]
 pub const ARGON2_CONFIG: argon2::Config = argon2::Config {

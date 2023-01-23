@@ -5,8 +5,6 @@
 #![warn(clippy::dbg_macro)]
 
 use clap::Parser;
-use log::Level;
-use rocket::config::LogLevel;
 
 mod cli;
 mod config;
@@ -15,7 +13,7 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-#[rocket::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cmd = cli::Cmd::parse();
     simple_logger::init_with_env()?;
@@ -32,15 +30,10 @@ async fn main() -> anyhow::Result<()> {
     match cmd.command {
         cli::SubCmd::SetPassword { .. } | cli::SubCmd::RegenSecret => {
             config::store(&cmd.conf_path, &ctx).await?;
-            log::info!("Successfully updated configuration!");
+            println!("Successfully updated configuration!");
         }
         cli::SubCmd::Start { stream, .. } => {
-            let level = match log::max_level().to_level().unwrap_or(Level::Error) {
-                Level::Error | Level::Warn => LogLevel::Critical,
-                Level::Info => LogLevel::Normal,
-                Level::Debug | Level::Trace => LogLevel::Debug,
-            };
-            server::launch(cmd.conf_path, ctx, level, stream).await?;
+            server::start(cmd.conf_path, ctx, stream).await?;
         }
     }
     Ok(())

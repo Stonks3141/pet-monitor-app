@@ -1,13 +1,13 @@
-use crate::config::ContextManager;
+use crate::server::AppState;
+use axum::{
+    extract::FromRequestParts,
+    http::{header, request::Parts, Method, StatusCode},
+    response::{IntoResponse, Response},
+};
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
-use jwt::errors::{Error, ErrorKind, Result};
-use rocket::http::{Cookie, Method, Status};
-use rocket::request::{FromRequest, Outcome, Request};
+use jwt::errors::{ErrorKind, Result as JwtResult};
 use serde::{Deserialize, Serialize};
-
-#[cfg(test)]
-mod tests;
 
 /// The claims in a JWT issued by this server.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,8 +60,8 @@ impl Token {
     }
 
     /// Parses a JWT into a `Token`.
-    pub fn from_str(s: &str, secret: &[u8; 32]) -> Result<Self> {
-        let dec_key = jwt::DecodingKey::from_secret(secret);
+    pub fn decode(s: &str, secret: &[u8; 32]) -> JwtResult<Self> {
+        let dec_key = jwt::DecodingKey::from_secret(secret); // TODO: only initialize this once
         let val = jwt::Validation::new(ALG);
 
         jwt::decode::<Claims>(s, &dec_key, &val).map(|t| Self {
@@ -71,78 +71,86 @@ impl Token {
     }
 
     /// Creates a JWT from a `Token`.
-    pub fn to_string(&self, secret: &[u8; 32]) -> Result<String> {
+    pub fn encode(&self, secret: &[u8; 32]) -> JwtResult<String> {
         let enc_key = jwt::EncodingKey::from_secret(secret);
-
         jwt::encode(&self.header, &self.claims, &enc_key)
     }
 }
 
-/// This request guard extracts a token from a request. It also checks the
-/// validity of the token and checks the "x-csrf-token" header for
-/// state-changing request methods.
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for Token {
-    type Error = Error;
-    async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        if let Some(token) = req.cookies().get("token").map(Cookie::value) {
-            match req.method() {
-                Method::Get | Method::Head | Method::Options | Method::Trace => (),
-                _ => {
-                    if let Some(csrf_token) = req.headers().get_one("x-csrf-token") {
-                        if token != csrf_token {
-                            return Outcome::Failure((
-                                Status::Unauthorized,
-                                Error::from(ErrorKind::InvalidToken),
-                            ));
-                        }
-                    } else {
-                        return Outcome::Failure((
-                            Status::Unauthorized,
-                            Error::from(ErrorKind::InvalidToken),
-                        ));
-                    }
-                }
-            }
-            let Some(ctx) = req.rocket().state::<ContextManager>() else {
-                log::warn!("Rocket is not managing a `ContextManager`");
-                return Outcome::Failure((
-                    Status::InternalServerError,
-                    Error::from(ErrorKind::InvalidToken),
-                ));
-            };
-            let ctx = ctx.get();
+#[allow(clippy::enum_variant_names)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthError {
+    MissingToken,
+    BadToken,
+    InvalidToken,
+}
 
-            match Self::from_str(token, &ctx.jwt_secret) {
-                Ok(token) => {
-                    if token.verify() {
-                        Outcome::Success(token)
-                    } else {
-                        Outcome::Failure((
-                            Status::Unauthorized,
-                            Error::from(ErrorKind::InvalidToken),
-                        ))
-                    }
-                }
-                Err(e) => {
-                    match e.kind() {
-                        ErrorKind::Base64(e) => log::warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Crypto(e) => log::warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Json(e) => log::warn!("Parsing JWT failed with error {:?}", e),
-                        ErrorKind::Utf8(e) => log::warn!("Parsing JWT failed with error {:?}", e),
-                        _ => (),
-                    }
-                    match e.kind() {
-                        ErrorKind::Base64(_)
-                        | ErrorKind::Crypto(_)
-                        | ErrorKind::Json(_)
-                        | ErrorKind::Utf8(_) => Outcome::Failure((Status::InternalServerError, e)),
-                        _ => Outcome::Failure((Status::Unauthorized, e)),
-                    }
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
+            Self::BadToken => (StatusCode::UNAUTHORIZED, "Bad token"),
+            Self::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
+        }
+        .into_response()
+    }
+}
+
+#[axum::async_trait]
+impl FromRequestParts<AppState> for Token {
+    type Rejection = AuthError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let cookies: Vec<_> = parts
+            .headers
+            .get(header::COOKIE)
+            .ok_or(AuthError::MissingToken)?
+            .to_str()
+            .map_err(|_| AuthError::MissingToken)?
+            .split("; ")
+            .map(|cookie| cookie.split_once('=').ok_or(AuthError::MissingToken))
+            .collect::<Result<_, _>>()?;
+
+        let token = cookies
+            .into_iter()
+            .find(|(key, _)| *key == "token")
+            .ok_or(AuthError::MissingToken)?
+            .1;
+
+        match parts.method {
+            Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE => (),
+            _ => {
+                if parts
+                    .headers
+                    .get("x-csrf-token")
+                    .ok_or(AuthError::MissingToken)?
+                    .to_str()
+                    .map_err(|_| AuthError::InvalidToken)?
+                    != token
+                {
+                    return Err(AuthError::BadToken);
                 }
             }
-        } else {
-            Outcome::Failure((Status::Unauthorized, Error::from(ErrorKind::InvalidToken)))
+        }
+
+        match Token::decode(token, &state.ctx.get().jwt_secret) {
+            Ok(token) => {
+                if token.verify() {
+                    Ok(token)
+                } else {
+                    Err(AuthError::BadToken)
+                }
+            }
+            Err(e) => match e.kind() {
+                ErrorKind::Base64(_)
+                | ErrorKind::Crypto(_)
+                | ErrorKind::Json(_)
+                | ErrorKind::Utf8(_) => Err(AuthError::InvalidToken),
+                _ => Err(AuthError::BadToken),
+            },
         }
     }
 }
