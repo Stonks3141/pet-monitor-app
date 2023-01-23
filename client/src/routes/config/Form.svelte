@@ -7,8 +7,6 @@
   export let config: Config;
   export let onSubmit: (_: Config) => void;
 
-  console.log(config);
-
   const updateFormat = () => (config.format = Object.keys(capabilities[config.device])[0]);
   const updateResolution = () =>
     (config.resolution = capabilities[config.device][config.format][0].resolution);
