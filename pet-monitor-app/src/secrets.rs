@@ -1,6 +1,3 @@
-//! This module provides functions for initializing the password hash and JWT
-//! secret.
-
 use ring::rand::SecureRandom;
 use rocket::tokio::task::spawn_blocking;
 

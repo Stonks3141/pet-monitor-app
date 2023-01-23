@@ -1,12 +1,9 @@
-//! This module handles command-line interactions with the application.
-
 use crate::config::{Context, Tls};
 use crate::secrets;
 use clap::{Parser, Subcommand};
 use ring::rand::SystemRandom;
 use std::path::PathBuf;
 
-/// A struct for command-line args
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cmd {
@@ -17,7 +14,6 @@ pub struct Cmd {
     pub command: SubCmd,
 }
 
-/// The CLI subcommand
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum SubCmd {
     /// Start the server

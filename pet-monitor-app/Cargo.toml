@@ -1,6 +1,6 @@
 [package]
 name = "pet-monitor-app"
-version = "0.1.0"
+version = "22.12.0"
 authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
 edition = "2021"
 rust-version = "1.65"

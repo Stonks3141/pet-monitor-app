@@ -1,5 +1,3 @@
-//! This module contains all server-related logic.
-
 use crate::config::{Context, ContextManager};
 use mp4_stream::{
     capabilities::{check_config, get_capabilities_all},
@@ -44,7 +42,6 @@ pub async fn launch(
     Ok(())
 }
 
-/// Returns a rocket that redirects to HTTPS
 fn http_rocket(ctx: &Context, ctx_manager: ContextManager, log_level: LogLevel) -> Rocket<Build> {
     #[allow(clippy::unwrap_used)] // Deserializing into a `Config` will always succeed
     let rocket_cfg = rocket::Config {
@@ -61,7 +58,6 @@ fn http_rocket(ctx: &Context, ctx_manager: ContextManager, log_level: LogLevel) 
         .manage(ctx_manager)
 }
 
-/// Returns the main server rocket
 fn rocket(
     ctx: &Context,
     ctx_manager: ContextManager,

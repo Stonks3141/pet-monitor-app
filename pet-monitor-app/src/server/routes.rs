@@ -1,5 +1,3 @@
-//! This module provides Rocket routes for the server.
-
 use super::auth::Token;
 use crate::config::{Context, ContextManager};
 #[cfg(not(debug_assertions))]
@@ -79,9 +77,6 @@ pub fn files(path: PathBuf) -> Result<(ContentType, String), Status> {
 }
 
 /// Validates a password and issues tokens.
-///
-/// It accepts POSTs to the `/api/login` path with the password as plain text.
-/// If the password is correct, it adds a `token` cookie containing a JWT.
 #[post("/api/login", data = "<password>")]
 pub async fn login(
     password: String,

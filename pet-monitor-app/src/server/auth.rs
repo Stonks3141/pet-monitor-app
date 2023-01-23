@@ -1,9 +1,3 @@
-//! This module provides utilities for authentication and verification.
-//!
-//! It contains the [`Token`] struct, which can be parsed to and from a string
-//! and represents a JWT, and the [`validate`] function, which verifies a
-//! password against a hash.
-
 use crate::config::ContextManager;
 use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;

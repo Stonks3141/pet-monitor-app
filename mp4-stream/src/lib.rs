@@ -543,7 +543,7 @@ impl SegmentIter {
 }
 
 impl Iterator for SegmentIter {
-    type Item = MediaSegment;
+    type Item = Result<MediaSegment>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -563,7 +563,7 @@ impl Iterator for SegmentIter {
                         Some(Err(e)) => {
                             #[cfg(feature = "log")]
                             log::warn!("Capturing frame failed with error {:?}", e);
-                            panic!();
+                            return Some(Err(e.into()));
                         }
                         None => unreachable!(),
                     };
@@ -583,7 +583,7 @@ impl Iterator for SegmentIter {
                         Err(e) => {
                             #[cfg(feature = "log")]
                             log::warn!("Encoding frame failed with error {:?}", e);
-                            panic!();
+                            return Some(Err(e.into()));
                         }
                     };
 
@@ -593,7 +593,7 @@ impl Iterator for SegmentIter {
                         *timescale as i64 * config.interval.0 as i64 / config.interval.1 as i64;
                 }
 
-                Some(MediaSegment::new(config, 0, sample_sizes, buf))
+                Some(Ok(MediaSegment::new(config, 0, sample_sizes, buf)))
             }
             Self::Hardware { frames, config } => {
                 let mut sample_sizes = Vec::new();
@@ -604,14 +604,14 @@ impl Iterator for SegmentIter {
                         Some(Err(e)) => {
                             #[cfg(feature = "log")]
                             log::warn!("Capturing frame failed with error {:?}", e);
-                            panic!();
+                            return Some(Err(e.into()));
                         }
                         None => unreachable!(),
                     };
                     sample_sizes.push(frame.len() as u32);
                     buf.extend_from_slice(&frame);
                 }
-                Some(MediaSegment::new(config, 0, sample_sizes, buf))
+                Some(Ok(MediaSegment::new(config, 0, sample_sizes, buf)))
             }
         }
     }
@@ -675,7 +675,9 @@ pub fn stream_media_segments(
             #[cfg(feature = "log")]
             let time = Instant::now();
             #[allow(clippy::unwrap_used)] // the iterator never returns `None`
-            let media_segment = segments.next().unwrap();
+            let Ok(media_segment) = segments.next().unwrap() else {
+                break;
+            };
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
             #[cfg(feature = "log")]
             log::trace!("Sent media segment, took {:?} to capture", time.elapsed());
@@ -707,7 +709,8 @@ fn hw_encode() {
 
     let frames = FrameIter::new(&config).unwrap();
     let segments = SegmentIter::new(config, frames).unwrap();
-    for (i, mut segment) in segments.take(5).enumerate() {
+    for (i, segment) in segments.take(5).enumerate() {
+        let mut segment = segment.unwrap();
         *segment.base_data_offset() = Some(size);
         *segment.sequence_number() = i as u32 + 1;
         size += segment.size();
