@@ -46,7 +46,7 @@ async fn test_login() {
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     let res = client
         .post("http://127.0.0.1:8080/api/login")
