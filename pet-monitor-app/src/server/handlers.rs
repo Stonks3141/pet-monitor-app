@@ -58,32 +58,34 @@ pub async fn login(
 ) -> Result<Response<String>, StatusCode> {
     let ctx = ctx.get();
 
-    match crate::secrets::validate(&password, &ctx.password_hash).await {
-        Ok(true) => match Token::new(ctx.jwt_timeout).encode(&ctx.jwt_secret) {
-            Ok(token) => {
-                let max_age = ctx.jwt_timeout.as_secs();
-                #[allow(clippy::unwrap_used)]
-                Ok(Response::builder()
-                    .status(StatusCode::OK)
-                    .header(
-                        header::SET_COOKIE,
-                        format!(
-                            "token={token}; Path=/; SameSite=Strict; Max-Age={max_age}; Secure"
-                        ),
-                    )
-                    .body("".to_string())
-                    .unwrap())
-            }
-            Err(e) => {
-                log::warn!("Stringifying token failed: {e:?}");
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        },
-        Ok(false) => Err(StatusCode::UNAUTHORIZED),
-        Err(e) => {
-            log::warn!("Validating login attempt failed: {e:?}");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
+    let correct = crate::secrets::validate(&password, &ctx.password_hash)
+        .await
+        .map_err(|e| {
+            log::error!("Validating login attempt failed: {e:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if correct {
+        let token = Token::new(ctx.jwt_timeout)
+            .encode(&ctx.jwt_secret)
+            .map_err(|e| {
+                log::error!("Token creation failed: {e:?}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+
+        let max_age = ctx.jwt_timeout.as_secs();
+
+        #[allow(clippy::unwrap_used)]
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(
+                header::SET_COOKIE,
+                format!("token={token}; Path=/; SameSite=Strict; Max-Age={max_age}; Secure"),
+            )
+            .body(String::new())
+            .unwrap())
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
     }
 }
 
