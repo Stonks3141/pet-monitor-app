@@ -18,8 +18,13 @@ use mp4_stream::{
 };
 
 #[debug_handler]
-pub async fn redirect(Path(path): Path<String>, State(ctx): State<ContextManager>) -> Redirect {
-    Redirect::permanent(&format!("https://{}/{}", ctx.get().domain, path))
+pub async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
+    #[allow(clippy::unwrap_used)]
+    Redirect::permanent(&format!(
+        "https://{}{}",
+        ctx.get().domain,
+        uri.path_and_query().unwrap().as_str()
+    ))
 }
 
 #[cfg(not(debug_assertions))]
