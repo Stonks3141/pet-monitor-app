@@ -2,9 +2,11 @@ use super::auth::Token;
 #[cfg(debug_assertions)]
 use super::AppState;
 use crate::config::{Context, ContextManager};
+#[cfg(not(debug_assertions))]
+use axum::body::{Bytes, Full};
 use axum::{
     body::StreamBody,
-    extract::{Path, State},
+    extract::State,
     http::{header, Response, StatusCode},
     response::Redirect,
     Json,
@@ -29,25 +31,17 @@ pub async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Red
 
 #[cfg(not(debug_assertions))]
 #[debug_handler]
-pub async fn files(uri: axum::http::Uri) -> Result<Response<String>, StatusCode> {
-    use include_dir::{include_dir, Dir};
-    const STATIC_FILES: Dir = include_dir!("$CARGO_MANIFEST_DIR/build");
+pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, StatusCode> {
+    const STATIC_FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/build");
 
     let mut path = uri.path().trim_start_matches('/');
     if !STATIC_FILES.contains(path) {
         path = "index.html";
     }
 
-    let body = STATIC_FILES
-        .get_file(path)
-        .map(|f| {
-            f.contents_utf8().ok_or_else(|| {
-                log::error!("Failed to convert included file {path:?} to UTF-8");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })
-        })
-        .unwrap()?
-        .to_string();
+    let body = Full::new(Bytes::from_static(
+        STATIC_FILES.get_file(path).unwrap().contents(),
+    ));
 
     let mut res = Response::builder();
     if let Some(content_type) = mime_guess::from_path(path).first_raw() {
@@ -67,7 +61,7 @@ pub async fn login(
     match crate::secrets::validate(&password, &ctx.password_hash).await {
         Ok(true) => match Token::new(ctx.jwt_timeout).encode(&ctx.jwt_secret) {
             Ok(token) => {
-                let max_age = ctx.jwt_timeout.num_seconds();
+                let max_age = ctx.jwt_timeout.as_secs();
                 #[allow(clippy::unwrap_used)]
                 Ok(Response::builder()
                     .status(StatusCode::OK)

@@ -4,35 +4,30 @@ use axum::{
     http::{header, request::Parts, Method, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::{prelude::*, Duration};
 use jsonwebtoken as jwt;
 use jwt::errors::{ErrorKind, Result as JwtResult};
+use jwt::get_current_timestamp as timestamp;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
-/// The claims in a JWT issued by this server.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Claims {
-    /// Issued-at time (Unix timestamp)
     iat: u64,
-    /// Expiration time (Unix timestamp)
     exp: u64,
 }
 
 impl Claims {
-    /// Creates new JWT claims that expire in `expires_in` time.
     fn new(expires_in: Duration) -> Self {
-        let utc = Utc::now();
+        let time = timestamp();
         Self {
-            iat: utc.timestamp() as u64,
-            exp: (utc + expires_in).timestamp() as u64,
+            iat: time,
+            exp: (time + expires_in.as_secs()) as u64,
         }
     }
 }
 
-/// The algorithm used for signing JWTs.
 const ALG: jwt::Algorithm = jwt::Algorithm::HS256;
 
-/// A struct representing a JWT.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Token {
     header: jwt::Header,
@@ -40,7 +35,6 @@ pub struct Token {
 }
 
 impl Token {
-    /// Creates a new token that expires in `expires_in` time.
     pub fn new(expires_in: Duration) -> Self {
         Self {
             header: jwt::Header::new(ALG),
@@ -48,18 +42,10 @@ impl Token {
         }
     }
 
-    /// Verifies the validity of a `Token`.
     pub fn verify(&self) -> bool {
-        let utc = Utc::now();
-        let Some(naive_time) = NaiveDateTime::from_timestamp_opt(self.claims.exp as i64, 0) else {
-            return false;
-        };
-        let exp = DateTime::<Utc>::from_utc(naive_time, Utc);
-
-        utc < exp
+        timestamp() < self.claims.exp
     }
 
-    /// Parses a JWT into a `Token`.
     pub fn decode(s: &str, secret: &[u8; 32]) -> JwtResult<Self> {
         let dec_key = jwt::DecodingKey::from_secret(secret); // TODO: only initialize this once
         let val = jwt::Validation::new(ALG);
@@ -70,27 +56,29 @@ impl Token {
         })
     }
 
-    /// Creates a JWT from a `Token`.
     pub fn encode(&self, secret: &[u8; 32]) -> JwtResult<String> {
         let enc_key = jwt::EncodingKey::from_secret(secret);
         jwt::encode(&self.header, &self.claims, &enc_key)
     }
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthError {
     MissingToken,
     BadToken,
     InvalidToken,
+    MissingCsrf,
+    BadCsrf,
 }
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         match self {
-            Self::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
+            Self::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token"),
             Self::BadToken => (StatusCode::UNAUTHORIZED, "Bad token"),
             Self::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
+            Self::MissingCsrf => (StatusCode::UNAUTHORIZED, "Missing CSRF token"),
+            Self::BadCsrf => (StatusCode::UNAUTHORIZED, "Bad CSRF token"),
         }
         .into_response()
     }
@@ -104,6 +92,8 @@ impl FromRequestParts<AppState> for Token {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        // TODO: use Iterator::try_find for this once it's stabilized
+
         let cookies: Vec<_> = parts
             .headers
             .get(header::COOKIE)
@@ -121,19 +111,18 @@ impl FromRequestParts<AppState> for Token {
             .1;
 
         match parts.method {
-            Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE => (),
-            _ => {
+            Method::POST | Method::PUT | Method::DELETE | Method::CONNECT | Method::PATCH
                 if parts
                     .headers
                     .get("x-csrf-token")
-                    .ok_or(AuthError::MissingToken)?
+                    .ok_or(AuthError::MissingCsrf)?
                     .to_str()
-                    .map_err(|_| AuthError::InvalidToken)?
-                    != token
-                {
-                    return Err(AuthError::BadToken);
-                }
+                    .map_err(|_| AuthError::BadCsrf)?
+                    != token =>
+            {
+                return Err(AuthError::BadCsrf);
             }
+            _ => (),
         }
 
         match Token::decode(token, &state.ctx.get().jwt_secret) {

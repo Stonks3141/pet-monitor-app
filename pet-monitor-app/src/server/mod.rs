@@ -1,5 +1,4 @@
 use crate::config::{Context, ContextManager};
-use anyhow::anyhow;
 use axum::routing::{get, post, put};
 use axum_macros::FromRef;
 use hyper::server::{
@@ -10,8 +9,10 @@ use mp4_stream::{
     capabilities::{check_config, get_capabilities_all, Capabilities},
     stream_media_segments, StreamSubscriber,
 };
-use std::{fs::File, io::BufReader, net::SocketAddr, path::PathBuf, pin::Pin, sync::Arc};
-use tokio::net::TcpListener;
+use std::{
+    fs::File, future::poll_fn, io::BufReader, net::SocketAddr, path::PathBuf, pin::Pin, sync::Arc,
+};
+use tokio::{net::TcpListener, task::spawn_blocking};
 use tokio_rustls::{
     rustls::{Certificate, PrivateKey, ServerConfig},
     TlsAcceptor,
@@ -19,7 +20,7 @@ use tokio_rustls::{
 use tower::MakeService;
 
 mod auth;
-mod routes;
+mod handlers;
 
 #[derive(Debug, Clone, FromRef)]
 struct AppState {
@@ -41,40 +42,36 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
     };
 
     let mut app = axum::Router::new()
-        .route("/api/login", post(routes::login))
-        .route("/api/config", get(routes::get_config))
-        .route("/api/config", put(routes::put_config))
-        .route("/api/capabilities", get(routes::capabilities));
+        .route("/api/login", post(handlers::login))
+        .route("/api/config", get(handlers::get_config))
+        .route("/api/config", put(handlers::put_config))
+        .route("/api/capabilities", get(handlers::capabilities));
 
     if stream {
         let (tx, rx) = flume::unbounded();
         let config = ctx.config.clone();
-        tokio::task::spawn_blocking(move || {
-            // not much we can do about an error at this point, the server is already started
-            #[allow(clippy::unwrap_used)]
-            stream_media_segments(rx, config, Some(cfg_rx)).unwrap();
-        });
-        app = app.route("/stream.mp4", get(routes::stream));
+        spawn_blocking(move || stream_media_segments(rx, config, Some(cfg_rx)));
+        app = app.route("/stream.mp4", get(handlers::stream));
         state.stream_sub_tx = Some(tx);
     }
 
     #[cfg(not(debug_assertions))]
-    let app = app.fallback(routes::files);
+    let app = app.fallback(handlers::files);
 
     let app = app.with_state(state);
 
     if ctx.tls.is_some() {
         let http_app = axum::Router::new()
-            .fallback(routes::redirect)
+            .fallback(handlers::redirect)
             .with_state(ctx_manager);
         let http_server = axum::Server::bind(&SocketAddr::new(ctx.host, ctx.port))
             .serve(http_app.into_make_service());
 
         let https_server = start_https(ctx, app);
 
-        let (r1, r2) = tokio::join!(http_server, https_server);
-        r1?;
-        r2?;
+        let (r1, r2) = tokio::join!(tokio::spawn(http_server), tokio::spawn(https_server));
+        r1??;
+        r2??;
     } else {
         axum::Server::bind(&SocketAddr::new(ctx.host, ctx.port))
             .serve(app.into_make_service())
@@ -85,6 +82,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
 }
 
 async fn start_https(ctx: Context, app: axum::Router) -> anyhow::Result<()> {
+    #[allow(clippy::unwrap_used)]
     let tls = ctx.tls.unwrap();
     let acceptor = {
         let mut cert_reader = BufReader::new(File::open(tls.cert)?);
@@ -113,9 +111,9 @@ async fn start_https(ctx: Context, app: axum::Router) -> anyhow::Result<()> {
     let mut app = app.into_make_service();
 
     loop {
-        let stream = std::future::poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))
-            .await
-            .ok_or_else(|| anyhow!("hi"))??;
+        let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await else {
+            continue;
+        };
 
         let acceptor = acceptor.clone();
         let protocol = protocol.clone();
@@ -123,6 +121,7 @@ async fn start_https(ctx: Context, app: axum::Router) -> anyhow::Result<()> {
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {
+                #[allow(clippy::unwrap_used)] // Error type is `Infallible`
                 let _ = protocol
                     .serve_connection(stream, service.await.unwrap())
                     .await;

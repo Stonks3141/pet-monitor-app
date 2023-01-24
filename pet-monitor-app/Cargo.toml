@@ -30,10 +30,9 @@ include_dir = "0.7"
 clap = { version = "4.1", features = ["derive"] }
 confy = "0.5"
 serde = "1.0"
-serde_with = { version = "2.2", features = ["base64", "chrono_0_4"] }
+serde_with = { version = "2.2", features = ["base64"] }
 anyhow = "1.0"
 mime_guess = "2.0"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
 ring = "0.16"
 jsonwebtoken = "8.2"
 rust-argon2 = "1.0"
