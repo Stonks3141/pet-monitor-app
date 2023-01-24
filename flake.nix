@@ -21,7 +21,6 @@
             libclang
             pkg-config
             x264
-            openssl
             nodePackages.pnpm
             nixpkgs-fmt
             nil
@@ -31,7 +30,6 @@
             "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
             "-I${pkgs.glibc.dev}/include"
           ];
-          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
         defaultPackage = with import nixpkgs { system = "x86_64-linux"; };
           # let
@@ -61,7 +59,6 @@
               libclang
               pkg-config
               x264
-              openssl
               # pma-client
             ];
             buildInputs = [ pkg-config x264 ];
@@ -75,7 +72,6 @@
               "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
               "-I${pkgs.glibc.dev}/include"
             ];
-            PKG_CONFIG_PATH = "${openssl.dev}/lib/pkgconfig";
           };
       };
   };

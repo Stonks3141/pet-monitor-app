@@ -19,7 +19,7 @@ pet-monitor-app is a simple video streaming server for Linux. It provides out-of
 
 ### Precompiled Binary
 
-Install libx264 and openssl using your system's package manager. Download the
+Install libx264 using your system's package manager. Download the
 binary and corresponding `.sha256` file for your OS/architecture from the
 [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
 Run `sha256sum --check pet-monitor-app-VERSION-TARGET.sha256` to verify the
