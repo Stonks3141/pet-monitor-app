@@ -1,4 +1,6 @@
-use super::{auth::Token, AppState};
+use super::auth::Token;
+#[cfg(debug_assertions)]
+use super::AppState;
 use crate::config::{Context, ContextManager};
 use axum::{
     body::StreamBody,

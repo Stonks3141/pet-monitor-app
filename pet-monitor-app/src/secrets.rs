@@ -6,10 +6,10 @@ pub const ARGON2_CONFIG: argon2::Config = argon2::Config {
     ad: &[],
     hash_length: 32, // bytes
     lanes: 4,
-    mem_cost: 8192, // KiB
+    mem_cost: 32768, // KiB
     secret: &[],
     thread_mode: argon2::ThreadMode::Parallel,
-    time_cost: 3,
+    time_cost: 8,
     variant: argon2::Variant::Argon2id,
     version: argon2::Version::Version13,
 };
@@ -67,14 +67,13 @@ mod tests {
     #[ignore]
     #[test]
     fn argon2_time() {
-        let now = Instant::now();
+        let time = Instant::now();
         {
             let rand = SystemRandom::new();
             let mut salt = [0u8; 16];
             rand.fill(&mut salt).unwrap();
             argon2::hash_encoded("password".as_bytes(), &salt, &ARGON2_CONFIG).unwrap();
         }
-        let elapsed = now.elapsed();
-        println!("{:?}", elapsed);
+        println!("{:?}", time.elapsed());
     }
 }
