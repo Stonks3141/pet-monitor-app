@@ -58,6 +58,7 @@ pub struct Context {
     pub password_hash: String,
     #[serde_as(as = "serde_with::base64::Base64")]
     pub jwt_secret: [u8; 32],
+    #[serde_as(as = "serde_with::DurationSeconds<u64>")]
     pub jwt_timeout: Duration,
     pub domain: String,
     pub host: IpAddr,
