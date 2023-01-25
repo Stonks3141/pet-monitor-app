@@ -5,8 +5,35 @@
 #![warn(clippy::dbg_macro)]
 
 use clap::Parser;
-use pet_monitor_app::{cli, config, secrets, server};
-use ring::rand::SystemRandom;
+use pet_monitor_app::{cli, config, server};
+use ring::rand::{SecureRandom, SystemRandom};
+use tokio::task::spawn_blocking;
+
+#[cfg(not(test))]
+const ARGON2_CONFIG: argon2::Config = argon2::Config {
+    ad: &[],
+    hash_length: 32, // bytes
+    lanes: 4,
+    mem_cost: 32768, // KiB
+    secret: &[],
+    thread_mode: argon2::ThreadMode::Parallel,
+    time_cost: 8,
+    variant: argon2::Variant::Argon2id,
+    version: argon2::Version::Version13,
+};
+
+#[cfg(test)]
+const ARGON2_CONFIG: argon2::Config = argon2::Config {
+    ad: &[],
+    hash_length: 32, // bytes
+    lanes: 1,
+    mem_cost: 16, // KiB
+    secret: &[],
+    thread_mode: argon2::ThreadMode::Parallel,
+    time_cost: 1,
+    variant: argon2::Variant::Argon2id,
+    version: argon2::Version::Version13,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,18 +45,23 @@ async fn main() -> anyhow::Result<()> {
     let mut ctx = config::load(cmd.conf_path.clone()).await?;
 
     if ctx.jwt_secret == [0; 32] {
-        ctx.jwt_secret = secrets::new_secret(&rng)?;
+        rng.fill(&mut ctx.jwt_secret)?;
         config::store(cmd.conf_path.clone(), ctx.clone()).await?;
     }
 
     match cmd.command {
         cli::SubCmd::RegenSecret => {
-            ctx.jwt_secret = secrets::new_secret(&rng)?;
+            rng.fill(&mut ctx.jwt_secret)?;
             config::store(cmd.conf_path.clone(), ctx.clone()).await?;
             println!("Successfully regenerated JWT signing secret.");
         }
         cli::SubCmd::SetPassword { password } => {
-            ctx.password_hash = secrets::init_password(&rng, &password).await?;
+            let mut buf = [0u8; 16];
+            rng.fill(&mut buf)?;
+            ctx.password_hash = spawn_blocking(move || {
+                argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG)
+            })
+            .await??;
             config::store(cmd.conf_path.clone(), ctx.clone()).await?;
             println!("Successfully reset password.");
         }

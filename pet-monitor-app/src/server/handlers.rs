@@ -18,6 +18,7 @@ use mp4_stream::{
     config::Config,
     StreamSubscriber, VideoStream,
 };
+use tokio::task::spawn_blocking;
 
 #[debug_handler]
 pub async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
@@ -58,12 +59,14 @@ pub async fn login(
 ) -> Result<Response<String>, StatusCode> {
     let ctx = ctx.get();
 
-    let correct = crate::secrets::validate(&password, &ctx.password_hash)
-        .await
-        .map_err(|e| {
-            tracing::error!("Validating login attempt failed: {e:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let correct =
+        spawn_blocking(move || argon2::verify_encoded(&ctx.password_hash, password.as_bytes()))
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .map_err(|e| {
+                tracing::error!("Validating login attempt failed: {e:?}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     if correct {
         let token = Token::new(ctx.jwt_timeout)
@@ -135,10 +138,9 @@ pub async fn stream(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    let stream = StreamExt::inspect(stream, |x| {
-        if let Err(e) = x {
-            tracing::warn!("Error streaming segment: {:?}", e);
-        }
+    let stream = StreamExt::inspect(stream, |it| match it {
+        Err(e) => tracing::warn!("Error streaming segment: {:?}", e),
+        Ok(_) => (),
     });
 
     #[allow(clippy::unwrap_used)]
