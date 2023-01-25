@@ -61,7 +61,7 @@ pub async fn login(
     let correct = crate::secrets::validate(&password, &ctx.password_hash)
         .await
         .map_err(|e| {
-            log::error!("Validating login attempt failed: {e:?}");
+            tracing::error!("Validating login attempt failed: {e:?}");
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
@@ -69,7 +69,7 @@ pub async fn login(
         let token = Token::new(ctx.jwt_timeout)
             .encode(&ctx.jwt_secret)
             .map_err(|e| {
-                log::error!("Token creation failed: {e:?}");
+                tracing::error!("Token creation failed: {e:?}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -108,14 +108,14 @@ pub async fn put_config(
 
     let config_clone = config.clone();
     if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
-        log::warn!("Config validation failed with error {:?}", e);
+        tracing::warn!("Config validation failed with error {:?}", e);
         return Err(StatusCode::BAD_REQUEST);
     }
 
     let new_ctx = Context { config, ..ctx_read };
 
     ctx.set(new_ctx).await.map_err(|e| {
-        log::error!("Writing to configuration file failed with error {:?}", e);
+        tracing::error!("Writing to configuration file failed with error {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(())
@@ -131,13 +131,13 @@ pub async fn stream(
     let stream = VideoStream::new(&ctx.get().config, stream_sub_tx.unwrap())
         .await
         .map_err(|e| {
-            log::error!("Error constructing VideoStream: {:?}", e);
+            tracing::error!("Error constructing VideoStream: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     let stream = StreamExt::inspect(stream, |x| {
         if let Err(e) = x {
-            log::warn!("Error streaming segment: {:?}", e);
+            tracing::warn!("Error streaming segment: {:?}", e);
         }
     });
 

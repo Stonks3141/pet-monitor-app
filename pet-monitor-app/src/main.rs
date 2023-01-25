@@ -11,7 +11,7 @@ use ring::rand::SystemRandom;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cmd = cli::Cmd::parse();
-    simple_logger::init_with_env()?;
+    tracing_subscriber::fmt::init();
 
     let rng = SystemRandom::new();
 

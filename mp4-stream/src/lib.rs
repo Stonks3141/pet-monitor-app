@@ -383,7 +383,7 @@ impl VideoStream {
     ) -> Option<io::Result<Vec<u8>>> {
         let Some(mut media_segment) = media_segment else {
             #[cfg(feature = "log")]
-            log::trace!("VideoStream ended");
+            tracing::trace!("VideoStream ended");
             return None;
         };
         if self.use_headers {
@@ -399,7 +399,7 @@ impl VideoStream {
             return Some(Err(e));
         }
         #[cfg(feature = "log")]
-        log::trace!(
+        tracing::trace!(
             "VideoStream sent media segment with sequence number {}",
             self.sequence_number - 1
         );
@@ -458,7 +458,7 @@ impl FrameIter {
                 camera.set_control(*id, val).unwrap_or(()); // ignore failure
             } else {
                 #[cfg(feature = "log")]
-                log::warn!("Couldn't find control {}", name);
+                tracing::warn!("Couldn't find control {}", name);
             }
         }
 
@@ -562,7 +562,7 @@ impl Iterator for SegmentIter {
                         Some(Ok(f)) => f,
                         Some(Err(e)) => {
                             #[cfg(feature = "log")]
-                            log::warn!("Capturing frame failed with error {:?}", e);
+                            tracing::warn!("Capturing frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
                         None => unreachable!(),
@@ -582,7 +582,7 @@ impl Iterator for SegmentIter {
                         Ok(x) => x,
                         Err(e) => {
                             #[cfg(feature = "log")]
-                            log::warn!("Encoding frame failed with error {:?}", e);
+                            tracing::warn!("Encoding frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
                     };
@@ -603,7 +603,7 @@ impl Iterator for SegmentIter {
                         Some(Ok(f)) => f,
                         Some(Err(e)) => {
                             #[cfg(feature = "log")]
-                            log::warn!("Capturing frame failed with error {:?}", e);
+                            tracing::warn!("Capturing frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
                         None => unreachable!(),
@@ -651,7 +651,7 @@ pub fn stream_media_segments(
 ) -> Result<std::convert::Infallible> {
     'main: loop {
         #[cfg(feature = "log")]
-        log::trace!("Starting stream with config {:?}", config);
+        tracing::trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
 
         let frames = FrameIter::new(&config)?;
@@ -663,7 +663,7 @@ pub fn stream_media_segments(
                 config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
                 #[cfg(feature = "log")]
-                log::trace!("Config updated to {:?}, restarting stream", config);
+                tracing::trace!("Config updated to {:?}, restarting stream", config);
                 continue 'main;
             }
             if let Ok(sender) = rx.try_recv() {
@@ -680,7 +680,7 @@ pub fn stream_media_segments(
             };
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
             #[cfg(feature = "log")]
-            log::trace!("Sent media segment, took {:?} to capture", time.elapsed());
+            tracing::trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
     }
 }
