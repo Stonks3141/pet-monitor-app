@@ -17,6 +17,7 @@
             clippy
             rustfmt
             rust-analyzer
+            just
             cargo-flamegraph
             libclang
             pkg-config
