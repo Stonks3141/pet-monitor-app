@@ -21,7 +21,7 @@ use mp4_stream::{
 use tokio::task::spawn_blocking;
 
 #[debug_handler]
-pub async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
+pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
     #[allow(clippy::unwrap_used)]
     Redirect::permanent(&format!(
         "https://{}{}",
@@ -53,7 +53,7 @@ pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, Status
 
 /// Validates a password and issues tokens.
 #[debug_handler]
-pub async fn login(
+pub(crate) async fn login(
     State(ctx): State<ContextManager>,
     password: String,
 ) -> Result<Response<String>, StatusCode> {
@@ -94,14 +94,14 @@ pub async fn login(
 
 /// Retrieves the current configuration. The request must have a valid JWT.
 #[debug_handler(state = AppState)]
-pub async fn get_config(_token: Token, State(ctx): State<ContextManager>) -> Json<Config> {
+pub(crate) async fn get_config(_token: Token, State(ctx): State<ContextManager>) -> Json<Config> {
     let ctx = ctx.get();
     Json(ctx.config)
 }
 
 /// Updates the current configuration. The request must have a valid JWT.
 #[debug_handler(state = AppState)]
-pub async fn put_config(
+pub(crate) async fn put_config(
     _token: Token,
     State(ctx): State<ContextManager>,
     State(caps): State<Capabilities>,
@@ -125,7 +125,7 @@ pub async fn put_config(
 }
 
 #[debug_handler(state = AppState)]
-pub async fn stream(
+pub(crate) async fn stream(
     _token: Token,
     State(ctx): State<ContextManager>,
     State(stream_sub_tx): State<Option<flume::Sender<StreamSubscriber>>>,
@@ -152,6 +152,9 @@ pub async fn stream(
 }
 
 #[debug_handler(state = AppState)]
-pub async fn capabilities(_token: Token, State(caps): State<Capabilities>) -> Json<Capabilities> {
+pub(crate) async fn capabilities(
+    _token: Token,
+    State(caps): State<Capabilities>,
+) -> Json<Capabilities> {
     Json(caps)
 }

@@ -12,7 +12,7 @@ use std::{
 use tokio::task::spawn_blocking;
 
 #[derive(Debug, Clone)]
-pub struct ContextManager {
+pub(crate) struct ContextManager {
     ctx: Arc<RwLock<Context>>,
     sender: flume::Sender<Config>,
     conf_path: Option<PathBuf>,
