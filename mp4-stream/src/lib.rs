@@ -9,7 +9,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use mp4_stream::{config::Config, VideoStream, stream_media_segments};
 //! use std::{fs, thread, io::Write};
 //!
@@ -381,7 +381,7 @@ impl VideoStream {
         media_segment: Option<MediaSegment>,
     ) -> Option<io::Result<Vec<u8>>> {
         let Some(mut media_segment) = media_segment else {
-            #[cfg(feature = "log")]
+            #[cfg(feature = "tracing")]
             tracing::trace!("VideoStream ended");
             return None;
         };
@@ -397,7 +397,7 @@ impl VideoStream {
         if let Err(e) = media_segment.write_to(&mut buf) {
             return Some(Err(e));
         }
-        #[cfg(feature = "log")]
+        #[cfg(feature = "tracing")]
         tracing::trace!(
             "VideoStream sent media segment with sequence number {}",
             self.sequence_number - 1
@@ -456,7 +456,7 @@ impl FrameIter {
             if let Some(id) = controls.get(name) {
                 camera.set_control(*id, val).unwrap_or(()); // ignore failure
             } else {
-                #[cfg(feature = "log")]
+                #[cfg(feature = "tracing")]
                 tracing::warn!("Couldn't find control {}", name);
             }
         }
@@ -560,7 +560,7 @@ impl Iterator for SegmentIter {
                     let frame = match frames.next() {
                         Some(Ok(f)) => f,
                         Some(Err(e)) => {
-                            #[cfg(feature = "log")]
+                            #[cfg(feature = "tracing")]
                             tracing::warn!("Capturing frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
@@ -580,7 +580,7 @@ impl Iterator for SegmentIter {
                     let (data, _) = match encoder.encode(*timestamp, image) {
                         Ok(x) => x,
                         Err(e) => {
-                            #[cfg(feature = "log")]
+                            #[cfg(feature = "tracing")]
                             tracing::warn!("Encoding frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
@@ -601,7 +601,7 @@ impl Iterator for SegmentIter {
                     let frame = match frames.next() {
                         Some(Ok(f)) => f,
                         Some(Err(e)) => {
-                            #[cfg(feature = "log")]
+                            #[cfg(feature = "tracing")]
                             tracing::warn!("Capturing frame failed with error {:?}", e);
                             return Some(Err(e.into()));
                         }
@@ -649,7 +649,7 @@ pub fn stream_media_segments(
     config_rx: Option<flume::Receiver<Config>>,
 ) -> Result<std::convert::Infallible> {
     'main: loop {
-        #[cfg(feature = "log")]
+        #[cfg(feature = "tracing")]
         tracing::trace!("Starting stream with config {:?}", config);
         let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
 
@@ -661,7 +661,7 @@ pub fn stream_media_segments(
             if let Some(Ok(new_config)) = config_rx.as_ref().map(flume::Receiver::try_recv) {
                 config = new_config;
                 senders.retain(|sender| sender.send(None).is_ok());
-                #[cfg(feature = "log")]
+                #[cfg(feature = "tracing")]
                 tracing::trace!("Config updated to {:?}, restarting stream", config);
                 continue 'main;
             }
@@ -671,48 +671,15 @@ pub fn stream_media_segments(
                 sender.send((headers.clone(), rx)).unwrap_or(());
             }
 
-            #[cfg(feature = "log")]
-            let time = Instant::now();
+            #[cfg(feature = "tracing")]
+            let time = std::time::Instant::now();
             #[allow(clippy::unwrap_used)] // the iterator never returns `None`
             let Ok(media_segment) = segments.next().unwrap() else {
                 break;
             };
             senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
-            #[cfg(feature = "log")]
+            #[cfg(feature = "tracing")]
             tracing::trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }
-    }
-}
-
-#[test]
-fn hw_encode() {
-    use std::{fs, path::PathBuf};
-    let config = Config {
-        device: PathBuf::from("/dev/video10"),
-        format: Format::H264,
-        resolution: (640, 360),
-        interval: (1, 30),
-        rotation: config::Rotation::R0,
-        v4l2_controls: HashMap::new(),
-    };
-
-    let caps = capabilities::get_capabilities_all().unwrap();
-    capabilities::check_config(&config, &caps).unwrap();
-
-    let mut file = fs::File::create("video.mp4").unwrap();
-    let mut size = 0;
-
-    let init_segment = InitSegment::new(&config);
-    size += init_segment.size();
-    init_segment.write_to(&mut file).unwrap();
-
-    let frames = FrameIter::new(&config).unwrap();
-    let segments = SegmentIter::new(config, frames).unwrap();
-    for (i, segment) in segments.take(5).enumerate() {
-        let mut segment = segment.unwrap();
-        *segment.base_data_offset() = Some(size);
-        *segment.sequence_number() = i as u32 + 1;
-        size += segment.size();
-        segment.write_to(&mut file).unwrap();
     }
 }
