@@ -3,7 +3,7 @@
   "release-type": "rust",
   "plugins": ["cargo-workspace", "sentence-case"],
   "packages": {
-    "pet-monitor-app": "0.2.0",
+    "pet-monitor-app": {},
     "mp4-stream": {}
   }
 }
