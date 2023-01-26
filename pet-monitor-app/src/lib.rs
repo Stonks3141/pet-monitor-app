@@ -57,7 +57,10 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
     if stream {
         let (tx, rx) = flume::unbounded();
         let config = ctx.config.clone();
-        spawn_blocking(move || stream_media_segments(rx, config, Some(cfg_rx)));
+        spawn_blocking(move || match stream_media_segments(rx, config, Some(cfg_rx)) {
+            Err(e) => tracing::error!("{e}"),
+            _ => (),
+        });
         app = app.route("/stream.mp4", get(handlers::stream));
         state.stream_sub_tx = Some(tx);
     }
