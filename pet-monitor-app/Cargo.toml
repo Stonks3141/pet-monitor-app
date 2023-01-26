@@ -41,9 +41,8 @@ mp4-stream = { version = "0.1.0", features = ["serde", "tracing"], path = "../mp
 [dev-dependencies]
 assert_cmd = "2.0"
 assert_fs = "1.0"
-reqwest = { version = "0.11", features = ["cookies"] }
+reqwest = { version = "0.11", features = ["cookies"], default-features = false }
 tokio = { version = "1.24", features = ["time", "process"] }
 
 [[bin]]
 name = "pet-monitor-app"
-path = "src/main.rs"

@@ -1,4 +1,4 @@
-use super::AppState;
+use crate::AppState;
 use axum::{
     extract::FromRequestParts,
     http::{header, request::Parts, Method, StatusCode},
@@ -6,22 +6,21 @@ use axum::{
 };
 use jsonwebtoken as jwt;
 use jwt::errors::{ErrorKind, Result as JwtResult};
-use jwt::get_current_timestamp as timestamp;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Claims {
-    iat: u64,
-    exp: u64,
+pub struct Claims {
+    pub iat: u64,
+    pub exp: u64,
 }
 
 impl Claims {
-    fn new(expires_in: Duration) -> Self {
-        let time = timestamp();
+    pub fn new(expires_in: Duration) -> Self {
+        let time = jwt::get_current_timestamp();
         Self {
             iat: time,
-            exp: (time + expires_in.as_secs()) as u64,
+            exp: time + expires_in.as_secs(),
         }
     }
 }
@@ -31,7 +30,7 @@ const ALG: jwt::Algorithm = jwt::Algorithm::HS256;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Token {
     header: jwt::Header,
-    claims: Claims,
+    pub claims: Claims,
 }
 
 impl Token {
@@ -43,7 +42,7 @@ impl Token {
     }
 
     pub fn verify(&self) -> bool {
-        timestamp() < self.claims.exp
+        jwt::get_current_timestamp() < self.claims.exp
     }
 
     pub fn decode(s: &str, secret: &[u8; 32]) -> JwtResult<Self> {

@@ -4,8 +4,10 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
+mod cli;
+
 use clap::Parser;
-use pet_monitor_app::{cli, config, server};
+use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::task::spawn_blocking;
 
@@ -98,11 +100,13 @@ async fn main() -> anyhow::Result<()> {
                             key,
                         });
                     }
-                    (Some(true), _, _) => anyhow::bail!("Since the config file does not set up TLS, both a cert and key path must be specified."),
+                    (Some(true), _, _) => anyhow::bail!(
+                        "Since the config file does not set up TLS, both a cert and key path must be specified."
+                    ),
                     _ => (),
                 },
             }
-            server::start(cmd.conf_path, ctx, stream).await?;
+            pet_monitor_app::start(cmd.conf_path, ctx, stream).await?;
         }
     }
     Ok(())
