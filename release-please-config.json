@@ -1,0 +1,9 @@
+{
+  "bootstrap-sha": "da4f38892b0ce457ab69175612eaa8862af87395",
+  "release-type": "rust",
+  "plugins": ["cargo-workspace", "sentence-case"],
+  "packages": {
+    "pet-monitor-app": "0.2.0",
+    "mp4-stream": {}
+  }
+}
