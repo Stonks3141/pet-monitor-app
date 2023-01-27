@@ -22,10 +22,10 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+      - name: Install Just
+        uses: extractions/setup-just@v1
+      - name: Run checks
+        run: just check
 
   Check-release:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Create dummy `dist` directory
+      - name: Create dummy `build` directory
         run: |
           cd pet-monitor-app
           mkdir build
@@ -45,11 +45,10 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - name: Run cargo check in release mode
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --release
+      - name: Install Just
+        uses: extractions/setup-just@v1
+      - name: Run checks
+        run: just check --release
 
   Test:
     runs-on: ubuntu-latest
@@ -57,7 +56,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - uses: codecov/codecov-action@v3
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
@@ -66,34 +64,10 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+      - name: Install Just
+        uses: extractions/setup-just@v1
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  Lint:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --check
-      - name: Run lints
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
+        run: just test
 
   build-client:
     name: Build client
@@ -116,8 +90,8 @@ jobs:
           pnpm install
           pnpm build
 
-  lint-client:
-    name: Lint client
+  check-client:
+    name: Check client
     runs-on: ubuntu-latest
 
     steps:
@@ -136,45 +110,4 @@ jobs:
           cd client
           pnpm install
           pnpm lint
-
-  typecheck-client:
-    name: Typecheck client
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 7.8.0
-      - name: Run typecheck
-        run: |
-          cd client
-          pnpm install
           pnpm check
-
-  test-client:
-    name: Test client
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 7.8.0
-      - name: Run tests
-        run: |
-          cd client
-          pnpm install
-          pnpm test
