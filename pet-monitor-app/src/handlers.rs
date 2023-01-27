@@ -19,6 +19,7 @@ use mp4_stream::{
     StreamSubscriber, VideoStream,
 };
 use tokio::task::spawn_blocking;
+use tower_cookies::{Cookie, Cookies};
 
 #[debug_handler]
 pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
@@ -57,8 +58,9 @@ pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, Status
 #[debug_handler]
 pub(crate) async fn login(
     State(ctx): State<ContextManager>,
+    cookies: Cookies,
     password: String,
-) -> Result<Response<String>, StatusCode> {
+) -> Result<(), StatusCode> {
     let ctx = ctx.get();
 
     let correct =
@@ -78,17 +80,16 @@ pub(crate) async fn login(
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
-        let max_age = ctx.jwt_timeout.as_secs();
+        #[allow(clippy::unwrap_used)] // conversion of u64 to i64
+        let cookie = Cookie::build("token", token)
+            .path("/")
+            .max_age(ctx.jwt_timeout.try_into().unwrap())
+            .same_site(cookie::SameSite::Strict)
+            .finish();
 
-        #[allow(clippy::unwrap_used)]
-        Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(
-                header::SET_COOKIE,
-                format!("token={token}; Path=/; SameSite=Strict; Max-Age={max_age}; Secure"),
-            )
-            .body(String::new())
-            .unwrap())
+        cookies.add(cookie);
+
+        Ok(())
     } else {
         Err(StatusCode::UNAUTHORIZED)
     }

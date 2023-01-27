@@ -28,6 +28,7 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower::MakeService;
+use tower_cookies::CookieManagerLayer;
 
 #[derive(Debug, Clone, FromRef)]
 struct AppState {
@@ -69,22 +70,26 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
     #[cfg(not(debug_assertions))]
     let app = app.fallback(handlers::files);
 
-    let app = app.with_state(state);
+    let app = app.with_state(state).layer(CookieManagerLayer::new());
+
+    let addr = SocketAddr::new(ctx.host, ctx.port);
 
     if ctx.tls.is_some() {
         let http_app = axum::Router::new()
             .fallback(handlers::redirect)
-            .with_state(ctx_manager);
-        let http_server = axum::Server::bind(&SocketAddr::new(ctx.host, ctx.port))
-            .serve(http_app.into_make_service());
+            .with_state(ctx_manager)
+            .into_make_service();
+        let http_server = axum::Server::bind(&addr).serve(http_app);
 
         let https_server = start_https(ctx, app);
 
+        tracing::info!("Listening on {addr}");
         let (r1, r2) = tokio::join!(tokio::spawn(http_server), tokio::spawn(https_server));
         r1??;
         r2??;
     } else {
-        axum::Server::bind(&SocketAddr::new(ctx.host, ctx.port))
+        tracing::info!("Listening on {addr}");
+        axum::Server::bind(&addr)
             .serve(app.into_make_service())
             .await?;
     }

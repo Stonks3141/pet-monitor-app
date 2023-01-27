@@ -32,6 +32,8 @@ confy = "0.5"
 serde = "1.0"
 serde_with = { version = "2.2", features = ["base64"] }
 anyhow = "1.0"
+tower-cookies = "0.8"
+cookie = "0.16"
 mime_guess = "2.0"
 ring = "0.16"
 jsonwebtoken = "8.2"

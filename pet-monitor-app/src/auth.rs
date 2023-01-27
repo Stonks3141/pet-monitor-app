@@ -8,6 +8,7 @@ use jsonwebtoken as jwt;
 use jwt::errors::{ErrorKind, Result as JwtResult};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tower_cookies::Cookie;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Claims {
@@ -100,14 +101,15 @@ impl FromRequestParts<AppState> for Token {
             .to_str()
             .map_err(|_| AuthError::MissingToken)?
             .split("; ")
-            .map(|cookie| cookie.split_once('=').ok_or(AuthError::MissingToken))
-            .collect::<Result<_, _>>()?;
+            .map(Cookie::parse)
+            .collect::<Result<_, _>>()
+            .map_err(|_| AuthError::MissingToken)?;
 
         let token = cookies
-            .into_iter()
-            .find(|(key, _)| *key == "token")
+            .iter()
+            .find(|cookie| cookie.name() == "token")
             .ok_or(AuthError::MissingToken)?
-            .1;
+            .value();
 
         match parts.method {
             Method::POST | Method::PUT | Method::DELETE | Method::CONNECT | Method::PATCH
