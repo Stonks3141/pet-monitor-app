@@ -92,7 +92,7 @@ jobs:
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
       - name: Find unused dependencies
-        run: cargo udeps
+        run: cargo udeps --all-targets
 
   build-client:
     name: Build client
