@@ -27,5 +27,6 @@ build:
   cargo build --release
 
 # Build the program and install to PATH
-install PATH='~/.local/bin': build
+install PATH='~/.local/bin/': build
+  mkdir -p {{PATH}}
   cp target/release/pet-monitor-app {{PATH}}
