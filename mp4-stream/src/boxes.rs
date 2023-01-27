@@ -342,7 +342,7 @@ impl BmffBox for TrackHeaderBox {
             .map_or(u32::MAX as u64, |x| duration(x, self.timescale));
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
-            || duration_secs as u64 > u32::MAX as u64
+            || duration_secs > u32::MAX as u64
         {
             w.write_all(&creation_timestamp.to_be_bytes())?;
             w.write_all(&modification_timestamp.to_be_bytes())?;
@@ -469,7 +469,7 @@ impl BmffBox for MediaHeaderBox {
             .map_or(u32::MAX as u64, |x| duration(x, self.timescale));
         if creation_timestamp as u64 > u32::MAX as u64
             || modification_timestamp as u64 > u32::MAX as u64
-            || duration_secs as u64 > u32::MAX as u64
+            || duration_secs > u32::MAX as u64
         {
             w.write_all(&creation_timestamp.to_be_bytes())?;
             w.write_all(&modification_timestamp.to_be_bytes())?;
