@@ -2,6 +2,15 @@
 members = ["pet-monitor-app", "mp4-stream"]
 default-members = ["pet-monitor-app"]
 
+[workspace.package]
+authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
+edition = "2021"
+rust-version = "1.66"
+readme = "README.md"
+homepage = "https://github.com/Stonks3141/pet-monitor-app"
+repository = "https://github.com/Stonks3141/pet-monitor-app"
+license = "MIT"
+
 [profile.release]
 opt-level = 3
 codegen-units = 1
