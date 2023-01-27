@@ -40,6 +40,7 @@ pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, Status
         path = "index.html";
     }
 
+    #[allow(clippy::unwrap_used)] // index.html is guaranteed
     let body = Full::new(Bytes::from_static(
         STATIC_FILES.get_file(path).unwrap().contents(),
     ));
@@ -48,6 +49,7 @@ pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, Status
     if let Some(content_type) = mime_guess::from_path(path).first_raw() {
         res = res.header(header::CONTENT_TYPE, content_type)
     }
+    #[allow(clippy::unwrap_used)]
     Ok(res.body(body).unwrap())
 }
 
