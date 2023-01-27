@@ -46,3 +46,7 @@ tokio = { version = "1.24", features = ["time", "process"] }
 
 [[bin]]
 name = "pet-monitor-app"
+
+[package.metadata.cargo-udeps.ignore]
+normal = ["mime_guess", "include_dir"]
+
