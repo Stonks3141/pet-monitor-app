@@ -651,9 +651,9 @@ dependencies = [
 
 [[package]]
 name = "fixed"
-version = "1.22.0"
+version = "1.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad45f1b686656281ac6a3b7eaf487be0e9e69fe4678f8497c84beb5f0fab7dae"
+checksum = "b2e55932f129b8e8582d2099dd43f67c9e641a9369280fac04ac97c47ba1564e"
 dependencies = [
  "az",
  "bytemuck",
@@ -1406,7 +1406,7 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pet-monitor-app"
-version = "22.12.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
