@@ -76,14 +76,6 @@ install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
 
 You will need to install [rustup][rustup], [node][node], [pnpm][pnpm], and [just][just].
 
-Clone the repository and set up the pre-commit hook with
-
-```sh
-git clone https://github.com/Stonks3141/pet-monitor-app.git
-cd pet-monitor-app
-ln -s pre-commit.sh .git/hooks/pre-commit
-```
-
 To install dependencies, run `pnpm install` in the `client/` directory. To
 start the frontend development server, run `pnpm dev` in the `client/` directory.
 While the frontend is running, you can run `cargo run -- start` in the base
