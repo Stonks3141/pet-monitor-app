@@ -21,6 +21,13 @@ use mp4_stream::{
 use tokio::task::spawn_blocking;
 use tower_cookies::{Cookie, Cookies};
 
+macro_rules! error {
+    ($($args:tt)*) => {{
+        tracing::error!($($args)*);
+        StatusCode::INTERNAL_SERVER_ERROR
+    }};
+}
+
 #[debug_handler]
 pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
     #[allow(clippy::unwrap_used)]
@@ -66,19 +73,13 @@ pub(crate) async fn login(
     let correct =
         spawn_blocking(move || argon2::verify_encoded(&ctx.password_hash, password.as_bytes()))
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .map_err(|e| {
-                tracing::error!("Validating login attempt failed: {e:?}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            .map_err(|e| error!("{e}"))?
+            .map_err(|e| error!("Validating login attempt failed: {e}"))?;
 
     if correct {
         let token = Token::new(ctx.jwt_timeout)
             .encode(&ctx.jwt_secret)
-            .map_err(|e| {
-                tracing::error!("Token creation failed: {e:?}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            .map_err(|e| error!("Token creation failed: {e}"))?;
 
         #[allow(clippy::unwrap_used)] // conversion of u64 to i64
         let cookie = Cookie::build("token", token)
@@ -114,16 +115,15 @@ pub(crate) async fn put_config(
 
     let config_clone = config.clone();
     if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
-        tracing::warn!("Config validation failed with error {:?}", e);
+        tracing::warn!("Config validation error: {e}");
         return Err(StatusCode::BAD_REQUEST);
     }
 
     let new_ctx = Context { config, ..ctx_read };
 
-    ctx.set(new_ctx).await.map_err(|e| {
-        tracing::error!("Writing to configuration file failed with error {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    ctx.set(new_ctx)
+        .await
+        .map_err(|e| error!("Error writing to config file: {e}"))?;
     Ok(())
 }
 
@@ -136,13 +136,10 @@ pub(crate) async fn stream(
     #[allow(clippy::unwrap_used)] // stream_sub_tx will always be `Some` if this route is mounted
     let stream = VideoStream::new(&ctx.get().config, stream_sub_tx.unwrap())
         .await
-        .map_err(|e| {
-            tracing::error!("Error constructing VideoStream: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        .map_err(|e| error!("Error starting stream: {e}"))?;
 
     let stream = StreamExt::inspect(stream, |it| match it {
-        Err(e) => tracing::warn!("Error streaming segment: {:?}", e),
+        Err(e) => tracing::warn!("Error streaming segment: {e}"),
         Ok(_) => (),
     });
 
