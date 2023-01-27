@@ -38,7 +38,7 @@ cargo build --release
 cp target/release/pet-monitor-app ~/.local/bin
 ```
 
-If you have [just][just] installed, you can run `just build`.
+If you have [just][just] installed, you can run `just install`.
 
 ## Usage
 

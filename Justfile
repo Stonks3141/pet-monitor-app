@@ -17,3 +17,7 @@ build:
   rm -rf pet-monitor-app/build/
   cp -r client/build/ pet-monitor-app/
   cargo build --release
+
+# Build the program and install to PATH
+install PATH='~/.local/bin': build
+  cp target/release/pet-monitor-app {{PATH}}
