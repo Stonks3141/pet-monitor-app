@@ -238,7 +238,7 @@ pub fn check_config(config: &Config, caps: &Capabilities) -> crate::Result<()> {
     // all controls that are in `controls` but not `valid_controls`.
     for name in controls.difference(&valid_controls) {
         if controls.get(name).is_none() {
-            return Err(Error::Other(format!("Invalid V4L2 control: '{}'", name)));
+            return Err(Error::Other(format!("Invalid V4L2 control: '{name}'")));
         }
     }
 

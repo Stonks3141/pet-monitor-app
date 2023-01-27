@@ -102,7 +102,7 @@ impl fmt::Display for Format {
         let bytes = &(*self as u32).to_be_bytes();
         #[allow(clippy::unwrap_used)] // all enum variants are valid UTF-8
         let format = std::str::from_utf8(bytes).unwrap();
-        write!(f, "{}", format)
+        write!(f, "{format}")
     }
 }
 
