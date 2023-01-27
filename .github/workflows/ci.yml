@@ -24,6 +24,8 @@ jobs:
           override: true
       - name: Install Just
         uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run checks
         run: just check
 
@@ -47,6 +49,8 @@ jobs:
           override: true
       - name: Install Just
         uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run checks
         run: just check --release
 
@@ -66,6 +70,8 @@ jobs:
           override: true
       - name: Install Just
         uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
         run: just test
 
