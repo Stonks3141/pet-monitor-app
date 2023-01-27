@@ -1,7 +1,15 @@
 
+default:
+  @just --list
+
 # Run `cargo run -- ARGS` and start the frontend dev server
 run *ARGS:
   (trap 'kill 0' SIGINT; cargo run -- {{ARGS}} & just dev)
+
+# Run checks for the workspace
+check *ARGS:
+  cargo fmt --check
+  cargo clippy --all-features --workspace {{ARGS}} -- -D warnings
 
 # Run `cargo test` with ARGS and print execution time
 test *ARGS:
