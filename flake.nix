@@ -1,7 +1,7 @@
 {
   description = "A simple and secure pet monitor for Linux.";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:gytis-ivaskevicius/flake-utils-plus";
   };
   outputs = inputs@{ self, nixpkgs, utils, ... }: utils.lib.mkFlake {
@@ -17,6 +17,7 @@
             clippy
             rustfmt
             rust-analyzer
+            cargo-udeps
             just
             cargo-flamegraph
             libclang
