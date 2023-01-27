@@ -17,3 +17,6 @@ codegen-units = 1
 lto = true
 strip = true
 # debug = true
+
+[profile.dev.package.rust-argon2]
+opt-level = 3
