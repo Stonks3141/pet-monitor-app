@@ -72,6 +72,47 @@ want your server to listen on port 80 or 443, you should set up NAT forwarding
 to forward external port 80 to internal port 8080. If this is not possible,
 install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
 
+## Configuration
+
+```toml
+# The argon2 hash of the password
+password_hash = '$argon2id$v=19$m=32768,t=8,p=4$19nFC/J5TEtjGGePEsLX+g$KmofOFmpLIBwqC7PkpHYyQyTiQF82IoBKanci2Dn5Ds'
+# The secret used to sign authentication tokens
+jwt_secret = 'DkTeDKts0tinlvmfUtbnepKqYHeX1B8w7sQ5LG9KW+s='
+# The timeout for auth tokens in seconds
+jwt_timeout = 345600
+# The domain to serve from
+domain = 'localhost'
+# The IP to listen on
+host = '127.0.0.1'
+# The port to listen on
+port = 8080
+# The device to capture video from
+device = '/dev/video0'
+# The format to capture video in
+format = 'YUYV'
+# The resolution to capture video in
+resolution = [640, 480]
+# The frame interval to use
+# The framerate is equal to the first part divided by the second
+interval = [1, 30]
+# The video rotation (must be one of 0, 90, 180, or 270)
+rotation = 0
+
+# Additional V4L2 controls
+[v4l2Controls]
+foo = 0
+
+# TLS configuration
+[tls]
+# The port to listen on for TLS
+port = 8443
+# Path to the SSL certificate
+cert = "path/to/cert.pem"
+# Path to the SSL certificate key
+key = "path/to/key.key"
+```
+
 ## Development
 
 You will need to install [rustup][rustup], [node][node], [pnpm][pnpm], and [just][just].
