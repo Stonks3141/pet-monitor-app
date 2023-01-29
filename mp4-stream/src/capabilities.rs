@@ -119,7 +119,7 @@ struct Resolution {
 ///
 /// This function may return a [`Error::Io`] if interaction with the filesystem
 /// fails or a [`Error::Camera`] if the camera returns an error.
-#[tracing::instrument]
+#[tracing::instrument(level = "debug")]
 pub fn get_capabilities_all() -> crate::Result<Capabilities> {
     let mut caps = HashMap::new();
 
@@ -147,7 +147,7 @@ pub fn get_capabilities_all() -> crate::Result<Capabilities> {
 ///
 /// This function may return a [`Error::Io`] if interaction with the filesystem
 /// fails or a [`Error::Camera`] if the camera returns an error.
-#[tracing::instrument]
+#[tracing::instrument(level = "debug")]
 pub fn get_capabilities_from_path(device: &Path) -> crate::Result<Formats> {
     let camera = rscam::Camera::new(
         device
@@ -157,7 +157,7 @@ pub fn get_capabilities_from_path(device: &Path) -> crate::Result<Formats> {
     get_capabilities(&camera)
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 fn get_capabilities(camera: &rscam::Camera) -> crate::Result<Formats> {
     camera
         .formats()
@@ -183,7 +183,7 @@ fn get_capabilities(camera: &rscam::Camera) -> crate::Result<Formats> {
         .collect()
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "trace")]
 fn get_resolutions(resolutions: ResolutionInfo) -> Vec<(u32, u32)> {
     match resolutions {
         ResolutionInfo::Discretes(r) => r,
@@ -194,7 +194,7 @@ fn get_resolutions(resolutions: ResolutionInfo) -> Vec<(u32, u32)> {
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(level = "trace")]
 fn get_intervals(intervals: IntervalInfo) -> Vec<(u32, u32)> {
     match intervals {
         IntervalInfo::Discretes(r) => r,
@@ -213,7 +213,7 @@ fn get_intervals(intervals: IntervalInfo) -> Vec<(u32, u32)> {
 ///
 /// This function may return a [`Error::Other`] if any part of the config is invalid,
 /// including the V4L2 controls.
-#[tracing::instrument(skip(caps))]
+#[tracing::instrument(level = "debug", skip(caps))]
 pub fn check_config(config: &Config, caps: &Capabilities) -> crate::Result<()> {
     caps.0
         .get(&config.device)
