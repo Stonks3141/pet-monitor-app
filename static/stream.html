@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.5.6/css/pico.min.css" integrity="sha384-3edOW8hbyoE5dcN5KLGzXBJ7ObwLWlQTONfez9ieFk2/YbX+mo7NbktAT69X+xZK" crossorigin />
+    <title>Stream</title>
+    <style>
+      body > main {
+        display: flex;
+        place-content: center;
+        height: 100vh;
+      }
+     a#config {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <a id="config" href="/config.html" role="button" class="contrast outline">Settings</a>
+    <main>
+      <video controls autoplay muted playsinline width="640" height="480">
+        <source src="/stream.mp4" type="video/mp4" />
+      </video>
+    </main>
+  </body>
+</html>
