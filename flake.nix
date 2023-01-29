@@ -20,6 +20,7 @@
             cargo-udeps
             just
             cargo-flamegraph
+            oha
             libclang
             pkg-config
             x264
