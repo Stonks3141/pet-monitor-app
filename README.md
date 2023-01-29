@@ -4,7 +4,8 @@
 [![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://opensource.org/licenses/MIT)
 [![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
 
-pet-monitor-app is a simple video streaming server for Linux. It provides out-of-the-box support for HTTPS and password authentication.
+pet-monitor-app is a simple video streaming server for Linux. It provides
+out-of-the-box support for HTTPS and password authentication.
 
 - [pet-monitor-app](#pet-monitor-app)
   - [Quickstart](#quickstart)
@@ -27,18 +28,16 @@ checksum. If it is correct, move the binary into `~/.local/bin`.
 
 ### Building from Source
 
-Install [rustup][rustup], [node][node], and [pnpm][pnpm], and run these commands:
+Install [rustup][rustup] and run these commands:
 
 ```sh
-cd client
-pnpm build
-cd ..
-cp -r client/build ./pet-monitor-app
+git clone https://github.com/Stonks3141/pet-monitor-app.git
+cd pet-monitor-app
 cargo build --release
 cp target/release/pet-monitor-app ~/.local/bin
 ```
 
-If you have [just][just] installed, you can run `just install`.
+If you have [just][just] installed, you can run `just install` after cloning.
 
 ## Usage
 
@@ -73,6 +72,8 @@ to forward external port 80 to internal port 8080. If this is not possible,
 install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
 
 ## Configuration
+
+`~/.config/pet-monitor-app/config.toml`
 
 ```toml
 # The argon2 hash of the password
@@ -115,24 +116,13 @@ key = "path/to/key.key"
 
 ## Development
 
-You will need to install [rustup][rustup], [node][node], [pnpm][pnpm], and [just][just].
+You will need to install [rustup][rustup] and [just][just].
 
-To install dependencies, run `pnpm install` in the `client/` directory. To
-start the frontend development server, run `pnpm dev` in the `client/` directory.
-While the frontend is running, you can run `cargo run -- start` in the base
-directory to start the backend. Vite should proxy to the backend automatically.
-The client bundle is not included in the binary unless you build in release mode.
+To start the server, run `cargo run -- start`. In debug mode, the server will read
+client files from disk, and in release mode, they will be bundled into the binary.
 
-To build a binary, run `just build`. This builds the frontend bundle, copies it into
-the `pet-monitor-app/` directory, and builds the binary. The binary should be
-located at `target/release/pet-monitor-app`.
-
-## Goals
-
-- Secure
-- Simple to install/use/configure
-- Locally hosted
-- Tested
+To build the program, run `cargo build --release`. The binary should be located
+at `target/release/pet-monitor-app`.
 
 ## Contributing
 
@@ -144,6 +134,4 @@ functionality.
 This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
 
 [rustup]: https://www.rust-lang.org/learn/get-started
-[node]: https://nodejs.org
-[pnpm]: https://pnpm.io/installation
 [just]: https://github.com/casey/just
