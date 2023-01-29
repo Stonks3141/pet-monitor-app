@@ -7,9 +7,12 @@
 mod cli;
 
 use clap::Parser;
+use color_eyre::eyre;
 use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::task::spawn_blocking;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_tree::HierarchicalLayer;
 
 #[cfg(not(test))]
 const ARGON2_CONFIG: argon2::Config = argon2::Config {
@@ -38,9 +41,18 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
 };
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
     let cmd = cli::Cmd::parse();
-    tracing_subscriber::fmt::init();
+    Registry::default()
+        .with(EnvFilter::from_default_env())
+        .with(
+            HierarchicalLayer::new(2)
+                .with_ansi(true)
+                .with_targets(true)
+                .with_bracketed_fields(true),
+        )
+        .init();
 
     let rng = SystemRandom::new();
 
@@ -100,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
                             key,
                         });
                     }
-                    (Some(true), _, _) => anyhow::bail!(
+                    (Some(true), _, _) => eyre::bail!(
                         "Since the config file does not set up TLS, both a cert and key path must be specified."
                     ),
                     _ => (),

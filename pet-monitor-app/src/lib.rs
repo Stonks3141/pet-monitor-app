@@ -29,6 +29,7 @@ use tokio_rustls::{
 };
 use tower::MakeService;
 use tower_cookies::CookieManagerLayer;
+use tower_http::trace::TraceLayer;
 
 #[derive(Debug, Clone, FromRef)]
 struct AppState {
@@ -36,8 +37,10 @@ struct AppState {
     caps: Capabilities,
     stream_sub_tx: Option<flume::Sender<StreamSubscriber>>,
 }
+use color_eyre::eyre;
 
-pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> anyhow::Result<()> {
+#[tracing::instrument(skip(ctx))]
+pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> eyre::Result<()> {
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let caps = get_capabilities_all()?;
@@ -72,7 +75,10 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
         state.stream_sub_tx = Some(tx);
     }
 
-    let app = app.with_state(state).layer(CookieManagerLayer::new());
+    let app = app
+        .with_state(state)
+        .layer(CookieManagerLayer::new())
+        .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::new(ctx.host, ctx.port);
 
@@ -99,7 +105,8 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
     Ok(())
 }
 
-async fn start_https(ctx: Context, app: axum::Router) -> anyhow::Result<()> {
+#[tracing::instrument(skip(ctx))]
+async fn start_https(ctx: Context, app: axum::Router) -> eyre::Result<()> {
     #[allow(clippy::unwrap_used)]
     let tls = ctx.tls.unwrap();
     let acceptor = {
