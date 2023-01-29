@@ -1,7 +1,7 @@
 use crate::AppState;
 use axum::{
     extract::FromRequestParts,
-    http::{header, request::Parts, Method, StatusCode},
+    http::{header, request::Parts, StatusCode},
     response::{IntoResponse, Response},
 };
 use jsonwebtoken as jwt;
@@ -62,13 +62,12 @@ impl Token {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthError {
     MissingToken,
     BadToken,
     InvalidToken,
-    MissingCsrf,
-    BadCsrf,
 }
 
 impl IntoResponse for AuthError {
@@ -77,8 +76,6 @@ impl IntoResponse for AuthError {
             Self::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token"),
             Self::BadToken => (StatusCode::UNAUTHORIZED, "Bad token"),
             Self::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
-            Self::MissingCsrf => (StatusCode::UNAUTHORIZED, "Missing CSRF token"),
-            Self::BadCsrf => (StatusCode::UNAUTHORIZED, "Bad CSRF token"),
         }
         .into_response()
     }
@@ -110,21 +107,6 @@ impl FromRequestParts<AppState> for Token {
             .find(|cookie| cookie.name() == "token")
             .ok_or(AuthError::MissingToken)?
             .value();
-
-        match parts.method {
-            Method::POST | Method::PUT | Method::DELETE | Method::CONNECT | Method::PATCH
-                if parts
-                    .headers
-                    .get("x-csrf-token")
-                    .ok_or(AuthError::MissingCsrf)?
-                    .to_str()
-                    .map_err(|_| AuthError::BadCsrf)?
-                    != token =>
-            {
-                return Err(AuthError::BadCsrf);
-            }
-            _ => (),
-        }
 
         match Token::decode(token, &state.ctx.get().jwt_secret) {
             Ok(token) => {
