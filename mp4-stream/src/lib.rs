@@ -41,7 +41,7 @@
 //!   [`config`] module.
 //! - `serde`: Add implementations of [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)
 //!   for types in the [`config`] and [`capabilities`] modules.
-//! - `log`: Enable logging with the [`log`] crate.
+//! - `tracing`: Enable logging and instrumentation with the [`tracing`] crate.
 
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
@@ -259,6 +259,7 @@ pub struct MediaSegment {
 }
 
 impl MediaSegment {
+    #[tracing::instrument(skip(sample_sizes, data))]
     fn new(config: &Config, sequence_number: u32, sample_sizes: Vec<u32>, data: Vec<u8>) -> Self {
         let timescale = config.interval.1;
         let mut moof = MovieFragmentBox {
@@ -351,6 +352,7 @@ impl VideoStream {
     ///
     /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
     #[allow(clippy::missing_panics_doc)]
+    #[tracing::instrument(skip(stream_sub_tx))]
     pub async fn new(
         config: &Config,
         stream_sub_tx: flume::Sender<StreamSubscriber>,
@@ -376,6 +378,7 @@ impl VideoStream {
         })
     }
 
+    #[tracing::instrument(skip_all)]
     fn serialize_segment(
         &mut self,
         media_segment: Option<MediaSegment>,
@@ -409,6 +412,7 @@ impl VideoStream {
 impl Stream for VideoStream {
     type Item = io::Result<Vec<u8>>;
 
+    #[tracing::instrument(skip_all)]
     fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -437,6 +441,7 @@ struct FrameIter {
 }
 
 impl FrameIter {
+    #[tracing::instrument]
     fn new(config: &Config) -> Result<Self> {
         let mut camera = Camera::new(
             config
@@ -495,6 +500,7 @@ enum SegmentIter {
 }
 
 impl SegmentIter {
+    #[tracing::instrument(skip(frames))]
     fn new(config: Config, frames: FrameIter) -> x264::Result<Self> {
         Ok(match config.format {
             Format::H264 => Self::Hardware { frames, config },
@@ -544,6 +550,7 @@ impl SegmentIter {
 impl Iterator for SegmentIter {
     type Item = Result<MediaSegment>;
 
+    #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Software {
@@ -643,6 +650,7 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 /// device fails, an [`Error::Other`] if the device path is invalid UTF-8, or an
 /// [`Error::Encoding`] if constructing an encoder fails.
 #[allow(clippy::missing_panics_doc)]
+#[tracing::instrument(skip(rx, config_rx))]
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
     mut config: Config,
