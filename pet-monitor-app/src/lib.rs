@@ -9,7 +9,7 @@ pub mod config;
 mod handlers;
 
 use crate::config::{Context, ContextManager};
-use axum::routing::{get, post, put};
+use axum::routing::{get, post};
 use axum_macros::FromRef;
 use hyper::server::{
     accept::Accept,
@@ -50,25 +50,27 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
     };
 
     let mut app = axum::Router::new()
-        .route("/api/login", post(handlers::login))
-        .route("/api/config", get(handlers::get_config))
-        .route("/api/config", put(handlers::put_config))
-        .route("/api/capabilities", get(handlers::capabilities));
+        .route("/", get(handlers::base))
+        .route("/login.html", get(handlers::files))
+        .route("/login.html", post(handlers::login))
+        .route("/config.html", get(handlers::config))
+        .route("/config.html", post(handlers::set_config))
+        .route("/stream.html", get(handlers::files));
 
     if stream {
         let (tx, rx) = flume::unbounded();
         let config = ctx.config.clone();
         spawn_blocking(move || {
-            if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
-                tracing::error!("{e}");
-            }
+            tracing::info_span!("stream").in_scope(|| {
+                if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
+                    tracing::error!("{e}");
+                }
+            })
         });
+        tracing::info!("Stream started");
         app = app.route("/stream.mp4", get(handlers::stream));
         state.stream_sub_tx = Some(tx);
     }
-
-    #[cfg(not(debug_assertions))]
-    let app = app.fallback(handlers::files);
 
     let app = app.with_state(state).layer(CookieManagerLayer::new());
 

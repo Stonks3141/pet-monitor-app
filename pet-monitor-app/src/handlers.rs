@@ -2,14 +2,13 @@
 use super::AppState;
 use crate::auth::Token;
 use crate::config::{Context, ContextManager};
-#[cfg(not(debug_assertions))]
 use axum::body::{Bytes, Full};
 use axum::{
     body::StreamBody,
     extract::State,
     http::{header, Response, StatusCode},
     response::Redirect,
-    Json,
+    Form,
 };
 use axum_macros::debug_handler;
 use futures_lite::{Stream, StreamExt};
@@ -18,8 +17,10 @@ use mp4_stream::{
     config::Config,
     StreamSubscriber, VideoStream,
 };
+use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use tower_cookies::{Cookie, Cookies};
+use tracing::instrument;
 
 macro_rules! error {
     ($($args:tt)*) => {{
@@ -29,6 +30,7 @@ macro_rules! error {
 }
 
 #[debug_handler]
+#[instrument(skip(ctx))]
 pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
     #[allow(clippy::unwrap_used)]
     Redirect::permanent(&format!(
@@ -38,36 +40,64 @@ pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>)
     ))
 }
 
-#[cfg(not(debug_assertions))]
-#[debug_handler]
-pub async fn files(uri: axum::http::Uri) -> Result<Response<Full<Bytes>>, StatusCode> {
-    const STATIC_FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/build");
-
-    let mut path = uri.path().trim_start_matches('/');
-    if !STATIC_FILES.contains(path) {
-        path = "index.html";
+#[debug_handler(state = AppState)]
+#[instrument(skip_all)]
+pub(crate) async fn base(token: Option<Token>) -> Redirect {
+    if token.is_some() {
+        tracing::debug!("Redirecting to '/stream.html'");
+        Redirect::to("/stream.html")
+    } else {
+        tracing::debug!("Redirecting to '/login.html'");
+        Redirect::to("/login.html")
     }
+}
 
-    #[allow(clippy::unwrap_used)] // index.html is guaranteed
-    let body = Full::new(Bytes::from_static(
-        STATIC_FILES.get_file(path).unwrap().contents(),
-    ));
+#[cfg(not(debug_assertions))]
+async fn get_file(path: &str) -> Option<Bytes> {
+    const FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../static");
+    FILES
+        .get_file(path)
+        .map(|it| Bytes::from_static(it.contents()))
+}
 
-    let mut res = Response::builder();
+#[cfg(debug_assertions)]
+async fn get_file(path: &str) -> Option<Bytes> {
+    tokio::fs::read(format!("{}/../static/{path}", env!("CARGO_MANIFEST_DIR")))
+        .await
+        .ok()
+        .map(Bytes::from)
+}
+
+#[debug_handler]
+#[instrument]
+pub async fn files(uri: axum::http::Uri) -> Response<Full<Bytes>> {
+    let path = uri.path().trim_start_matches('/');
+    #[allow(clippy::unwrap_used)]
+    let (body, status) = match get_file(path).await {
+        Some(it) => (it, StatusCode::OK),
+        None => (get_file("404.html").await.unwrap(), StatusCode::NOT_FOUND),
+    };
+
+    let mut res = Response::builder().status(status);
     if let Some(content_type) = mime_guess::from_path(path).first_raw() {
         res = res.header(header::CONTENT_TYPE, content_type)
     }
     #[allow(clippy::unwrap_used)]
-    Ok(res.body(body).unwrap())
+    res.body(Full::new(body)).unwrap()
 }
 
-/// Validates a password and issues tokens.
+#[derive(Deserialize)]
+pub(crate) struct Login {
+    password: String,
+}
+
 #[debug_handler]
+#[instrument(skip_all)]
 pub(crate) async fn login(
     State(ctx): State<ContextManager>,
     cookies: Cookies,
-    password: String,
-) -> Result<(), StatusCode> {
+    Form(Login { password }): Form<Login>,
+) -> Result<Redirect, StatusCode> {
     let ctx = ctx.get();
 
     let correct =
@@ -90,28 +120,61 @@ pub(crate) async fn login(
 
         cookies.add(cookie);
 
-        Ok(())
+        Ok(Redirect::to("/stream.html"))
     } else {
         Err(StatusCode::UNAUTHORIZED)
     }
 }
 
-/// Retrieves the current configuration. The request must have a valid JWT.
 #[debug_handler(state = AppState)]
-pub(crate) async fn get_config(_token: Token, State(ctx): State<ContextManager>) -> Json<Config> {
-    let ctx = ctx.get();
-    Json(ctx.config)
-}
-
-/// Updates the current configuration. The request must have a valid JWT.
-#[debug_handler(state = AppState)]
-pub(crate) async fn put_config(
+#[instrument(skip_all)]
+pub(crate) async fn config(
     _token: Token,
     State(ctx): State<ContextManager>,
     State(caps): State<Capabilities>,
-    Json(config): Json<Config>,
+) -> Result<Response<String>, StatusCode> {
+    let config = serde_json::to_string(&ctx.get().config)
+        .map_err(|e| error!("{e}"))?
+        .replace('"', "'");
+    let caps = serde_json::to_string(&caps)
+        .map_err(|e| error!("{e}"))?
+        .replace('"', "'");
+
+    #[allow(clippy::unwrap_used)]
+    let html = std::str::from_utf8(&get_file("config.html").await.unwrap())
+        .map_err(|_| error!("config.html contains invalid UTF-8"))?
+        .replacen("{{config}}", &config, 1)
+        .replacen("{{caps}}", &caps, 1);
+
+    #[allow(clippy::unwrap_used)]
+    Ok(Response::builder()
+        .header(header::CONTENT_TYPE, "text/html")
+        .body(html)
+        .unwrap())
+}
+
+#[derive(Deserialize)]
+pub(crate) struct ConfigForm {
+    csrf: String,
+    #[serde(flatten)]
+    config: Config,
+}
+
+#[debug_handler(state = AppState)]
+#[instrument(skip(_token, ctx, caps))]
+pub(crate) async fn set_config(
+    _token: Token,
+    State(ctx): State<ContextManager>,
+    State(caps): State<Capabilities>,
+    Form(ConfigForm { csrf, config }): Form<ConfigForm>,
 ) -> Result<(), StatusCode> {
     let ctx_read = ctx.get();
+    if Token::decode(&csrf, &ctx_read.jwt_secret)
+        .map_err(|e| error!("{e}"))?
+        .verify()
+    {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
 
     let config_clone = config.clone();
     if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
@@ -128,6 +191,7 @@ pub(crate) async fn put_config(
 }
 
 #[debug_handler(state = AppState)]
+#[instrument(skip_all)]
 pub(crate) async fn stream(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -149,12 +213,4 @@ pub(crate) async fn stream(
         .header(header::CACHE_CONTROL, "max-age=0, s-maxage=0, no-store")
         .body(StreamBody::new(stream))
         .unwrap())
-}
-
-#[debug_handler(state = AppState)]
-pub(crate) async fn capabilities(
-    _token: Token,
-    State(caps): State<Capabilities>,
-) -> Json<Capabilities> {
-    Json(caps)
 }

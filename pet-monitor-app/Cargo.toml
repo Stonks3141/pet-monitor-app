@@ -18,7 +18,7 @@ axum = { version = "0.6", features = ["headers"] }
 axum-macros = "0.3"
 tower = "0.4"
 hyper = "0.14"
-tokio = { version = "1.24", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.24", features = ["rt", "rt-multi-thread", "macros", "fs"] }
 futures-lite = "1.12"
 tokio-rustls = "0.23"
 rustls-pemfile = "1.0"
@@ -32,6 +32,7 @@ confy = "0.5"
 serde = "1.0"
 serde_with = { version = "2.2", features = ["base64"] }
 anyhow = "1.0"
+serde_json = "1.0"
 tower-cookies = "0.8"
 cookie = "0.16"
 mime_guess = "2.0"
