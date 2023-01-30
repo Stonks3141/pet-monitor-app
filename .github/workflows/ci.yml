@@ -112,4 +112,4 @@ jobs:
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
       - name: Find unused dependencies
-        run: cargo udeps --all-targets
+        run: cargo +nightly udeps --all-targets
