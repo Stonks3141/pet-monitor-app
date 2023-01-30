@@ -17,11 +17,7 @@ jobs:
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Install Just
         uses: extractions/setup-just@v1
         env:
@@ -51,11 +47,7 @@ jobs:
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Install Just
         uses: extractions/setup-just@v1
         env:
@@ -81,11 +73,7 @@ jobs:
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Install Just
         uses: extractions/setup-just@v1
         env:
@@ -111,11 +99,7 @@ jobs:
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Set up cache
         uses: actions/cache@v3
         with:
