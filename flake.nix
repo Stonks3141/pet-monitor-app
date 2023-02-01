@@ -24,7 +24,6 @@
             libclang
             pkg-config
             x264
-            nodePackages.pnpm
             nixpkgs-fmt
             nil
           ];
@@ -35,40 +34,18 @@
           ];
         };
         defaultPackage = with import nixpkgs { system = "x86_64-linux"; };
-          # let
-          #   pma-client = stdenvNoCC.mkDerivation {
-          #     pname = "pet-monitor-app-client";
-          #     version = "0.1.0";
-          #     src = ./client;
-
-          #     nativeBuildInputs = [ nodePackages.pnpm ];
-          #     buildPhase = ''
-          #       pnpm install
-          #       pnpm build
-          #     '';
-          #     installPhase = ''
-          #       mkdir -p $out/share
-          #       cp -r ./build $out/share
-          #     '';
-          #   };
-          # in
           rustPlatform.buildRustPackage {
             pname = "pet-monitor-app";
-            version = "0.1.0";
+            version = "0.3.0";
             src = ./.;
-            cargoLock = { lockFile = ./Cargo.lock; };
+            cargoLock.lockFile = ./Cargo.lock;
 
             nativeBuildInputs = [
               libclang
               pkg-config
               x264
-              # pma-client
             ];
             buildInputs = [ pkg-config x264 ];
-
-            preBuild = ''
-              # cp -r $\{pma-client}/share/build ./pet-monitor-app
-            '';
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
             BINDGEN_EXTRA_CLANG_ARGS = [
