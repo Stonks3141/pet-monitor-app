@@ -14,55 +14,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install Just
-        uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up cache
-        uses: actions/cache@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v18
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run checks
-        run: just check
-
-  Check-release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Create dummy `build` directory
-        run: |
-          cd pet-monitor-app
-          mkdir build
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install Just
-        uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Run checks
-        run: just check --release
+        run: nix develop .#check -c just check
 
   Test:
     runs-on: ubuntu-latest
@@ -70,25 +27,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install Just
-        uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up cache
-        uses: actions/cache@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v18
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
-        run: just test
+        run: nix develop .#check -c just test
 
   udeps:
     runs-on: ubuntu-latest
@@ -96,20 +40,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@nightly
-      - name: Set up cache
-        uses: actions/cache@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v18
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install cargo-udeps
-        run: cargo install cargo-udeps --locked
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Find unused dependencies
-        run: cargo +nightly udeps --all-targets
+        run: nix develop .#udeps -c cargo udeps --all-targets
