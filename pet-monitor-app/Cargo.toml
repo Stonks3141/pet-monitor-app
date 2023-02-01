@@ -44,7 +44,7 @@ rust-argon2 = "1.0"
 mp4-stream = { version = "0.1.0", features = ["serde", "tracing"], path = "../mp4-stream" }
 
 [package.metadata.cargo-udeps.ignore]
-normal = ["mime_guess", "include_dir"]
+normal = ["include_dir"]
 
 [[bin]]
 name = "pet-monitor-app"
