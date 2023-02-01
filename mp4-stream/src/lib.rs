@@ -62,7 +62,7 @@ use boxes::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use flume::r#async::RecvStream;
-use futures_lite::Stream;
+use futures_lite::stream::{self, Stream, StreamExt};
 use quick_error::quick_error;
 use rscam::Camera;
 use std::{
@@ -70,7 +70,6 @@ use std::{
     io::{self, prelude::*},
     sync::Arc,
 };
-use std::{pin::Pin, task::Poll};
 
 quick_error! {
     /// The error type for `mp4-stream`.
@@ -330,110 +329,77 @@ impl WriteTo for MediaSegment {
     }
 }
 
-/// A stream of fMP4 segments.
+/// Creates a new video stream.
 ///
-/// This struct implements [`Iterator`] and [`Stream`](futures_core::Stream).
-/// The `Iterator` implementation will block until a segment is received, and the
-/// `Stream` implementation is non-blocking and fully async.
-pub struct VideoStream {
-    init_segment: Option<InitSegment>,
-    use_headers: bool,
-    size: u64,
-    sequence_number: u32,
-    segment_stream: RecvStream<'static, Option<MediaSegment>>,
-    headers: Vec<u8>,
-}
-
-impl VideoStream {
-    /// Creates a new `VideoStream`. This function will block until after the video capture task
-    /// finishes a [`MediaSegment`], which can take several seconds.
-    ///
-    /// # Errors
-    ///
-    /// This function may return an [`Error::Other`] if all receivers on `stream_sub_tx` have ben dropped.
-    #[allow(clippy::missing_panics_doc)]
-    #[tracing::instrument(level = "debug", skip(stream_sub_tx))]
-    pub async fn new(
-        config: &Config,
-        stream_sub_tx: flume::Sender<StreamSubscriber>,
-    ) -> Result<Self> {
-        let init_segment = InitSegment::new(config);
-
-        let (tx, rx) = flume::unbounded();
-        stream_sub_tx
-            .send_async(tx)
-            .await
-            .map_err(|_| "Failed to communicate with streaming task".to_string())?;
-        // if the send succeeds, the other side will respond immediately
-        #[allow(clippy::unwrap_used)]
-        let (headers, segment_rx) = rx.recv_async().await.unwrap();
-
-        Ok(Self {
-            size: init_segment.size(),
-            init_segment: Some(init_segment),
-            use_headers: true,
-            sequence_number: 1,
-            segment_stream: segment_rx.into_stream(),
-            headers,
-        })
+/// # Errors
+///
+/// This function may return an [`Error::Other`] if all receivers on
+/// `stream_sub_tx` have ben dropped.
+#[allow(clippy::missing_panics_doc)]
+#[tracing::instrument(level = "debug", skip(stream_sub_tx))]
+pub async fn stream(
+    config: &Config,
+    stream_sub_tx: flume::Sender<StreamSubscriber>,
+) -> Result<impl Stream<Item = io::Result<Vec<u8>>>> {
+    struct StreamState {
+        init_segment: Option<InitSegment>,
+        size: u64,
+        sequence_number: u32,
+        segment_stream: RecvStream<'static, MediaSegment>,
+        headers: Option<Vec<u8>>,
     }
 
-    #[tracing::instrument(level = "trace", skip_all)]
-    fn serialize_segment(
-        &mut self,
-        media_segment: Option<MediaSegment>,
-    ) -> Option<io::Result<Vec<u8>>> {
-        let Some(mut media_segment) = media_segment else {
+    let (tx, rx) = flume::unbounded();
+    stream_sub_tx
+        .send_async(tx)
+        .await
+        .map_err(|_| "Failed to communicate with streaming task".to_string())?;
+    // if the send succeeds, the other side will respond immediately
+    #[allow(clippy::unwrap_used)]
+    let (headers, segment_rx) = rx.recv_async().await.unwrap();
+
+    let init_segment = InitSegment::new(config);
+    let state = StreamState {
+        size: init_segment.size(),
+        init_segment: Some(init_segment),
+        sequence_number: 1,
+        segment_stream: segment_rx.into_stream(),
+        headers: Some(headers),
+    };
+
+    Ok(stream::try_unfold(state, |mut state| async move {
+        if let Some(init_segment) = state.init_segment.take() {
+            let mut buf = Vec::with_capacity(init_segment.size() as usize);
+            init_segment.write_to(&mut buf)?;
+            return Ok(Some((buf, state)));
+        }
+
+        let Some(mut segment) = state.segment_stream.next().await else {
             #[cfg(feature = "tracing")]
             tracing::trace!("VideoStream ended");
-            return None;
+            return Ok(None);
         };
-        if self.use_headers {
-            media_segment.add_headers(self.headers.clone());
-            self.use_headers = false;
+
+        if let Some(headers) = state.headers.take() {
+            segment.add_headers(headers);
         }
-        *media_segment.base_data_offset() = Some(self.size);
-        *media_segment.sequence_number() = self.sequence_number;
-        self.sequence_number += 1;
-        self.size += media_segment.size();
-        let mut buf = Vec::with_capacity(media_segment.size() as usize);
-        if let Err(e) = media_segment.write_to(&mut buf) {
-            return Some(Err(e));
-        }
+        *segment.base_data_offset() = Some(state.size);
+        *segment.sequence_number() = state.sequence_number;
+        state.sequence_number += 1;
+        let size = segment.size();
+        state.size += size;
+
+        let mut buf = Vec::with_capacity(size as usize);
+        segment.write_to(&mut buf)?;
+
         #[cfg(feature = "tracing")]
         tracing::trace!(
             "VideoStream sent media segment with sequence number {}",
-            self.sequence_number - 1
+            state.sequence_number - 1
         );
-        Some(Ok(buf))
-    }
-}
 
-impl Stream for VideoStream {
-    type Item = io::Result<Vec<u8>>;
-
-    #[tracing::instrument(level = "trace", skip_all)]
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        match self.init_segment.take() {
-            Some(init_segment) => {
-                let mut buf = Vec::with_capacity(init_segment.size() as usize);
-                if let Err(e) = init_segment.write_to(&mut buf) {
-                    return Poll::Ready(Some(Err(e)));
-                }
-                Poll::Ready(Some(Ok(buf)))
-            }
-            None => {
-                let pin = Pin::new(&mut self.segment_stream);
-                match pin.poll_next(cx) {
-                    Poll::Ready(seg) => Poll::Ready(self.serialize_segment(seg.flatten())),
-                    Poll::Pending => Poll::Pending,
-                }
-            }
-        }
-    }
+        Ok(Some((buf, state)))
+    }))
 }
 
 struct FrameIter {
@@ -627,7 +593,7 @@ impl Iterator for SegmentIter {
 ///
 /// `None` is a marker indicating that the config has changed and the stream
 /// has restarted.
-pub type MediaSegReceiver = flume::Receiver<Option<MediaSegment>>;
+pub type MediaSegReceiver = flume::Receiver<MediaSegment>;
 
 /// A channel for adding a subscriber to the stream.
 ///
@@ -659,7 +625,7 @@ pub fn stream_media_segments(
     'main: loop {
         #[cfg(feature = "tracing")]
         tracing::trace!("Starting stream with config {:?}", config);
-        let mut senders: Vec<flume::Sender<Option<MediaSegment>>> = Vec::new();
+        let mut senders: Vec<flume::Sender<MediaSegment>> = Vec::new();
 
         let frames = FrameIter::new(&config)?;
         let mut segments = SegmentIter::new(config.clone(), frames)?;
@@ -668,7 +634,7 @@ pub fn stream_media_segments(
         loop {
             if let Some(Ok(new_config)) = config_rx.as_ref().map(flume::Receiver::try_recv) {
                 config = new_config;
-                senders.retain(|sender| sender.send(None).is_ok());
+                senders.clear();
                 #[cfg(feature = "tracing")]
                 tracing::trace!("Config updated to {:?}, restarting stream", config);
                 continue 'main;
@@ -685,7 +651,7 @@ pub fn stream_media_segments(
             let Ok(media_segment) = segments.next().unwrap() else {
                 break;
             };
-            senders.retain(|sender| sender.send(Some(media_segment.clone())).is_ok());
+            senders.retain(|sender| sender.send(media_segment.clone()).is_ok());
             #[cfg(feature = "tracing")]
             tracing::trace!("Sent media segment, took {:?} to capture", time.elapsed());
         }

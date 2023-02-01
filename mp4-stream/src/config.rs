@@ -1,7 +1,5 @@
 //! Types for stream and camera configuration.
 
-#[cfg(feature = "quickcheck")]
-use quickcheck::{Arbitrary, Gen};
 #[cfg(feature = "serde")]
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "serde")]

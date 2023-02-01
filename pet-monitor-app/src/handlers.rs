@@ -15,7 +15,7 @@ use futures_lite::{Stream, StreamExt};
 use mp4_stream::{
     capabilities::{check_config, Capabilities},
     config::Config,
-    StreamSubscriber, VideoStream,
+    StreamSubscriber,
 };
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
@@ -153,11 +153,16 @@ pub(crate) async fn config(
         .unwrap())
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct ConfigForm {
     csrf: String,
-    #[serde(flatten)]
-    config: Config,
+    device: std::path::PathBuf,
+    format: mp4_stream::config::Format,
+    resolution: (u32, u32),
+    interval: (u32, u32),
+    rotation: mp4_stream::config::Rotation,
+    #[serde(rename = "v4l2Controls")]
+    v4l2_controls: std::collections::HashMap<String, String>,
 }
 
 #[debug_handler(state = AppState)]
@@ -166,15 +171,24 @@ pub(crate) async fn set_config(
     _token: Token,
     State(ctx): State<ContextManager>,
     State(caps): State<Capabilities>,
-    Form(ConfigForm { csrf, config }): Form<ConfigForm>,
+    Form(form): Form<ConfigForm>,
 ) -> Result<(), StatusCode> {
     let ctx_read = ctx.get();
-    if Token::decode(&csrf, &ctx_read.jwt_secret)
+    if Token::decode(&form.csrf, &ctx_read.jwt_secret)
         .map_err(|e| error!("{e}"))?
         .verify()
     {
         return Err(StatusCode::UNAUTHORIZED);
     }
+
+    let config = Config {
+        device: form.device,
+        format: form.format,
+        resolution: form.resolution,
+        interval: form.interval,
+        rotation: form.rotation,
+        v4l2_controls: form.v4l2_controls,
+    };
 
     let config_clone = config.clone();
     if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
@@ -198,7 +212,7 @@ pub(crate) async fn stream(
     State(stream_sub_tx): State<Option<flume::Sender<StreamSubscriber>>>,
 ) -> Result<Response<StreamBody<impl Stream<Item = std::io::Result<Vec<u8>>>>>, StatusCode> {
     #[allow(clippy::unwrap_used)] // stream_sub_tx will always be `Some` if this route is mounted
-    let stream = VideoStream::new(&ctx.get().config, stream_sub_tx.unwrap())
+    let stream = mp4_stream::stream(&ctx.get().config, stream_sub_tx.unwrap())
         .await
         .map_err(|e| error!("Error starting stream: {e}"))?;
 
