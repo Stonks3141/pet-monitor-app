@@ -17,3 +17,5 @@ result/
 # Profiling artifacts
 flamegraph.svg
 perf.data
+*.profraw
+*.profdata
