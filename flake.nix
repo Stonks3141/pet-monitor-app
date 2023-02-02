@@ -38,25 +38,6 @@
           ];
         };
 
-        devShells.check = pkgs.mkShell {
-          name = "pet-monitor-app-check";
-          packages = with pkgs; [
-            cargo
-            rustc
-            clippy
-            rustfmt
-            just
-            libclang
-            pkg-config
-            x264
-          ];
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = [
-            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
-            "-I${pkgs.glibc.dev}/include"
-          ];
-        };
-
         devShells.udeps = pkgs.mkShell {
           name = "pet-monitor-app-udeps";
           packages = with pkgs; [
