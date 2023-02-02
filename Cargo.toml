@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/pet-monitor-app", "crates/mp4-stream", "crates/bmff"]
 default-members = ["crates/pet-monitor-app"]
 
 [workspace.package]
