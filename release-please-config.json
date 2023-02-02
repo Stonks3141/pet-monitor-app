@@ -1,10 +1,11 @@
 {
   "bootstrap-sha": "da4f38892b0ce457ab69175612eaa8862af87395",
   "release-type": "rust",
+  "separate-pull-requests": true,
   "plugins": ["cargo-workspace", "sentence-case"],
   "packages": {
-    "pet-monitor-app": {},
-    "mp4-stream": {},
-    "bmff": {}
+    "crates/pet-monitor-app": {},
+    "crates/mp4-stream": {},
+    "crates/bmff": {}
   }
 }
