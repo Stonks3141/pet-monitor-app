@@ -25,3 +25,4 @@ fixed = "1.22"
 rscam = { version = "0.5", features = ["no_wrapper"] }
 x264 = "0.5"
 futures-lite = "1.12"
+bmff = { path = "../bmff" }

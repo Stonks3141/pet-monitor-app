@@ -1,0 +1,19 @@
+[package]
+name = "bmff"
+version = "0.1.0"
+description = "Low-level definitions for ISO BMFF boxes"
+documentation = "https://github.com/Stonks3141/pet-monitor-app"
+keywords = ["video", "streaming", "media", "mp4", "bmff"]
+categories = ["multimedia"]
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = "0.4"
+bitflags = "1.3"
+fixed = "1.22"

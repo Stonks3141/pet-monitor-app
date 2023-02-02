@@ -4,6 +4,7 @@
   "plugins": ["cargo-workspace", "sentence-case"],
   "packages": {
     "pet-monitor-app": {},
-    "mp4-stream": {}
+    "mp4-stream": {},
+    "bmff": {},
   }
 }

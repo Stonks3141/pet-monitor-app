@@ -52,13 +52,12 @@
 #![warn(clippy::missing_panics_doc)]
 #![warn(clippy::missing_errors_doc)]
 
-mod boxes;
 pub mod capabilities;
 pub mod config;
 
-use config::{Config, Format};
+use config::{Config, Format, Rotation};
 
-use boxes::*;
+use bmff::*;
 use chrono::{Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
 use flume::r#async::RecvStream;
@@ -104,6 +103,15 @@ quick_error! {
 
 /// A `Result` type alias for `mp4-stream`'s [`Error`] type.
 pub type Result<T> = std::result::Result<T, Error>;
+
+fn matrix(rotation: Rotation) -> [[fixed::types::I16F16; 3]; 3] {
+    match rotation {
+        Rotation::R0 => MATRIX_0,
+        Rotation::R90 => MATRIX_90,
+        Rotation::R180 => MATRIX_180,
+        Rotation::R270 => MATRIX_270,
+    }
+}
 
 #[derive(Debug, Clone)]
 struct InitSegment {

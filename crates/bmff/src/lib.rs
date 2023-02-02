@@ -1,4 +1,3 @@
-use crate::config::Rotation;
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
@@ -39,15 +38,6 @@ pub const MATRIX_270: [[I16F16; 3]; 3] = matrix![
     [0x0001_0000, 0x0000_0000, 0x0000_0000],
     [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
-
-pub const fn matrix(rotation: Rotation) -> [[I16F16; 3]; 3] {
-    match rotation {
-        Rotation::R0 => MATRIX_0,
-        Rotation::R90 => MATRIX_90,
-        Rotation::R180 => MATRIX_180,
-        Rotation::R270 => MATRIX_270,
-    }
-}
 
 fn duration(duration: &Duration, timescale: u32) -> u64 {
     (duration.num_milliseconds() as f64 / 1000.0 * timescale as f64) as u64
