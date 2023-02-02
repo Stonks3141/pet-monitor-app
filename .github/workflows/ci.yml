@@ -64,7 +64,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: true
       - name: Run tests
-        run: nix develop -c just test
+        run: nix develop --profile check -c just test
       - name: Push to cachix
         run: cachix push stonks3141 check
 
