@@ -11,6 +11,44 @@ homepage = "https://github.com/Stonks3141/pet-monitor-app"
 repository = "https://github.com/Stonks3141/pet-monitor-app"
 license = "MIT"
 
+[workspace.dependencies]
+axum = { version = "0.6", features = ["headers"] }
+axum-macros = "0.3"
+tower = "0.4"
+tower-http = {version = "0.3", features = ["trace"] }
+hyper = "0.14"
+tokio = { version = "1.25", features = ["rt", "rt-multi-thread", "macros", "fs"] }
+futures-lite = "1.12"
+tokio-rustls = "0.23"
+rustls-pemfile = "1.0"
+parking_lot = "0.12"
+flume = "0.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-tree = "0.2"
+include_dir = "0.7"
+clap = { version = "4.1", features = ["derive"] }
+confy = "0.5"
+serde_with = { version = "2.2", features = ["base64"] }
+serde_json = "1.0"
+color-eyre = "0.6"
+tower-cookies = "0.8"
+cookie = "0.16"
+mime_guess = "2.0"
+ring = "0.16"
+jsonwebtoken = "8.2"
+rust-argon2 = "1.0"
+mp4-stream = { version = "0.1.0", features = ["serde", "tracing"], path = "crates/mp4-stream" }
+quick-error = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_repr = "0.1"
+chrono = "0.4"
+bitflags = "1.3"
+fixed = "1.22"
+rscam = { version = "0.5", features = ["no_wrapper"] }
+x264 = "0.5"
+bmff = { path = "crates/bmff" }
+
 [profile.release]
 opt-level = 3
 codegen-units = 1
