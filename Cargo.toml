@@ -1,6 +1,6 @@
 [workspace]
-members = ["pet-monitor-app", "mp4-stream"]
-default-members = ["pet-monitor-app"]
+members = ["crates/*"]
+default-members = ["crates/pet-monitor-app"]
 
 [workspace.package]
 authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]

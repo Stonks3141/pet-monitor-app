@@ -54,7 +54,7 @@ pub(crate) async fn base(token: Option<Token>) -> Redirect {
 
 #[cfg(not(debug_assertions))]
 async fn get_file(path: &str) -> Option<Bytes> {
-    const FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../static");
+    const FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/static");
     FILES
         .get_file(path)
         .map(|it| Bytes::from_static(it.contents()))
@@ -62,7 +62,7 @@ async fn get_file(path: &str) -> Option<Bytes> {
 
 #[cfg(debug_assertions)]
 async fn get_file(path: &str) -> Option<Bytes> {
-    tokio::fs::read(format!("{}/../static/{path}", env!("CARGO_MANIFEST_DIR")))
+    tokio::fs::read(format!("{}/static/{path}", env!("CARGO_MANIFEST_DIR")))
         .await
         .ok()
         .map(Bytes::from)
