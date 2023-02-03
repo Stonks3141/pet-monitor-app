@@ -1,18 +1,18 @@
 # pet-monitor-app
 
-[![CI](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
-[![license](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)](https://opensource.org/licenses/MIT)
-[![loc](https://tokei.rs/b1/github/Stonks3141/pet-monitor-app)](https://github.com/XAMPPRocky/tokei)
+[![Repository][repo]](https://github.com/Stonks3141/pet-monitor-app)
+[![Release][release]](https://github.com/Stonks3141/pet-monitor-app/releases/latest)
+[![CI][ci]](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
+[![License][license]](https://opensource.org/licenses/MIT)
 
 pet-monitor-app is a simple video streaming server for Linux. It provides
 out-of-the-box support for HTTPS and password authentication.
 
 - [pet-monitor-app](#pet-monitor-app)
-  - [Quickstart](#quickstart)
+  - [Installation](#installation)
+  - [Usage](#usage)
+  - [Configuration](#configuration)
   - [Development](#development)
-  - [Motivation](#motivation)
-  - [Goals](#goals)
-  - [Roadmap](#roadmap)
   - [Contributing](#contributing)
   - [Inspiration](#inspiration)
 
@@ -133,5 +133,9 @@ functionality.
 
 This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
 
+[repo]: https://img.shields.io/badge/Github-Stonks3141/pet--monitor--app-orange?style=for-the-badge&logo=github
+[release]: https://img.shields.io/github/v/release/Stonks3141/pet-monitor-app?style=for-the-badge&color=red
+[ci]: https://img.shields.io/github/actions/workflow/status/Stonks3141/pet-monitor-app/ci.yml?style=for-the-badge
+[license]: https://img.shields.io/badge/License-MIT-blue?style=for-the-badge
 [rustup]: https://www.rust-lang.org/learn/get-started
 [just]: https://github.com/casey/just
