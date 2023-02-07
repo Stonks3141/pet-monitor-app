@@ -1,3 +1,5 @@
+//! Low-level definitions for the Base Media File Format (ISO 14496-12).
+
 use bitflags::bitflags;
 use chrono::{DateTime, Duration, Utc};
 use fixed::types::{I16F16, I8F8, U16F16};
