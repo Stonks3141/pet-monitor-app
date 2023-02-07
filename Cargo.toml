@@ -6,7 +6,6 @@ default-members = ["crates/pet-monitor-app"]
 authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
 edition = "2021"
 rust-version = "1.66"
-readme = "README.md"
 homepage = "https://github.com/Stonks3141/pet-monitor-app"
 repository = "https://github.com/Stonks3141/pet-monitor-app"
 license = "MIT"

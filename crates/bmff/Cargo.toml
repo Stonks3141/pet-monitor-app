@@ -2,13 +2,13 @@
 name = "bmff"
 version = "0.1.0"
 description = "Low-level definitions for the Base Media File Format"
-documentation = "https://github.com/Stonks3141/pet-monitor-app"
+documentation = "https://docs.rs/bmff"
+readme = "README.md"
 keywords = ["video", "streaming", "media", "mp4", "bmff"]
 categories = ["multimedia"]
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-readme.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
