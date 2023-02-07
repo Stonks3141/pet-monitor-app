@@ -133,8 +133,8 @@ functionality.
 
 This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
 
-[repo]: https://img.shields.io/badge/Github-Stonks3141/pet--monitor--app-orange?style=for-the-badge&logo=github
-[release]: https://img.shields.io/github/v/release/Stonks3141/pet-monitor-app?style=for-the-badge&color=red
+[repo]: https://img.shields.io/badge/Github-Stonks3141/pet--monitor--app-red?style=for-the-badge&logo=github
+[release]: https://img.shields.io/github/v/release/Stonks3141/pet-monitor-app?style=for-the-badge&color=orange
 [ci]: https://img.shields.io/github/actions/workflow/status/Stonks3141/pet-monitor-app/ci.yml?style=for-the-badge
 [license]: https://img.shields.io/badge/License-MIT-blue?style=for-the-badge
 [rustup]: https://www.rust-lang.org/learn/get-started
