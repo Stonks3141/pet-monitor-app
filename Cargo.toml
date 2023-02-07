@@ -37,7 +37,7 @@ mime_guess = "2.0"
 ring = "0.16"
 jsonwebtoken = "8.2"
 rust-argon2 = "1.0"
-mp4-stream = { version = "0.1.0", features = ["serde", "tracing"], path = "crates/mp4-stream" }
+mp4-stream = { version = "0.1", features = ["serde", "tracing"] }
 quick-error = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
