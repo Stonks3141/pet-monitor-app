@@ -266,7 +266,10 @@ pub struct MediaSegment {
 }
 
 impl MediaSegment {
-    #[tracing::instrument(level = "trace", skip(sample_sizes, data))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(level = "trace", skip(sample_sizes, data))
+    )]
     fn new(config: &Config, sequence_number: u32, sample_sizes: Vec<u32>, data: Vec<u8>) -> Self {
         let timescale = config.interval.1;
         let mut moof = MovieFragmentBox {
@@ -344,7 +347,10 @@ impl WriteTo for MediaSegment {
 /// This function may return an [`Error::Other`] if all receivers on
 /// `stream_sub_tx` have ben dropped.
 #[allow(clippy::missing_panics_doc)]
-#[tracing::instrument(level = "debug", skip(stream_sub_tx))]
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(level = "debug", skip(stream_sub_tx))
+)]
 pub async fn stream(
     config: &Config,
     stream_sub_tx: flume::Sender<StreamSubscriber>,
@@ -415,7 +421,7 @@ struct FrameIter {
 }
 
 impl FrameIter {
-    #[tracing::instrument(level = "trace")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace"))]
     fn new(config: &Config) -> Result<Self> {
         let mut camera = Camera::new(
             config
@@ -474,7 +480,10 @@ enum SegmentIter {
 }
 
 impl SegmentIter {
-    #[tracing::instrument(level = "trace", skip(frames))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(level = "trace", skip(frames))
+    )]
     fn new(config: Config, frames: FrameIter) -> x264::Result<Self> {
         Ok(match config.format {
             Format::H264 => Self::Hardware { frames, config },
@@ -524,7 +533,7 @@ impl SegmentIter {
 impl Iterator for SegmentIter {
     type Item = Result<MediaSegment>;
 
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(level = "trace", skip_all))]
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Software {
@@ -624,7 +633,10 @@ pub type StreamSubscriber = flume::Sender<(Vec<u8>, MediaSegReceiver)>;
 /// device fails, an [`Error::Other`] if the device path is invalid UTF-8, or an
 /// [`Error::Encoding`] if constructing an encoder fails.
 #[allow(clippy::missing_panics_doc)]
-#[tracing::instrument(level = "debug", skip(rx, config_rx))]
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(level = "debug", skip(rx, config_rx))
+)]
 pub fn stream_media_segments(
     rx: flume::Receiver<StreamSubscriber>,
     mut config: Config,
