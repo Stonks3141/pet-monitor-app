@@ -54,7 +54,7 @@ pub enum Format {
     /// encoding the V or Cr component for both pixels.
     YUYV = u32::from_be_bytes(*b"YUYV"),
     /// YV12 format. 6 bytes encode 4 pixels, with the first 4 bytes encoding the Y
-    /// component for each pixel, the fith byte encoding the V component for all 4 pixels,
+    /// component for each pixel, the fifth byte encoding the V component for all 4 pixels,
     /// and the last byte encoding the U component for all 4 pixels. The "12" refers to the
     /// format's bit depth.
     YV12 = u32::from_be_bytes(*b"YV12"),
