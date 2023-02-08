@@ -57,6 +57,24 @@
           ];
         };
 
+        devShells.publish = pkgs.mkShell {
+          name = "pet-monitor-app-publish";
+          packages = with pkgs; [
+            cargo
+            rustc
+            cargo-workspaces
+            just
+            libclang
+            pkg-config
+            x264
+          ];
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = [
+            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
+            "-I${pkgs.glibc.dev}/include"
+          ];
+        };
+
         packages.default = with import nixpkgs { system = "x86_64-linux"; };
           rustPlatform.buildRustPackage {
             pname = "pet-monitor-app";

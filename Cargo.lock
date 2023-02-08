@@ -1207,6 +1207,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mp4-stream"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed0c14179042ffcc005249ae54fa86b4627baa0d40eed8d1efc690c121df6ba9"
+dependencies = [
+ "bitflags",
+ "bmff 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono",
+ "fixed",
+ "flume",
+ "futures-lite",
+ "quick-error 2.0.1",
+ "rscam",
+ "serde",
+ "serde_repr",
+ "tracing",
+ "x264",
+]
+
+[[package]]
 name = "nanorand"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1374,7 +1394,7 @@ dependencies = [
  "include_dir",
  "jsonwebtoken",
  "mime_guess",
- "mp4-stream",
+ "mp4-stream 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot",
  "ring",
  "rust-argon2",
