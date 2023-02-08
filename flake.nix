@@ -13,8 +13,23 @@
     sharedOverlays = [ fenix.overlays.default ];
     supportedSystems = [ "x86_64-linux" ];
     outputsBuilder = channels:
-      let pkgs = channels.nixpkgs; in {
-        devShells.default = pkgs.mkShell {
+      let
+        pkgs = channels.nixpkgs;
+        mkShell = { name, packages }: pkgs.mkShell {
+          inherit name;
+          packages = with pkgs; [
+            libclang
+            pkg-config
+            x264
+          ] ++ packages;
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = [
+            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
+            "-I${pkgs.glibc.dev}/include"
+          ];
+        };
+      in {
+        devShells.default = mkShell {
           name = "pet-monitor-app";
           packages = with pkgs; [
             cargo
@@ -25,20 +40,12 @@
             just
             cargo-flamegraph
             oha
-            libclang
-            pkg-config
-            x264
             nixpkgs-fmt
             nil
           ];
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = [
-            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
-            "-I${pkgs.glibc.dev}/include"
-          ];
         };
 
-        devShells.udeps = pkgs.mkShell {
+        devShells.udeps = mkShell {
           name = "pet-monitor-app-udeps";
           packages = with pkgs; [
             (fenix.packages.x86_64-linux.minimal.withComponents [
@@ -46,32 +53,16 @@
               "rustc"
             ])
             cargo-udeps
-            libclang
-            pkg-config
-            x264
-          ];
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = [
-            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
-            "-I${pkgs.glibc.dev}/include"
           ];
         };
 
-        devShells.publish = pkgs.mkShell {
+        devShells.publish = mkShell {
           name = "pet-monitor-app-publish";
           packages = with pkgs; [
             cargo
             rustc
             cargo-workspaces
             just
-            libclang
-            pkg-config
-            x264
-          ];
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = [
-            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
-            "-I${pkgs.glibc.dev}/include"
           ];
         };
 
