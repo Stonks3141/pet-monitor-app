@@ -52,20 +52,19 @@ pub(crate) async fn base(token: Option<Token>) -> Redirect {
     }
 }
 
-#[cfg(not(debug_assertions))]
 async fn get_file(path: &str) -> Option<Bytes> {
     const FILES: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/static");
-    FILES
-        .get_file(path)
-        .map(|it| Bytes::from_static(it.contents()))
-}
 
-#[cfg(debug_assertions)]
-async fn get_file(path: &str) -> Option<Bytes> {
-    tokio::fs::read(format!("{}/static/{path}", env!("CARGO_MANIFEST_DIR")))
-        .await
-        .ok()
-        .map(Bytes::from)
+    if std::env::var("STATIC_RELOAD").map_or(false, |it| it == "1") {
+        tokio::fs::read(format!("{}/static/{path}", env!("CARGO_MANIFEST_DIR")))
+            .await
+            .ok()
+            .map(Bytes::from)
+    } else {
+        FILES
+            .get_file(path)
+            .map(|it| Bytes::from_static(it.contents()))
+    }
 }
 
 #[debug_handler]
