@@ -76,8 +76,8 @@
           nativeBuildInputs = with pkgs; [
             libclang
             pkg-config
-            x264
           ];
+          buildInputs = [ pkgs.x264 ];
 
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           BINDGEN_EXTRA_CLANG_ARGS = [
