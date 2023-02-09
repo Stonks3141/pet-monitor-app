@@ -117,8 +117,8 @@ key = "path/to/key.key"
 
 You will need to install [rustup][rustup] and [just][just].
 
-To start the server, run `cargo run -- start`. In debug mode, the server will read
-client files from disk, and in release mode, they will be bundled into the binary.
+To start the server, run `STATIC_RELOAD=1 cargo run -- start`. The env var tells the
+server to read static assets from disk, they will be bundled into the binary otherwise.
 
 To build the program, run `cargo build --release`. The binary should be located
 at `target/release/pet-monitor-app`.
