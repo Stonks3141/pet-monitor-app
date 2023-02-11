@@ -1396,11 +1396,13 @@ dependencies = [
  "mime_guess",
  "mp4-stream 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot",
+ "percent-encoding",
  "ring",
  "rust-argon2",
  "rustls-pemfile",
  "serde",
  "serde_json",
+ "serde_qs",
  "serde_with",
  "tokio",
  "tokio-rustls",
@@ -1705,6 +1707,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26b04f22b563c91331a10074bda3dd5492e3cc39d56bd557e91c0af42b6c7341"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c679fa27b429f2bb57fd4710257e643e86c966e716037259f8baa33de594a1b6"
+dependencies = [
+ "percent-encoding",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]

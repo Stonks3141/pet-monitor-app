@@ -153,7 +153,7 @@ pub(crate) async fn config(
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub(crate) struct ConfigForm {
+struct ConfigForm {
     csrf: String,
     device: std::path::PathBuf,
     format: mp4_stream::config::Format,
@@ -161,7 +161,7 @@ pub(crate) struct ConfigForm {
     interval: (u32, u32),
     rotation: mp4_stream::config::Rotation,
     #[serde(rename = "v4l2Controls")]
-    v4l2_controls: std::collections::HashMap<String, String>,
+    v4l2_controls: Option<std::collections::HashMap<String, String>>,
 }
 
 #[debug_handler(state = AppState)]
@@ -170,24 +170,28 @@ pub(crate) async fn set_config(
     _token: Token,
     State(ctx): State<ContextManager>,
     State(caps): State<Capabilities>,
-    Form(form): Form<ConfigForm>,
+    form: String,
 ) -> Result<(), StatusCode> {
-    let ctx_read = ctx.get();
-    if Token::decode(&form.csrf, &ctx_read.jwt_secret)
-        .map_err(|e| error!("{e}"))?
-        .verify()
-    {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
+    let form = percent_encoding::percent_decode_str(&form)
+        .decode_utf8()
+        .map_err(|e| error!("Percent decoding error: {e}"))?;
+    let form: ConfigForm = serde_qs::from_str(&form).map_err(|e| error!("{e}"))?;
     let config = Config {
         device: form.device,
         format: form.format,
         resolution: form.resolution,
         interval: form.interval,
         rotation: form.rotation,
-        v4l2_controls: form.v4l2_controls,
+        v4l2_controls: form.v4l2_controls.unwrap_or_default(),
     };
+    let ctx_read = ctx.get();
+
+    if !Token::decode(&form.csrf, &ctx_read.jwt_secret)
+        .map_err(|e| error!("{e}"))?
+        .verify()
+    {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
 
     let config_clone = config.clone();
     if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
