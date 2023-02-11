@@ -78,7 +78,12 @@ pub async fn files(uri: axum::http::Uri) -> Response<Full<Bytes>> {
     };
 
     let mut res = Response::builder().status(status);
-    if let Some(content_type) = mime_guess::from_path(path).first_raw() {
+    let content_type = path.rsplit_once('.').and_then(|(_, ext)| match ext {
+        "html" => Some("text/html"),
+        "svg" => Some("image/svg+xml"),
+        _ => None,
+    });
+    if let Some(content_type) = content_type {
         res = res.header(header::CONTENT_TYPE, content_type)
     }
     #[allow(clippy::unwrap_used)]
