@@ -1,7 +1,7 @@
 # pet-monitor-app
 
 [![Repository][repo]](https://github.com/Stonks3141/pet-monitor-app)
-[![Release][release]](https://github.com/Stonks3141/pet-monitor-app/releases/latest)
+[![crates.io][cratesio]](https://crates.io/crates/pet-monitor-app)
 [![CI][ci]](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![License][license]](https://opensource.org/licenses/MIT)
 
@@ -133,7 +133,7 @@ functionality.
 This project was inspired by [soyersoyer/fmp4streamer](https://github.com/soyersoyer/fmp4streamer).
 
 [repo]: https://img.shields.io/badge/Github-Stonks3141/pet--monitor--app-red?style=for-the-badge&logo=github
-[release]: https://img.shields.io/github/v/release/Stonks3141/pet-monitor-app?style=for-the-badge&color=orange
+[cratesio]: https://img.shields.io/crates/v/pet-monitor-app?style=for-the-badge
 [ci]: https://img.shields.io/github/actions/workflow/status/Stonks3141/pet-monitor-app/ci.yml?style=for-the-badge
 [license]: https://img.shields.io/badge/License-MIT-blue?style=for-the-badge
 [rustup]: https://www.rust-lang.org/learn/get-started
