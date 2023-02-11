@@ -9,7 +9,10 @@ pub mod config;
 mod handlers;
 
 use crate::config::{Context, ContextManager};
-use axum::routing::{get, post};
+use axum::{
+    middleware,
+    routing::{get, post},
+};
 use axum_macros::FromRef;
 use hyper::server::{
     accept::Accept,
@@ -58,7 +61,10 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
         .route("/login.html", post(handlers::login))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
-        .route("/stream.html", get(handlers::files));
+        .route("/stream.html", get(handlers::files))
+        .layer(CookieManagerLayer::new())
+        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(auth::auth_error_layer));
 
     if stream {
         let (tx, rx) = flume::unbounded();
@@ -75,10 +81,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
         state.stream_sub_tx = Some(tx);
     }
 
-    let app = app
-        .with_state(state)
-        .layer(CookieManagerLayer::new())
-        .layer(TraceLayer::new_for_http());
+    let app = app.with_state(state);
 
     let addr = SocketAddr::new(ctx.host, ctx.port);
 
