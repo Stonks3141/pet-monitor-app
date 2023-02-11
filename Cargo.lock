@@ -440,6 +440,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cookie"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7efb37c3e1ccb1ff97164ad95ac1606e8ccd35b3fa0a7d99a304c7f4a428cc24"
+dependencies = [
+ "time 0.3.17",
+ "version_check 0.9.4",
+]
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1377,7 +1387,7 @@ dependencies = [
  "clap 4.1.4",
  "color-eyre",
  "confy",
- "cookie",
+ "cookie 0.17.0",
  "flume",
  "futures-lite",
  "hyper",
@@ -2029,7 +2039,7 @@ checksum = "4efe6d9c78aae53650a340d0e702e4f103582dce6af6bf897dc1b56c8ed5d4f6"
 dependencies = [
  "async-trait",
  "axum-core",
- "cookie",
+ "cookie 0.16.2",
  "futures-util",
  "http",
  "parking_lot",
