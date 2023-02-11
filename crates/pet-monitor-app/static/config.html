@@ -42,7 +42,7 @@
 
       function addControl(config, name, value) {
         if (name !== '' && value !== '') {
-          config.v4l2Controls[name] = value;
+          config.v4l2_controls[name] = value;
         }
       }
 
@@ -113,13 +113,13 @@
           <option value="180">180°</option>
           <option value="270">270°</option>
         </select>
-        <label for="v4l2Controls">Additional V4L2 Controls</label>
-        <div id="v4l2Controls">
-          <template x-for="[name, value] in Object.entries(config.v4l2Controls)">
+        <label for="v4l2_controls">Additional V4L2 Controls</label>
+        <div id="v4l2_controls">
+          <template x-for="[name, value] in Object.entries(config.v4l2_controls)">
             <div class="row">
               <input type="text" x-model="name" />
-              <input type="text" x-model="value" x-bind:name="`v4l2Controls[${name}]`" />
-              <button type="button" class="small outline" x-on:click="delete config.v4l2Controls[name]">
+              <input type="text" x-model="value" x-bind:name="`v4l2_controls[${name}]`" />
+              <button type="button" class="small outline" x-on:click="delete config.v4l2_controls[name]">
                 <svg height="32" width="32" viewbox="0 0 48 48"><path d="m12.45 37.65-2.1-2.1L21.9 24 10.35 12.45l2.1-2.1L24 21.9l11.55-11.55 2.1 2.1L26.1 24l11.55 11.55-2.1 2.1L24 26.1Z"/></svg>
               </button>
             </div>

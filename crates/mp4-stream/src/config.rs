@@ -21,7 +21,6 @@ pub struct Config {
     /// The rotation for the MP4 matrix. This is not supported by some media players.
     pub rotation: Rotation,
     /// Additional controls to pass to V4L2.
-    #[cfg_attr(feature = "serde", serde(rename = "v4l2Controls"))]
     pub v4l2_controls: HashMap<String, String>,
 }
 

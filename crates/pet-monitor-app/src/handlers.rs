@@ -160,7 +160,6 @@ struct ConfigForm {
     resolution: (u32, u32),
     interval: (u32, u32),
     rotation: mp4_stream::config::Rotation,
-    #[serde(rename = "v4l2Controls")]
     v4l2_controls: Option<std::collections::HashMap<String, String>>,
 }
 
