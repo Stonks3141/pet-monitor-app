@@ -170,7 +170,7 @@ pub(crate) async fn set_config(
     State(ctx): State<ContextManager>,
     State(caps): State<Capabilities>,
     form: String,
-) -> Result<(), StatusCode> {
+) -> Result<Redirect, StatusCode> {
     let form = percent_encoding::percent_decode_str(&form)
         .decode_utf8()
         .map_err(|e| error!("Percent decoding error: {e}"))?;
@@ -199,11 +199,11 @@ pub(crate) async fn set_config(
     }
 
     let new_ctx = Context { config, ..ctx_read };
-
     ctx.set(new_ctx)
         .await
         .map_err(|e| error!("Error writing to config file: {e}"))?;
-    Ok(())
+
+    Ok(Redirect::to("/stream.html"))
 }
 
 #[debug_handler(state = AppState)]
