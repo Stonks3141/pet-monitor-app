@@ -57,24 +57,21 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
 
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
-        .route("/login.html", get(handlers::files))
         .route("/login.html", post(handlers::login))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
-        .route("/stream.html", get(handlers::files))
         .layer(CookieManagerLayer::new())
         .layer(TraceLayer::new_for_http())
-        .layer(middleware::from_fn(auth::auth_error_layer));
+        .layer(middleware::from_fn(auth::auth_error_layer))
+        .fallback(handlers::files);
 
     if stream {
         let (tx, rx) = flume::unbounded();
         let config = ctx.config.clone();
         spawn_blocking(move || {
-            tracing::info_span!("stream").in_scope(|| {
-                if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
-                    tracing::error!("{e}");
-                }
-            })
+            if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
+                tracing::error!("Streaming error: {e}");
+            }
         });
         tracing::info!("Stream started");
         app = app.route("/stream.mp4", get(handlers::stream));
