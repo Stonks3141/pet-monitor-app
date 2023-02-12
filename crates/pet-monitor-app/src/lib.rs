@@ -4,7 +4,7 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-mod auth;
+pub mod auth;
 pub mod config;
 mod handlers;
 
