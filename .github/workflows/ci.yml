@@ -101,17 +101,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@v19
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: stonks3141
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: true
+      - name: Install x264
+        run: apt-get install libx264-dev
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: install cargo-workspaces
+        run: cargo install cargo-workspaces
       - name: Publish crates
-        run: nix develop .#publish --profile publish -c just publish ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      - name: Push to cachix
-        run: cachix push stonks3141 publish
+        run: just publish ${{ secrets.CARGO_REGISTRY_TOKEN }}
