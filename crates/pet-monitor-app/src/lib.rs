@@ -57,13 +57,14 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
 
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
+        .route("/login.html", get(handlers::files))
         .route("/login.html", post(handlers::login))
+        .route("/stream.html", get(handlers::files))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
         .layer(CookieManagerLayer::new())
         .layer(TraceLayer::new_for_http())
-        .layer(middleware::from_fn(auth::auth_error_layer))
-        .fallback(handlers::files);
+        .layer(middleware::from_fn(auth::auth_error_layer));
 
     if stream {
         let (tx, rx) = flume::unbounded();
