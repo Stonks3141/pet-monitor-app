@@ -2,6 +2,8 @@
   "bootstrap-sha": "da4f38892b0ce457ab69175612eaa8862af87395",
   "release-type": "rust",
   "separate-pull-requests": true,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
   "plugins": ["cargo-workspace", "sentence-case"],
   "packages": {
     "crates/pet-monitor-app": {
