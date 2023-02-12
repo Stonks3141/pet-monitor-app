@@ -44,8 +44,6 @@ jsonwebtoken.workspace = true
 rust-argon2.workspace = true
 mp4-stream.workspace = true
 
-[package.metadata.cargo-udeps.ignore]
-normal = ["include_dir"]
 
 [[bin]]
 name = "pet-monitor-app"
