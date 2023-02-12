@@ -44,6 +44,10 @@ jsonwebtoken.workspace = true
 rust-argon2.workspace = true
 mp4-stream.workspace = true
 
+[dev-dependencies]
+ureq = "2.6"
+tempfile = "3.3"
+toml = "0.7"
 
 [[bin]]
 name = "pet-monitor-app"
