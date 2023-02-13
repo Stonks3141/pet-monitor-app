@@ -3,16 +3,17 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    naersk.url = "github:nix-community/naersk";
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
-  outputs = { self, nixpkgs, utils, fenix, ... }:
     utils.lib.eachSystem (with utils.lib.system; [ x86_64-linux ]) (system:
+  outputs = { self, nixpkgs, utils, naersk, fenix, ... }:
       let
-        # system = utils.lib.system.x86_64-linux;
         pkgs = nixpkgs.legacyPackages.${system};
+        naersk' = pkgs.callPackage naersk {};
         mkShell = { name, packages }: pkgs.mkShell {
           inherit name;
           packages = with pkgs; [
@@ -67,11 +68,10 @@
           ];
         };
 
-        packages.default = pkgs.rustPlatform.buildRustPackage {
+        packages.default = naersk'.buildPackage {
           pname = "pet-monitor-app";
           version = "0.3.0";
           src = ./.;
-          cargoLock.lockFile = ./Cargo.lock;
 
           nativeBuildInputs = with pkgs; [
             libclang
