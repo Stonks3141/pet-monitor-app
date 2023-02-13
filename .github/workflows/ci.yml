@@ -6,6 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: '-C debuginfo=0'
 
 jobs:
   Flake:
@@ -35,10 +37,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - name: Run checks
         run: just check
-        env:
-          RUSTFLAGS: '-C debuginfo=0'
 
   Test:
     runs-on: ubuntu-latest
@@ -52,12 +54,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - name: Build tests
-        run: cargo test --all-features --workspace --no-run
+        run: just test --no-run
       - name: Run tests
         run: just test
-        env:
-          RUSTFLAGS: '-C debuginfo=0'
 
   udeps:
     runs-on: ubuntu-latest
@@ -71,9 +73,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - name: Install cargo-udeps
         run: cargo install cargo-udeps
       - name: Find unused dependencies
         run: cargo +nightly udeps --all-targets
-        env:
-          RUSTFLAGS: '-C debuginfo=0'
