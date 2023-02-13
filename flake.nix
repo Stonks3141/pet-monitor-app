@@ -8,13 +8,6 @@
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        buildEnv = {
-          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          BINDGEN_EXTRA_CLANG_ARGS = [
-            "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
-            "-I${pkgs.glibc.dev}/include"
-          ];
-        };
       in
       {
         devShells.default = pkgs.mkShell
@@ -35,7 +28,12 @@
               nixpkgs-fmt
               nil
             ];
-          } // buildEnv;
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            BINDGEN_EXTRA_CLANG_ARGS = [
+              "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
+              "-I${pkgs.glibc.dev}/include"
+            ];
+          };
 
         packages.default = pkgs.rustPlatform.buildRustPackage
           {
@@ -48,7 +46,12 @@
               pkg-config
             ];
             buildInputs = [ pkgs.x264 ];
-          } // buildEnv;
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            BINDGEN_EXTRA_CLANG_ARGS = [
+              "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
+              "-I${pkgs.glibc.dev}/include"
+            ];
+          };
       }
     );
 }
