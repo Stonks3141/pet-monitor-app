@@ -9,8 +9,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
-    utils.lib.eachSystem (with utils.lib.system; [ x86_64-linux ]) (system:
   outputs = { self, nixpkgs, utils, naersk, fenix, ... }:
+    utils.lib.eachSystem (with utils.lib.system; [ x86_64-linux ]) (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
         naersk' = pkgs.callPackage naersk {};
