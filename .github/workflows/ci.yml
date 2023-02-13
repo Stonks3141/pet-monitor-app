@@ -37,6 +37,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run checks
         run: just check
+        env:
+          RUSTFLAGS: '-C debuginfo=0'
 
   Test:
     runs-on: ubuntu-latest
@@ -54,6 +56,8 @@ jobs:
         run: just test --no-run
       - name: Run tests
         run: just test
+        env:
+          RUSTFLAGS: '-C debuginfo=0'
 
   udeps:
     runs-on: ubuntu-latest
@@ -71,3 +75,5 @@ jobs:
         run: cargo install cargo-udeps
       - name: Find unused dependencies
         run: cargo +nightly udeps --all-targets
+        env:
+          RUSTFLAGS: '-C debuginfo=0'
