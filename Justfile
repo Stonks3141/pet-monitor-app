@@ -9,7 +9,7 @@ check *ARGS:
 
 # Run `cargo test` with ARGS and print execution time
 test *ARGS:
-  export DISABLE_VALIDATE_CONFIG=1
+  DISABLE_VALIDATE_CONFIG=1 \
   cargo test --all-features --workspace {{ARGS}} -- -Z unstable-options --report-time
 
 # Publish all crates in the workspace
