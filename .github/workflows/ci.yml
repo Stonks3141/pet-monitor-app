@@ -53,7 +53,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - name: Build tests
-        run: just test --no-run
+        run: cargo test --all-features --workspace --no-run
       - name: Run tests
         run: just test
         env:
