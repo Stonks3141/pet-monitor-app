@@ -7,9 +7,10 @@ use pet_monitor_app::{
 };
 use std::{
     io::Write,
+    net::{SocketAddr, TcpStream},
     path::PathBuf,
     process::{Child, Command, Stdio},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use ureq::Response;
 
@@ -127,7 +128,12 @@ impl Cmd<Start> {
         }
 
         let (mut child, conf_path) = self.run_command(&args);
-        std::thread::sleep(Duration::from_millis(100));
+        let start = Instant::now();
+        while TcpStream::connect(SocketAddr::new(self.ctx.host, self.ctx.port)).is_err() {
+            if start.elapsed() > Duration::from_secs(1) {
+                panic!("Server failed to start in 1 second");
+            }
+        }
         let response = self.subcmd.request.map(|req| dbg!(req.request).call());
         child.kill().unwrap();
 
