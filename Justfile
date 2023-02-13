@@ -9,11 +9,12 @@ check *ARGS:
 
 # Run `cargo test` with ARGS and print execution time
 test *ARGS:
+  export DISABLE_VALIDATE_CONFIG=1
   cargo test --all-features --workspace {{ARGS}} -- -Z unstable-options --report-time
 
 # Publish all crates in the workspace
 publish TOKEN:
-  cargo ws publish --yes --from-git --token {{ TOKEN }}
+  cargo ws publish --yes --from-git --token {{TOKEN}}
 
 # Build the program and install to PATH
 install PATH='~/.local/bin/':

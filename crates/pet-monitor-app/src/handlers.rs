@@ -12,9 +12,11 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use futures_lite::{Stream, StreamExt};
-#[cfg(not(test))]
-use mp4_stream::capabilities::check_config;
-use mp4_stream::{capabilities::Capabilities, config::Config, StreamSubscriber};
+use mp4_stream::{
+    capabilities::{check_config, Capabilities},
+    config::Config,
+    StreamSubscriber,
+};
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use tower_cookies::{Cookie, Cookies};
@@ -166,7 +168,6 @@ struct ConfigForm {
     v4l2_controls: Option<std::collections::HashMap<String, String>>,
 }
 
-#[cfg_attr(test, allow(unused_variables))]
 #[debug_handler(state = AppState)]
 #[instrument(skip(_token, ctx, caps))]
 pub(crate) async fn set_config(
@@ -196,8 +197,7 @@ pub(crate) async fn set_config(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    #[cfg(not(test))]
-    {
+    if !std::env::var("DISABLE_VALIDATE_CONFIG").map_or(false, |it| it == "1") {
         let config_clone = config.clone();
         if let Err(e) =
             tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await

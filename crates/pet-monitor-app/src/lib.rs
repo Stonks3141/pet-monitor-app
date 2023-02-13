@@ -18,10 +18,8 @@ use hyper::server::{
     accept::Accept,
     conn::{AddrIncoming, Http},
 };
-#[cfg(not(test))]
-use mp4_stream::capabilities::check_config;
 use mp4_stream::{
-    capabilities::{get_capabilities_all, Capabilities},
+    capabilities::{check_config, get_capabilities_all, Capabilities},
     stream_media_segments, StreamSubscriber,
 };
 use std::{
@@ -32,7 +30,7 @@ use tokio_rustls::{
     rustls::{Certificate, PrivateKey, ServerConfig},
     TlsAcceptor,
 };
-use tower::MakeService;
+use tower::{limit::rate::RateLimitLayer, MakeService};
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
@@ -49,8 +47,9 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let caps = get_capabilities_all()?;
-    #[cfg(not(test))]
-    check_config(&ctx.config, &caps)?;
+    if !std::env::var("DISABLE_VALIDATE_CONFIG").map_or(false, |it| it == "1") {
+        check_config(&ctx.config, &caps)?;
+    }
 
     let mut state = AppState {
         ctx: ctx_manager.clone(),
@@ -62,6 +61,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
         .route("/", get(handlers::base))
         .route("/login.html", get(handlers::files))
         .route("/login.html", post(handlers::login))
+        // .route_layer(RateLimitLayer::new(128, std::time::Duration::from_secs(1)))
         .route("/stream.html", get(handlers::files))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
