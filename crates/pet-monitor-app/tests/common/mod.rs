@@ -22,8 +22,13 @@ pub struct Cmd<S> {
 
 #[derive(Debug, Default)]
 pub struct Start {
-    request: Option<Request>,
     no_stream: bool,
+}
+
+#[derive(Debug)]
+pub struct StartRequest {
+    request: Request,
+    start: Start,
 }
 
 #[derive(Debug)]
@@ -48,7 +53,7 @@ pub struct Request {
 pub struct Assert<T>(T);
 
 #[derive(Debug)]
-pub struct StartAssert {
+pub struct ResponseAssert {
     response: Response,
     ctx: Context,
 }
@@ -129,14 +134,28 @@ impl Cmd<Start> {
         self
     }
 
-    pub fn with_request(mut self, req_builder: impl FnOnce(ReqBuilder) -> Request) -> Self {
-        self.subcmd.request = Some(req_builder(ReqBuilder(self.ctx.clone())));
-        self
+    pub fn with_request(
+        self,
+        req_builder: impl FnOnce(ReqBuilder) -> Request,
+    ) -> Cmd<StartRequest> {
+        Cmd {
+            subcmd: StartRequest {
+                request: req_builder(ReqBuilder(self.ctx.clone())),
+                start: self.subcmd,
+            },
+            ctx: self.ctx,
+        }
     }
 
-    pub fn assert(self) -> Assert<StartAssert> {
+    pub fn assert(self) -> Assert<Context> {
+        unimplemented!();
+    }
+}
+
+impl Cmd<StartRequest> {
+    pub fn assert(self) -> Assert<ResponseAssert> {
         let mut args = vec!["start"];
-        if self.subcmd.no_stream {
+        if self.subcmd.start.no_stream {
             args.push("--no-stream");
         }
 
@@ -147,16 +166,17 @@ impl Cmd<Start> {
                 panic!("Server failed to start in 1 second");
             }
         }
-        let response = self.subcmd.request.map(|req| match req.body {
+        let req = self.subcmd.request;
+        let response = match req.body {
             Some(body) => req.request.send_string(&body),
             None => req.request.call(),
-        });
+        };
         child.kill().unwrap();
 
-        let response = response.unwrap().unwrap();
+        let response = response.unwrap();
         let ctx = toml::from_str(&std::fs::read_to_string(conf_path).unwrap()).unwrap();
 
-        Assert(StartAssert { response, ctx })
+        Assert(ResponseAssert { response, ctx })
     }
 }
 
@@ -244,7 +264,7 @@ impl Request {
     }
 }
 
-impl Assert<StartAssert> {
+impl Assert<ResponseAssert> {
     pub fn context(mut self, f: impl FnOnce(Assert<Context>) -> Assert<Context>) -> Self {
         self.0.ctx = f(Assert(self.0.ctx)).0;
         self
