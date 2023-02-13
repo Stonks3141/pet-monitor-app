@@ -8,18 +8,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  Build:
+  Flake:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@v19
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v19
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cachix
-        uses: cachix/cachix-action@v12
+      - uses: cachix/cachix-action@v12
         with:
           name: stonks3141
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
@@ -30,61 +27,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@v19
+      - uses: actions/checkout@v3
+      - name: Install x264
+        run: sudo apt-get install libx264-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: extractions/setup-just@v1
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: stonks3141
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
       - name: Run checks
-        run: nix develop --profile check -c just check
-      - name: Push to cachix
-        run: cachix push stonks3141 check
+        run: just check
 
   Test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@v19
+      - uses: actions/checkout@v3
+      - name: Install x264
+        run: sudo apt-get install libx264-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: extractions/setup-just@v1
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: stonks3141
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build tests
+        run: just test --no-run
       - name: Run tests
-        run: nix develop --profile check -c just test
-      - name: Push to cachix
-        run: cachix push stonks3141 check
+        run: just test
 
   udeps:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install Nix
-        uses: cachix/install-nix-action@v19
+      - uses: actions/checkout@v3
+      - name: Install x264
+        run: sudo apt-get install libx264-dev
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: extractions/setup-just@v1
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: stonks3141
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps
       - name: Find unused dependencies
-        run: nix develop .#udeps --profile udeps -c cargo udeps --all-targets
-      - name: Push to cachix
-        run: cachix push stonks3141 udeps
+        run: cargo +nightly udeps --all-targets
