@@ -7,7 +7,7 @@ use pet_monitor_app::{
 };
 use std::{
     io::Write,
-    net::{SocketAddr, TcpStream},
+    net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -40,6 +40,7 @@ pub struct ReqBuilder(Context);
 #[derive(Debug)]
 pub struct Request {
     request: ureq::Request,
+    body: Option<String>,
     ctx: Context,
 }
 
@@ -63,7 +64,7 @@ impl<S> Cmd<S> {
             ad: &[],
             hash_length: 32, // bytes
             lanes: 1,
-            mem_cost: 4, // KiB
+            mem_cost: 16, // KiB
             secret: &[],
             thread_mode: argon2::ThreadMode::Parallel,
             time_cost: 1,
@@ -116,12 +117,24 @@ impl Cmd<Start> {
         self
     }
 
+    pub fn with_open_port(mut self) -> Self {
+        let listener = TcpListener::bind(SocketAddr::new(self.ctx.host, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        self.ctx.port = port;
+        if let Some(tls) = self.ctx.tls.as_mut() {
+            let listener = TcpListener::bind(SocketAddr::new(self.ctx.host, 0)).unwrap();
+            let port = listener.local_addr().unwrap().port();
+            tls.port = port;
+        }
+        self
+    }
+
     pub fn with_request(mut self, req_builder: impl FnOnce(ReqBuilder) -> Request) -> Self {
         self.subcmd.request = Some(req_builder(ReqBuilder(self.ctx.clone())));
         self
     }
 
-    pub fn run(self) -> Assert<StartAssert> {
+    pub fn assert(self) -> Assert<StartAssert> {
         let mut args = vec!["start"];
         if self.subcmd.no_stream {
             args.push("--no-stream");
@@ -134,7 +147,10 @@ impl Cmd<Start> {
                 panic!("Server failed to start in 1 second");
             }
         }
-        let response = self.subcmd.request.map(|req| dbg!(req.request).call());
+        let response = self.subcmd.request.map(|req| match req.body {
+            Some(body) => req.request.send_string(&body),
+            None => req.request.call(),
+        });
         child.kill().unwrap();
 
         let response = response.unwrap().unwrap();
@@ -152,7 +168,7 @@ impl Cmd<SetPassword> {
         }
     }
 
-    pub fn run(self) -> Assert<SetPassword> {
+    pub fn assert(self) -> Assert<Context> {
         unimplemented!();
     }
 }
@@ -165,7 +181,7 @@ impl Cmd<RegenSecret> {
         }
     }
 
-    pub fn run(self) -> Assert<RegenSecret> {
+    pub fn assert(self) -> Assert<Context> {
         unimplemented!();
     }
 }
@@ -175,6 +191,7 @@ impl ReqBuilder {
         let agent = ureq::builder().redirects(0).build();
         Request {
             request: agent.get(&self.url(path)),
+            body: None,
             ctx: self.0,
         }
     }
@@ -182,7 +199,8 @@ impl ReqBuilder {
     pub fn post(self, path: &str) -> Request {
         let agent = ureq::builder().redirects(0).build();
         Request {
-            request: agent.get(&self.url(path)),
+            request: agent.post(&self.url(path)),
+            body: None,
             ctx: self.0,
         }
     }
@@ -217,39 +235,42 @@ impl Request {
         self
     }
 
-    pub fn form(self, form: &str) -> Self {
-        unimplemented!();
+    pub fn form(mut self, form: &str) -> Self {
+        self.body = Some(form.to_string());
+        self.request = self
+            .request
+            .set("Content-Type", "application/x-www-form-urlencoded");
+        self
     }
 }
 
 impl Assert<StartAssert> {
-    pub fn response(mut self, f: impl FnOnce(Assert<Response>) -> Assert<Response>) -> Self {
-        self.0.response = f(Assert(self.0.response)).0;
+    pub fn context(mut self, f: impl FnOnce(Assert<Context>) -> Assert<Context>) -> Self {
+        self.0.ctx = f(Assert(self.0.ctx)).0;
         self
     }
-}
 
-impl Assert<Response> {
     pub fn ok(self) -> Self {
-        assert_eq!(self.0.status(), 200);
+        assert_eq!(self.0.response.status(), 200);
         self
     }
 
     pub fn see_other(self, path: &str) -> Self {
-        assert_eq!(self.0.status(), 303);
-        assert_eq!(self.0.header("Location"), Some(path));
+        assert_eq!(self.0.response.status(), 303);
+        assert_eq!(self.0.response.header("Location"), Some(path));
         self
     }
 
     pub fn permanent_redirect(self, path: &str) -> Self {
-        assert_eq!(self.0.status(), 308);
-        assert_eq!(self.0.header("Location"), Some(path));
+        assert_eq!(self.0.response.status(), 308);
+        assert_eq!(self.0.response.header("Location"), Some(path));
         self
     }
 
     pub fn has_valid_token(self) -> Self {
         let cookie = self
             .0
+            .response
             .header("Set-Cookie")
             .unwrap()
             .split("; ")
@@ -257,8 +278,7 @@ impl Assert<Response> {
             .find(|cookie| cookie.name() == "token")
             .unwrap();
 
-        // FIXME: use correct secret
-        let token = auth::Token::decode(cookie.value(), &[0; 32]).unwrap();
+        let token = auth::Token::decode(cookie.value(), &self.0.ctx.jwt_secret).unwrap();
         assert!(token.verify());
 
         self

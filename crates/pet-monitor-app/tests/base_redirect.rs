@@ -6,18 +6,18 @@ use common::Cmd;
 fn base_redirect_logged_out() {
     Cmd::start()
         .no_stream()
+        .with_open_port()
         .with_request(|r| r.get("/"))
-        .run()
-        .response(|res| res.see_other("/login.html"));
+        .assert()
+        .see_other("/login.html");
 }
 
-// fails randomly for no apparent reason
-#[ignore]
 #[test]
 fn base_redirect_logged_in() {
     Cmd::start()
         .no_stream()
+        .with_open_port()
         .with_request(|r| r.get("/").with_valid_token())
-        .run()
-        .response(|res| res.see_other("/login.html"));
+        .assert()
+        .see_other("/login.html");
 }
