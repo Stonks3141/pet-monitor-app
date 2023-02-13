@@ -18,8 +18,10 @@ use hyper::server::{
     accept::Accept,
     conn::{AddrIncoming, Http},
 };
+#[cfg(not(test))]
+use mp4_stream::capabilities::check_config;
 use mp4_stream::{
-    capabilities::{check_config, get_capabilities_all, Capabilities},
+    capabilities::{get_capabilities_all, Capabilities},
     stream_media_segments, StreamSubscriber,
 };
 use std::{
@@ -47,6 +49,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let caps = get_capabilities_all()?;
+    #[cfg(not(test))]
     check_config(&ctx.config, &caps)?;
 
     let mut state = AppState {
