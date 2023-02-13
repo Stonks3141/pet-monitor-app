@@ -1,6 +1,4 @@
-mod common;
-
-use common::Cmd;
+use super::Cmd;
 
 #[test]
 fn base_redirect_logged_out() {

@@ -1,6 +1,4 @@
-mod common;
-
-use common::Cmd;
+use super::Cmd;
 
 #[test]
 fn login_correct_password() {
