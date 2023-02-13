@@ -28,6 +28,7 @@ flume.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+tracing-error.workspace = true
 include_dir.workspace = true
 clap.workspace = true
 confy.workspace = true

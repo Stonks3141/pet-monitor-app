@@ -13,7 +13,7 @@ license = "MIT"
 [workspace.dependencies]
 axum = { version = "0.6", features = ["headers"] }
 axum-macros = "0.3"
-tower = "0.4"
+tower = { version = "0.4", features = ["limit"] }
 tower-http = {version = "0.3", features = ["trace"] }
 hyper = "0.14"
 tokio = { version = "1.25", features = ["rt", "rt-multi-thread", "macros", "fs"] }
@@ -25,6 +25,7 @@ flume = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-tree = "0.2"
+tracing-error = "0.2"
 include_dir = "0.7"
 clap = { version = "4.1", features = ["derive"] }
 confy = "0.5"
