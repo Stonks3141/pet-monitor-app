@@ -135,17 +135,20 @@ impl Cmd<StartRequest> {
         }
 
         let (mut child, conf_path) = self.run_command(&args);
+        let mut started = true;
         let start = Instant::now();
         while TcpStream::connect(SocketAddr::new(self.ctx.host, self.ctx.port)).is_err() {
             if start.elapsed() > Duration::from_secs(1) {
-                panic!("Server failed to start in 1 second");
+                started = false;
             }
         }
-        let req = self.subcmd.request;
-        let response = match req.body {
-            Some(body) => req.request.send_string(&body),
-            None => req.request.call(),
-        };
+        let response = started.then(|| {
+            let req = self.subcmd.request;
+            match req.body {
+                Some(body) => req.request.send_string(&body),
+                None => req.request.call(),
+            }
+        });
         child.kill().unwrap();
 
         // display program output if tests fail
@@ -154,7 +157,9 @@ impl Cmd<StartRequest> {
         stderr.read_to_string(&mut output).unwrap();
         eprintln!("{output}");
 
-        let response = response.unwrap();
+        let response = response
+            .expect("Server failed to start in 1 second")
+            .unwrap();
         let ctx = toml::from_str(&std::fs::read_to_string(conf_path).unwrap()).unwrap();
 
         Assert(ResponseAssert { response, ctx })
