@@ -140,6 +140,7 @@ impl Cmd<StartRequest> {
         while TcpStream::connect(SocketAddr::new(self.ctx.host, self.ctx.port)).is_err() {
             if start.elapsed() > Duration::from_secs(1) {
                 started = false;
+                break;
             }
         }
         let response = started.then(|| {
