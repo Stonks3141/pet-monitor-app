@@ -17,8 +17,6 @@
         };
       in
       {
-        overlays.default = _self: _super: fenix.overlays.default;
-
         devShells.default = pkgs.mkShell
           {
             name = "pet-monitor-app";
