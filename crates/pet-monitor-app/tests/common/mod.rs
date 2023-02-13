@@ -128,7 +128,7 @@ impl Cmd<Start> {
 
         let (mut child, conf_path) = self.run_command(&args);
         std::thread::sleep(Duration::from_millis(100));
-        let response = self.subcmd.request.map(|req| dbg!(req).request.call());
+        let response = self.subcmd.request.map(|req| dbg!(req.request).call());
         child.kill().unwrap();
 
         let response = response.unwrap().unwrap();
