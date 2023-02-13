@@ -1,7 +1,7 @@
 use super::{Assert, ReqBuilder, Request, ResponseAssert};
 use pet_monitor_app::config::{Context, Tls};
 use std::{
-    io::Write,
+    io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     path::PathBuf,
     process::{Child, Command, Stdio},
@@ -77,7 +77,7 @@ impl<S> Cmd<S> {
             .arg(&conf_path)
             .args(command)
             .env("RUST_LOG", "debug")
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .unwrap();
         (child, conf_path)
@@ -147,6 +147,12 @@ impl Cmd<StartRequest> {
             None => req.request.call(),
         };
         child.kill().unwrap();
+
+        // display program output if tests fail
+        let mut output = String::new();
+        let mut stderr = child.stderr.unwrap();
+        stderr.read_to_string(&mut output).unwrap();
+        eprintln!("{output}");
 
         let response = response.unwrap();
         let ctx = toml::from_str(&std::fs::read_to_string(conf_path).unwrap()).unwrap();
