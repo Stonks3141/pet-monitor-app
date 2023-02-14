@@ -76,6 +76,31 @@ jobs:
         run: cargo install cargo-udeps
       - name: Find unused dependencies
         run: cargo +nightly udeps --all-targets
+        
+  check-semver:
+    name: Check semver
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        crate:
+          - pet-monitor-app
+          - mp4-stream
+          - bmff
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install x264
+        run: sudo apt-get install libx264-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: 'Check semver for ${{ matrix.crate }}'
+        uses: obi1kenobi/cargo-semver-checks-action@v1
+        with:
+          crate-name: ${{ matrix.crate }}
+          version-tag-prefix: '${{ matrix.crate }}-v'
 
   Publish:
     runs-on: ubuntu-latest
@@ -84,6 +109,7 @@ jobs:
       - Check
       - Test
       - udeps
+      - check-semver
 
     steps:
       - uses: actions/checkout@v3
