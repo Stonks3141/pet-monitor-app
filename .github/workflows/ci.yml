@@ -96,11 +96,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - name: 'Check semver for ${{ matrix.crate }}'
-        uses: obi1kenobi/cargo-semver-checks-action@v1
-        with:
-          crate-name: ${{ matrix.crate }}
-          version-tag-prefix: '${{ matrix.crate }}-v'
+      # Waiting on obi1kenobi/cargo-semver-checks#356
+      # - name: 'Check semver for ${{ matrix.crate }}'
+      #   uses: obi1kenobi/cargo-semver-checks-action@v1
+      #   with:
+      #     crate-name: ${{ matrix.crate }}
+      #     version-tag-prefix: '${{ matrix.crate }}-v'
 
   Publish:
     runs-on: ubuntu-latest
