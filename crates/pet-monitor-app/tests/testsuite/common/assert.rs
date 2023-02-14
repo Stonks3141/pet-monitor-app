@@ -1,5 +1,5 @@
-use tower_cookies::Cookie;
 use pet_monitor_app::{auth, config::Context};
+use tower_cookies::Cookie;
 use ureq::Response;
 
 #[derive(Debug)]
