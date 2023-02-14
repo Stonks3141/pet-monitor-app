@@ -77,6 +77,7 @@ impl<S> Cmd<S> {
             .arg(&conf_path)
             .args(command)
             .env("RUST_LOG", "debug")
+            .env("DISABLE_VALIDATE_CONFIG", "1")
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
