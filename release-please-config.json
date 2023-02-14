@@ -6,9 +6,7 @@
   "bump-patch-for-minor-pre-major": true,
   "plugins": ["cargo-workspace", "sentence-case"],
   "packages": {
-    "crates/pet-monitor-app": {
-      "release-as": "0.3.0"
-    },
+    "crates/pet-monitor-app": {},
     "crates/mp4-stream": {},
     "crates/bmff": {}
   }
