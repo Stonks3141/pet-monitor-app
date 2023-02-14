@@ -1,4 +1,4 @@
-use cookie::Cookie;
+use tower_cookies::Cookie;
 use pet_monitor_app::{auth, config::Context};
 use ureq::Response;
 
