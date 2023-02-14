@@ -9,6 +9,7 @@ use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::path::PathBuf;
 use tokio::task::spawn_blocking;
+use tracing_error::ErrorLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 use tracing_tree::HierarchicalLayer;
 
@@ -86,6 +87,7 @@ async fn main() -> eyre::Result<()> {
                 .with_targets(true)
                 .with_bracketed_fields(true),
         )
+        .with(ErrorLayer::default())
         .init();
 
     let rng = SystemRandom::new();

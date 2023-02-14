@@ -2,8 +2,10 @@ use crate::AppState;
 use axum::{
     extract::FromRequestParts,
     http::{header, request::Parts, StatusCode},
-    response::{IntoResponse, Response},
+    middleware::Next,
+    response::{IntoResponse, Redirect, Response},
 };
+use hyper::Request;
 use jsonwebtoken as jwt;
 use jwt::errors::{ErrorKind, Result as JwtResult};
 use serde::{Deserialize, Serialize};
@@ -124,5 +126,14 @@ impl FromRequestParts<AppState> for Token {
                 _ => Err(AuthError::BadToken),
             },
         }
+    }
+}
+
+pub async fn auth_error_layer<B>(req: Request<B>, next: Next<B>) -> Response {
+    let res = next.run(req).await;
+    if res.status() == StatusCode::UNAUTHORIZED {
+        Redirect::to("/login.html").into_response()
+    } else {
+        res
     }
 }

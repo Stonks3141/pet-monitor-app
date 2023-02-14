@@ -4,12 +4,16 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-mod auth;
+pub mod auth;
 pub mod config;
 mod handlers;
 
 use crate::config::{Context, ContextManager};
-use axum::routing::{get, post};
+use axum::{
+    error_handling::HandleErrorLayer,
+    middleware,
+    routing::{get, post},
+};
 use axum_macros::FromRef;
 use hyper::server::{
     accept::Accept,
@@ -27,7 +31,7 @@ use tokio_rustls::{
     rustls::{Certificate, PrivateKey, ServerConfig},
     TlsAcceptor,
 };
-use tower::MakeService;
+use tower::{MakeService, ServiceBuilder};
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
@@ -44,7 +48,9 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let caps = get_capabilities_all()?;
-    check_config(&ctx.config, &caps)?;
+    if !std::env::var("DISABLE_VALIDATE_CONFIG").map_or(false, |it| it == "1") {
+        check_config(&ctx.config, &caps)?;
+    }
 
     let mut state = AppState {
         ctx: ctx_manager.clone(),
@@ -55,30 +61,39 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
         .route("/login.html", get(handlers::files))
-        .route("/login.html", post(handlers::login))
+        .route(
+            "/login.html",
+            post(handlers::login).layer(
+                ServiceBuilder::new()
+                    .layer(HandleErrorLayer::new(|_| async move {
+                        hyper::StatusCode::SERVICE_UNAVAILABLE
+                    }))
+                    .buffer(1024)
+                    .load_shed()
+                    .rate_limit(128, std::time::Duration::from_secs(1)),
+            ),
+        )
+        .route("/stream.html", get(handlers::files))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
-        .route("/stream.html", get(handlers::files));
+        .layer(CookieManagerLayer::new())
+        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(auth::auth_error_layer));
 
     if stream {
         let (tx, rx) = flume::unbounded();
         let config = ctx.config.clone();
         spawn_blocking(move || {
-            tracing::info_span!("stream").in_scope(|| {
-                if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
-                    tracing::error!("{e}");
-                }
-            })
+            if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
+                tracing::error!("Streaming error: {e}");
+            }
         });
         tracing::info!("Stream started");
         app = app.route("/stream.mp4", get(handlers::stream));
         state.stream_sub_tx = Some(tx);
     }
 
-    let app = app
-        .with_state(state)
-        .layer(CookieManagerLayer::new())
-        .layer(TraceLayer::new_for_http());
+    let app = app.with_state(state);
 
     let addr = SocketAddr::new(ctx.host, ctx.port);
 

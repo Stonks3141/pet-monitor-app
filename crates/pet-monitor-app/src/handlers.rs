@@ -19,7 +19,7 @@ use mp4_stream::{
 };
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
-use tower_cookies::{Cookie, Cookies};
+use tower_cookies::{cookie, Cookie, Cookies};
 use tracing::instrument;
 
 macro_rules! error {
@@ -197,10 +197,14 @@ pub(crate) async fn set_config(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    let config_clone = config.clone();
-    if let Err(e) = tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await {
-        tracing::warn!("Config validation error: {e}");
-        return Err(StatusCode::BAD_REQUEST);
+    if !std::env::var("DISABLE_VALIDATE_CONFIG").map_or(false, |it| it == "1") {
+        let config_clone = config.clone();
+        if let Err(e) =
+            tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await
+        {
+            tracing::warn!("Config validation error: {e}");
+            return Err(StatusCode::BAD_REQUEST);
+        }
     }
 
     let new_ctx = Context { config, ..ctx_read };

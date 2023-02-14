@@ -1,9 +1,9 @@
 [package]
 name = "pet-monitor-app"
-version = "0.2.0"
+version = "0.3.0"
 description = "A simple and secure pet monitor for Raspberry Pi"
 documentation = "https://github.com/Stonks3141/pet-monitor-app"
-readme = "../README.md"
+readme = "../../README.md"
 keywords = ["cli", "video", "server", "streaming", "media"]
 categories = ["command-line-utilities", "multimedia"]
 authors.workspace = true
@@ -28,6 +28,7 @@ flume.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+tracing-error.workspace = true
 include_dir.workspace = true
 xflags.workspace = true
 confy.workspace = true
@@ -38,14 +39,15 @@ serde_qs.workspace = true
 percent-encoding.workspace = true
 color-eyre.workspace = true
 tower-cookies.workspace = true
-cookie.workspace = true
 ring.workspace = true
 jsonwebtoken.workspace = true
 rust-argon2.workspace = true
 mp4-stream.workspace = true
 
-[package.metadata.cargo-udeps.ignore]
-normal = ["include_dir"]
+[dev-dependencies]
+ureq = "2.6"
+tempfile = "3.3"
+toml = "0.7"
 
 [[bin]]
 name = "pet-monitor-app"
