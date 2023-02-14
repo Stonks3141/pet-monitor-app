@@ -39,7 +39,6 @@ serde_qs.workspace = true
 percent-encoding.workspace = true
 color-eyre.workspace = true
 tower-cookies.workspace = true
-cookie.workspace = true
 ring.workspace = true
 jsonwebtoken.workspace = true
 rust-argon2.workspace = true

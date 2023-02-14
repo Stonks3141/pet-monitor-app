@@ -19,7 +19,7 @@ use mp4_stream::{
 };
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
-use tower_cookies::{Cookie, Cookies};
+use tower_cookies::{cookie, Cookie, Cookies};
 use tracing::instrument;
 
 macro_rules! error {
