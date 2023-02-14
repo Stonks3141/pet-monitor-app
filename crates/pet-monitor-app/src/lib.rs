@@ -10,6 +10,7 @@ mod handlers;
 
 use crate::config::{Context, ContextManager};
 use axum::{
+    error_handling::HandleErrorLayer,
     middleware,
     routing::{get, post},
 };
@@ -30,7 +31,7 @@ use tokio_rustls::{
     rustls::{Certificate, PrivateKey, ServerConfig},
     TlsAcceptor,
 };
-use tower::{limit::rate::RateLimitLayer, MakeService};
+use tower::{MakeService, ServiceBuilder};
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
@@ -60,8 +61,18 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
         .route("/login.html", get(handlers::files))
-        .route("/login.html", post(handlers::login))
-        // .route_layer(RateLimitLayer::new(128, std::time::Duration::from_secs(1)))
+        .route(
+            "/login.html",
+            post(handlers::login).layer(
+                ServiceBuilder::new()
+                    .layer(HandleErrorLayer::new(|_| async move {
+                        hyper::StatusCode::SERVICE_UNAVAILABLE
+                    }))
+                    .buffer(1024)
+                    .load_shed()
+                    .rate_limit(128, std::time::Duration::from_secs(1)),
+            ),
+        )
         .route("/stream.html", get(handlers::files))
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
