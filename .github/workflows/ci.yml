@@ -75,7 +75,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: Install cargo-udeps
-        run: cargo install cargo-udeps
+        run: cargo +nightly install cargo-udeps
       - name: Find unused dependencies
         run: cargo +nightly udeps --all-targets
         
