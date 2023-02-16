@@ -232,6 +232,8 @@ dependencies = [
 [[package]]
 name = "bmff"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "091e842bec7c5490c8e853c998f4e159673eb0cd48faae55a366d83ba29df1aa"
 dependencies = [
  "bitflags",
  "chrono",
@@ -240,9 +242,7 @@ dependencies = [
 
 [[package]]
 name = "bmff"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "091e842bec7c5490c8e853c998f4e159673eb0cd48faae55a366d83ba29df1aa"
+version = "0.1.1"
 dependencies = [
  "bitflags",
  "chrono",
@@ -1212,7 +1212,7 @@ name = "mp4-stream"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "bmff 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bmff 0.1.0",
  "chrono",
  "fixed",
  "flume",
@@ -1232,7 +1232,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed0c14179042ffcc005249ae54fa86b4627baa0d40eed8d1efc690c121df6ba9"
 dependencies = [
  "bitflags",
- "bmff 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bmff 0.1.0",
  "chrono",
  "fixed",
  "flume",
