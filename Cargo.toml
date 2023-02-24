@@ -14,7 +14,7 @@ license = "MIT"
 axum = { version = "0.6", features = ["headers"] }
 axum-macros = "0.3"
 tower = { version = "0.4", features = ["limit", "buffer", "load-shed"] }
-tower-http = {version = "0.3", features = ["trace"] }
+tower-http = {version = "0.4", features = ["trace"] }
 hyper = "0.14"
 tokio = { version = "1.25", features = ["rt", "rt-multi-thread", "macros", "fs"] }
 futures-lite = "1.12"
