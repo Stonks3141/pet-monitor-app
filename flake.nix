@@ -25,6 +25,7 @@
               libclang
               pkg-config
               x264
+              scdoc
               nixpkgs-fmt
               nil
             ];
@@ -44,6 +45,7 @@
             nativeBuildInputs = with pkgs; [
               libclang
               pkg-config
+              scdoc
             ];
             buildInputs = [ pkgs.x264 ];
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
@@ -51,6 +53,13 @@
               "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
               "-I${pkgs.glibc.dev}/include"
             ];
+            postInstall = ''
+              scdoc < doc/pet-monitor-app.1.scd > pet-monitor-app.1
+              scdoc < doc/pet-monitor-app.5.scd > pet-monitor-app.5
+              mkdir -p $out/share/man/man1 $out/share/man/man5
+              install -m644 pet-monitor-app.1 $out/share/man/man1/pet-monitor-app.1
+              install -m644 pet-monitor-app.5 $out/share/man/man1/pet-monitor-app.5
+            '';
           };
       }
     );
