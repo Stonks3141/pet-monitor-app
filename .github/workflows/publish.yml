@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install gojq
+        run: sudo apt-get install gojq
       - name: 'Check if crate ${{ inputs.crate }} is published'
         run: |
           set -euxo pipefail
