@@ -3,7 +3,7 @@ members = ["crates/pet-monitor-app", "crates/mp4-stream", "crates/bmff"]
 default-members = ["crates/pet-monitor-app"]
 
 [workspace.package]
-authors = ["Sam Nystrom <samuel.l.nystrom@gmail.com>"]
+authors = ["Sam Nystrom <sam@samnystrom.dev>"]
 edition = "2021"
 rust-version = "1.66"
 homepage = "https://github.com/Stonks3141/pet-monitor-app"
