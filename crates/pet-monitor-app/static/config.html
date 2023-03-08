@@ -1,39 +1,21 @@
+<!--
+SPDX-FileCopyrightText: 2023 Sam Nystrom <sam@samnystrom.dev>
+SPDX-License-Identifier: MIT
+-->
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.5.6/css/pico.min.css" integrity="sha384-3edOW8hbyoE5dcN5KLGzXBJ7ObwLWlQTONfez9ieFk2/YbX+mo7NbktAT69X+xZK" crossorigin />
+    <link rel="stylesheet" href="/style.css" />
     <script src="https://unpkg.com/alpinejs@3.11.1/dist/cdn.min.js" integrity="sha384-D0U8hqw9ySktLounY2q1PAWeijVsqewBtT2NhQp2pxSugkKfpRnovV2sSwJC+V5U" crossorigin defer></script>
     <title>Settings</title>
-    <style>
-      article {
-        width: 50%;
-        max-width: 100%;
-        margin: auto;
-      }
-      a[role="button"] {
-        height: min-content;
-      }
-      a#logout {
-        justify-self: end;
-        width: auto;
-      }
-      div.row {
-        display: flex;
-        flex-direction: row;
-        gap: 1rem;
-      }
-      button.small {
-        width: auto;
-      }
-    </style>
     <script defer>
       function getToken() {
         return document.cookie.match(new RegExp('(^| )token=([^;]+)'))[2];
       }
 
-      function getIntervals(caps, config) {
+      function getIntervals(config, caps) {
         const [width, height] = config.resolution;
         return caps[config.device][config.format]
           .find(it => it.resolution[0] === width && it.resolution[1] === height)
@@ -53,28 +35,29 @@
 
       function updateResolution(config, caps) {
         config.resolution = caps[config.device][config.format][0].resolution;
-        updateIntervals(config, caps);
+        updateInterval(config, caps);
       }
 
-      function updateIntervals(config, caps) {
-        config.interval = caps[config.device][config.format][0].intervals[0];
+      function updateInterval(config, caps) {
+        config.interval = getIntervals(config, caps)[0];
       }
     </script>
   </head>
   <body>
     <main>
       <article>
-      <div class="grid">
+      <div class="row">
         <h3>Settings</h3>
         <a
           id="logout"
           href="/login.html"
           role="button"
-          class="contrast outline"
-          onclick="document.cookie = 'token=; Max-Age=0'"
+          class="outline small"
+          x-on:click="document.cookie = 'token=; Max-Age=0'"
         >Log Out</a>
       </div>
-      <form method="POST" x-data="{ config: {{config}}, caps: {{caps}} }">
+      <hr />
+      <form method="GET" x-data="{ config: {{config}}, caps: {{caps}} }">
         <input type="hidden" required name="csrf" x-bind:value="getToken()" />
         <label for="device">Device</label>
         <select id="device" name="device" x-model="config.device" x-on:change="updateFormat(config, caps)">
@@ -100,12 +83,12 @@
         <input type="hidden" required name="interval[0]" x-bind:value="config.interval[0]" />
         <input type="hidden" required name="interval[1]" x-bind:value="config.interval[1]" />
         <select id="interval" x-model="config.interval">
-          <template x-for="interval in getIntervals(caps, config)">
+          <template x-for="interval in getIntervals(config, caps)">
             <option x-bind:value="interval" x-text="interval[1] / interval[0]"></option>
           </template>
         </select>
         <label for="rotation">
-          <span data-tooltip="This setting is mostly ignored by browsers">Rotation</span>
+          <span title="This setting is mostly ignored by browsers">Rotation</span>
         </label>
         <select id="rotation" name="rotation" x-model="config.rotation">
           <option value="0">0°</option>
@@ -113,27 +96,24 @@
           <option value="180">180°</option>
           <option value="270">270°</option>
         </select>
-        <label for="v4l2_controls">Additional V4L2 Controls</label>
+        <label for="v4l2_controls">Additional V4L2 controls</label>
         <div id="v4l2_controls">
           <template x-for="[name, value] in Object.entries(config.v4l2_controls)">
             <div class="row">
               <input type="text" x-model="name" />
               <input type="text" x-model="value" x-bind:name="`v4l2_controls[${name}]`" />
-              <button type="button" class="small outline" x-on:click="delete config.v4l2_controls[name]">
-                <svg height="32" width="32" viewbox="0 0 48 48"><path d="m12.45 37.65-2.1-2.1L21.9 24 10.35 12.45l2.1-2.1L24 21.9l11.55-11.55 2.1 2.1L26.1 24l11.55 11.55-2.1 2.1L24 26.1Z"/></svg>
-              </button>
+              <button type="button" class="small" style="height:37px" x-on:click="delete config.v4l2_controls[name]">✕</button>
             </div>
           </template>
           <div class="row" x-data="{ name: '', value: '' }">
-            <input type="text" x-model="name" />
-            <input type="text" x-model="value" />
-            <button type="button" class="small" x-on:click="addControl(config, name, value); name = value = '';">
-              <svg height="32" width="32" viewbox="0 0 48 48"><path d="M22.5 38V25.5H10v-3h12.5V10h3v12.5H38v3H25.5V38Z"/></svg>
-            </button>
+            <input type="text" x-model="name" placeholder="Name" />
+            <input type="text" x-model="value" placeholder="Value" />
+            <button type="button" class="small" x-on:click="addControl(config, name, value); name = value = '';">＋</button>
           </div>
         </div>
-        <div class="grid">
-          <a href="/stream.html" role="button" class="contrast outline">Cancel</a>
+        <hr />
+        <div class="row">
+          <a href="/stream.html" role="button" class="outline">Cancel</a>
           <button type="submit">Save</button>
         </div>
       </form>

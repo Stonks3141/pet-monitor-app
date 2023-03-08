@@ -60,6 +60,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
 
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
+        .route("/style.css", get(handlers::files))
         .route("/login.html", get(handlers::files))
         .route(
             "/login.html",
