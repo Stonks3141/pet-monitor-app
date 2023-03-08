@@ -61,9 +61,9 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
     let mut app = axum::Router::new()
         .route("/", get(handlers::base))
         .route("/style.css", get(handlers::files))
-        .route("/login", get(handlers::files))
+        .route("/login.html", get(handlers::files))
         .route(
-            "/login",
+            "/login.html",
             post(handlers::login).layer(
                 ServiceBuilder::new()
                     .layer(HandleErrorLayer::new(|_| async move {
@@ -74,9 +74,9 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
                     .rate_limit(128, std::time::Duration::from_secs(1)),
             ),
         )
-        .route("/stream", get(handlers::files))
-        .route("/config", get(handlers::config))
-        .route("/config", post(handlers::set_config))
+        .route("/stream.html", get(handlers::files))
+        .route("/config.html", get(handlers::config))
+        .route("/config.html", post(handlers::set_config))
         .layer(CookieManagerLayer::new())
         .layer(TraceLayer::new_for_http())
         .layer(middleware::from_fn(auth::auth_error_layer));
