@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/style.css" />
-		<script src="https://unpkg.com/alpinejs@3.11.1/dist/cdn.min.js" integrity="sha384-D0U8hqw9ySktLounY2q1PAWeijVsqewBtT2NhQp2pxSugkKfpRnovV2sSwJC+V5U" crossorigin defer></script>
+    <script src="https://unpkg.com/alpinejs@3.11.1/dist/cdn.min.js" integrity="sha384-D0U8hqw9ySktLounY2q1PAWeijVsqewBtT2NhQp2pxSugkKfpRnovV2sSwJC+V5U" crossorigin defer></script>
     <title>Settings</title>
     <script defer>
       function getToken() {
@@ -56,7 +56,7 @@ SPDX-License-Identifier: MIT
           x-on:click="document.cookie = 'token=; Max-Age=0'"
         >Log Out</a>
       </div>
-			<hr />
+      <hr />
       <form method="GET" x-data="{ config: {{config}}, caps: {{caps}} }">
         <input type="hidden" required name="csrf" x-bind:value="getToken()" />
         <label for="device">Device</label>
@@ -111,7 +111,7 @@ SPDX-License-Identifier: MIT
             <button type="button" class="small" x-on:click="addControl(config, name, value); name = value = '';">＋</button>
           </div>
         </div>
-				<hr />
+        <hr />
         <div class="row">
           <a href="/stream.html" role="button" class="outline">Cancel</a>
           <button type="submit">Save</button>
