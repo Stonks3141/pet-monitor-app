@@ -4,12 +4,9 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
   };
-  outputs = { self, nixpkgs, utils, fenix, ... }:
+  outputs = { self, nixpkgs, utils }:
     utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
+      let pkgs = nixpkgs.legacyPackages.${system}; in {
         devShells.default = pkgs.mkShell
           {
             name = "pet-monitor-app";
@@ -47,7 +44,7 @@
               pkg-config
               scdoc
             ];
-            buildInputs = [ pkgs.x264 ];
+            buildInputs = with pkgs; [ x264 ];
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
             BINDGEN_EXTRA_CLANG_ARGS = [
               "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include"
@@ -58,7 +55,7 @@
               scdoc < doc/pet-monitor-app.5.scd > pet-monitor-app.5
               mkdir -p $out/share/man/man1 $out/share/man/man5
               install -m644 pet-monitor-app.1 $out/share/man/man1/pet-monitor-app.1
-              install -m644 pet-monitor-app.5 $out/share/man/man1/pet-monitor-app.5
+              install -m644 pet-monitor-app.5 $out/share/man/man5/pet-monitor-app.5
             '';
           };
       }
