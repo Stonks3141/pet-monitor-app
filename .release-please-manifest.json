@@ -1,5 +1,5 @@
 {
-  "crates/pet-monitor-app": "0.3.0",
+  "crates/pet-monitor-app": "0.3.1",
   "crates/mp4-stream": "0.1.0",
   "crates/bmff": "0.1.1"
 }
