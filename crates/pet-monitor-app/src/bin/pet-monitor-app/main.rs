@@ -10,6 +10,8 @@ use clap::Parser;
 use color_eyre::eyre;
 use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
+use std::io::{stdin, stdout};
+use termion::input::TermRead;
 use tokio::task::spawn_blocking;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
@@ -69,9 +71,19 @@ async fn main() -> eyre::Result<()> {
         cli::SubCmd::RegenSecret => {
             rng.fill(&mut ctx.jwt_secret)?;
             config::store(cmd.conf_path.clone(), ctx.clone()).await?;
-            println!("Successfully regenerated JWT signing secret.");
+            eprintln!("Successfully regenerated JWT signing secret.");
         }
-        cli::SubCmd::SetPassword { password } => {
+        cli::SubCmd::SetPassword => {
+            eprint!("Enter password: ");
+            let Some(password) = stdin().read_passwd(&mut stdout())? else {
+                eprintln!("\nNo password entered.");
+                std::process::exit(1);
+            };
+            eprintln!();
+            if password.chars().count() < 3 {
+                eprintln!("Password must be at least 3 characters.");
+                std::process::exit(1);
+            }
             let mut buf = [0u8; 16];
             rng.fill(&mut buf)?;
             ctx.password_hash = spawn_blocking(move || {
@@ -79,7 +91,7 @@ async fn main() -> eyre::Result<()> {
             })
             .await??;
             config::store(cmd.conf_path.clone(), ctx.clone()).await?;
-            println!("Successfully reset password.");
+            eprintln!("Successfully reset password.");
         }
         cli::SubCmd::Start {
             stream,

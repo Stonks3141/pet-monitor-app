@@ -34,11 +34,8 @@ pub enum SubCmd {
         #[arg(long = "no-stream", action = clap::ArgAction::SetFalse)]
         stream: bool,
     },
-    /// Set the password
-    SetPassword {
-        /// The new password to set
-        password: String,
-    },
+    /// Set the password (reads password from stdin)
+    SetPassword,
     /// Regenerate the secret used to sign JWTs
     RegenSecret,
 }

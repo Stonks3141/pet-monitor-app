@@ -16,7 +16,7 @@ axum-macros = "0.3"
 tower = { version = "0.4", features = ["limit", "buffer", "load-shed"] }
 tower-http = {version = "0.4", features = ["trace"] }
 hyper = "0.14"
-tokio = { version = "1.26", features = ["rt", "rt-multi-thread", "macros", "fs"] }
+tokio = { version = "1.26", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util"] }
 futures-lite = "1.12"
 tokio-rustls = "0.23"
 rustls-pemfile = "1.0"
@@ -29,6 +29,7 @@ tracing-error = "0.2"
 include_dir = "0.7"
 clap = { version = "4.1", features = ["derive"] }
 confy = "0.5"
+termion = "2.0"
 serde_with = { version = "2.2", features = ["base64"] }
 serde_json = "1.0"
 serde_qs = "0.12"
