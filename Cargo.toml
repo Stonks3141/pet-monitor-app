@@ -37,7 +37,7 @@ percent-encoding = "2.2"
 color-eyre = "0.6"
 tower-cookies = "0.9"
 ring = "0.16"
-jsonwebtoken = "8.2"
+jsonwebtoken = "8.3"
 rust-argon2 = "1.0"
 mp4-stream = { version = "0.1", features = ["serde", "tracing"] }
 quick-error = "2.0"
