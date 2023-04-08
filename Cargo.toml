@@ -17,7 +17,7 @@ tower = { version = "0.4", features = ["limit", "buffer", "load-shed"] }
 tower-http = {version = "0.4", features = ["trace"] }
 hyper = "0.14"
 tokio = { version = "1.27", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util"] }
-futures-lite = "1.12"
+futures-lite = "1.13"
 tokio-rustls = "0.24"
 rustls-pemfile = "1.0"
 parking_lot = "0.12"
