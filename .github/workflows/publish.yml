@@ -52,7 +52,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: 'Check semver for crate ${{ inputs.crate }}'
-        uses: obi1kenobi/cargo-semver-checks-action@v1
+        uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
           crate-name: ${{ inputs.crate }}
           version-tag-prefix: '${{ inputs.crate }}-v'
