@@ -5,6 +5,10 @@
 [![CI][ci]](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![License][license]](https://opensource.org/licenses/MIT)
 
+This project is dedicated to [Nyx](https://github.com/nyxkrage), who was able to obtain a copy of the H.264 standard for me.
+
+![PeepoHeart](https://cdn3.emoji.gg/emojis/2316-peepoheart.png)
+
 pet-monitor-app is a simple video streaming server for Linux. It provides
 out-of-the-box support for HTTPS and password authentication.
 
