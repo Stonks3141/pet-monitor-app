@@ -1,11 +1,10 @@
 use color_eyre::eyre::{self, WrapErr};
 use mp4_stream::config::Config;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, Ipv4Addr},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, RwLock},
     thread::sleep,
     time::Duration,
 };
@@ -32,11 +31,11 @@ impl ContextManager {
     }
 
     pub fn get(&self) -> Context {
-        (*self.ctx.read()).clone()
+        (*self.ctx.read().unwrap()).clone()
     }
 
     pub async fn set(&self, ctx: Context) -> eyre::Result<()> {
-        *self.ctx.write() = ctx.clone();
+        *self.ctx.write().unwrap() = ctx.clone();
 
         // Don't mess with the global config file if we don't have a specific path
         #[cfg(not(test))]

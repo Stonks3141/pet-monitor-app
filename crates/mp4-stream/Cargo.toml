@@ -18,7 +18,6 @@ flume.workspace = true
 quick-error.workspace = true
 tracing = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
-serde_repr.workspace = true
 chrono.workspace = true
 bitflags.workspace = true
 fixed.workspace = true

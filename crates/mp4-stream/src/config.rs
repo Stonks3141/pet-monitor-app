@@ -1,9 +1,11 @@
 //! Types for stream and camera configuration.
 
 #[cfg(feature = "serde")]
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{Error, Unexpected},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 #[cfg(feature = "serde")]
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, fmt, path::PathBuf};
 
 /// The main configuration struct.
@@ -123,7 +125,6 @@ impl<'de> Deserialize<'de> for Format {
 /// The rotation for the MP4 rotation matrix.
 ///
 /// This is not supported by some media players.
-#[cfg_attr(feature = "serde", derive(Serialize_repr, Deserialize_repr))]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Rotation {
@@ -135,4 +136,26 @@ pub enum Rotation {
     R180 = 180,
     /// 270 degrees of rotation.
     R270 = 270,
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Format {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        (self as u32).serialize(s)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Rotation {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        match u32::deserialize(d) {
+            0 => Self::R0,
+            90 => Self::R90,
+            180 => Self::R180,
+            270 => Self::R270,
+            x => {
+                D::Error::invalid_value(Unexpected::Unsigned(x as u64), "one of 0, 90, 180, or 270")
+            }
+        }
+    }
 }
