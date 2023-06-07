@@ -29,12 +29,6 @@ These options are top-level TOML keys.
 	
 	Default: _604800_ (7 days)
 
-*domain* = _<domain>_
-	The domain name of the server. This is used to redirect HTTP requests to HTTPS
-	if TLS is enabled.
-	
-	Default: _localhost_
-
 *host* = _<ip>_
 	The IP address for the server to listen on.
 	
@@ -68,27 +62,6 @@ These options are also top-level TOML keys.
 	The frame interval to capture video in, represented as a fraction.
 	
 	Default: [_1_, _30_]
-
-# TLS OPTIONS
-
-These options are configured in the *[tls]* section of the _config.toml_. This
-section is absent by default.
-
-*port* = _<integer>_
-	The port to serve HTTPS traffic on. The server will listen for HTTP traffic on
-	the default port and redirect to the secure site.
-	
-	Default: _8443_
-
-*cert* = _<path>_
-	Path to the SSL certificate to use.
-	
-	Default: _./cert.pem_
-
-*key* = _<path>_
-	Path to the SSL certificate key to use.
-	
-	Default: _./key.pem_
 
 # SEE ALSO
 

@@ -54,22 +54,8 @@ override the values set in the configuration file.
 *-p*, *--port* _<port>_
 	The port for the server to listen on.
 
-*--tls-port* _<port>_
-	The port to listen on when TLS is enabled. The server will also listen on the
-	HTTP port and redirect requests to the secure site.
-
 *--no-stream*
 	Disables video streaming.
-
-*--tls* _true_|_false_
-	Whether to enable TLS. If _--tls true_ is passed but the config file does not
-	set up TLS, then the *--cert* and *--key* options are required.
-
-*--cert* _<path>_
-	Path to the SSL certificate to use.
-
-*--key* _<path>_
-	Path to the SSL certificate key to use.
 
 # ENVIRONMENT
 

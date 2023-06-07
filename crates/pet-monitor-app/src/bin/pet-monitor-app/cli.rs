@@ -15,18 +15,6 @@ pub struct Cmd {
 pub enum SubCmd {
     /// Start the server
     Start {
-        /// Enable or disable TLS
-        #[arg(long)]
-        tls: Option<bool>,
-        /// Set the port to listen on for HTTPS
-        #[arg(long)]
-        tls_port: Option<u16>,
-        /// Path to an SSL certificate
-        #[arg(long)]
-        cert: Option<PathBuf>,
-        /// Path to an SSL certificate key
-        #[arg(long)]
-        key: Option<PathBuf>,
         /// Set the port to listen on
         #[arg(short, long)]
         port: Option<u16>,

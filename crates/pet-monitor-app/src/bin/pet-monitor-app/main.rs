@@ -93,44 +93,9 @@ async fn main() -> eyre::Result<()> {
             config::store(cmd.conf_path.clone(), ctx.clone()).await?;
             eprintln!("Successfully reset password.");
         }
-        cli::SubCmd::Start {
-            stream,
-            tls,
-            port,
-            tls_port,
-            cert,
-            key,
-        } => {
+        cli::SubCmd::Start { stream, port } => {
             if let Some(port) = port {
                 ctx.port = port;
-            }
-            match &mut ctx.tls {
-                Some(ctx_tls) if tls != Some(false) => {
-                    if let Some(tls_port) = tls_port {
-                        ctx_tls.port = tls_port;
-                    }
-                    if let Some(cert) = cert {
-                        ctx_tls.cert = cert;
-                    }
-                    if let Some(key) = key {
-                        ctx_tls.key = key;
-                    }
-                }
-                Some(_) if tls == Some(false) => ctx.tls = None,
-                Some(_) => unreachable!(),
-                None => match (tls, cert, key) {
-                    (Some(tls), Some(cert), Some(key)) if tls => {
-                        ctx.tls = Some(config::Tls {
-                            port: tls_port.unwrap_or(8443),
-                            cert,
-                            key,
-                        });
-                    }
-                    (Some(true), _, _) => eyre::bail!(
-                        "Since the config file does not set up TLS, both a cert and key path must be specified."
-                    ),
-                    _ => (),
-                },
             }
             pet_monitor_app::start(cmd.conf_path, ctx, stream).await?;
         }

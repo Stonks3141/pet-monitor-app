@@ -29,17 +29,6 @@ macro_rules! error {
     }};
 }
 
-#[debug_handler]
-#[instrument(skip(ctx))]
-pub(crate) async fn redirect(uri: hyper::Uri, State(ctx): State<ContextManager>) -> Redirect {
-    #[allow(clippy::unwrap_used)]
-    Redirect::permanent(&format!(
-        "https://{}{}",
-        ctx.get().domain,
-        uri.path_and_query().unwrap().as_str()
-    ))
-}
-
 #[debug_handler(state = AppState)]
 #[instrument(skip_all)]
 pub(crate) async fn base(token: Option<Token>) -> Redirect {

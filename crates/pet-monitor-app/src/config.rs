@@ -59,12 +59,10 @@ pub struct Context {
     pub jwt_secret: [u8; 32],
     #[serde_as(as = "serde_with::DurationSeconds<u64>")]
     pub jwt_timeout: Duration,
-    pub domain: String,
     pub host: IpAddr,
     pub port: u16,
     #[serde(flatten)]
     pub config: Config,
-    pub tls: Option<Tls>,
 }
 
 impl Default for Context {
@@ -73,20 +71,11 @@ impl Default for Context {
             password_hash: String::new(),
             jwt_secret: [0; 32],
             jwt_timeout: Duration::from_secs(4 * 24 * 60 * 60),
-            domain: "localhost".to_string(),
             host: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             port: 8080,
             config: Config::default(),
-            tls: None,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Tls {
-    pub port: u16,
-    pub cert: PathBuf,
-    pub key: PathBuf,
 }
 
 pub async fn store(path: Option<PathBuf>, ctx: Context) -> eyre::Result<()> {

@@ -1,13 +1,9 @@
 #![allow(dead_code)]
 
-use pet_monitor_app::{
-    auth,
-    config::{Context, Tls},
-};
+use pet_monitor_app::{auth, config::Context};
 use std::{
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    path::PathBuf,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
@@ -81,15 +77,6 @@ impl<S> Cmd<S> {
         self
     }
 
-    pub fn with_tls(mut self) -> Self {
-        self.ctx.tls = Some(Tls {
-            cert: PathBuf::from(format!("{}/cert.pem", env!("CARGO_MANIFEST_DIR"))),
-            key: PathBuf::from(format!("{}/key.pem", env!("CARGO_MANIFEST_DIR"))),
-            port: 8443,
-        });
-        self
-    }
-
     fn run_command(&self, command: &[&str]) -> (Child, tempfile::TempPath) {
         let mut conf_file = tempfile::NamedTempFile::new().unwrap();
         conf_file
@@ -127,11 +114,6 @@ impl Cmd<Start> {
         let listener = TcpListener::bind(SocketAddr::new(self.ctx.host, 0)).unwrap();
         let port = listener.local_addr().unwrap().port();
         self.ctx.port = port;
-        if let Some(tls) = self.ctx.tls.as_mut() {
-            let listener = TcpListener::bind(SocketAddr::new(self.ctx.host, 0)).unwrap();
-            let port = listener.local_addr().unwrap().port();
-            tls.port = port;
-        }
         self
     }
 
@@ -239,15 +221,9 @@ impl ReqBuilder {
     }
 
     fn url(&self, path: &str) -> String {
-        let scheme = if self.0.tls.is_some() {
-            "https"
-        } else {
-            "http"
-        };
         let host = self.0.host;
-        let port = self.0.tls.as_ref().map_or(self.0.port, |it| it.port);
-
-        format!("{scheme}://{host}:{port}{path}")
+        let port = self.0.port;
+        format!("http://{host}:{port}{path}")
     }
 }
 

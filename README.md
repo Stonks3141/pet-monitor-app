@@ -53,28 +53,16 @@ This first sets the password with the `set-password` subcommand, and then starts
 the server. You can view the page at [http://localhost:8080](http://localhost:8080).
 To reset your password, run the `set-password` subcommand again.
 
-For a full list of command-line options, run with the `--help` flag.
+For a full list of command-line options, run with the `--help` flag or read the
+[man page](https://github.com/Stonks3141/pet-monitor-app/blob/main/doc/pet-monitor-app.1.scd).
 
-The configuration file is located at `~/.config/pet-monitor-app/config.toml`.
-To enable TLS, add this to the config file:
-
-```toml
-[tls]
-port = 8443
-cert = "path/to/cert.pem"
-key = "path/to/key.key"
-```
-
-You can now view the page at [https://localhost:8443](https://localhost:8443).
-
-Running pet-monitor-app as root is not necessary and should be avoided. If you
-want your server to listen on port 80 or 443, you should set up NAT forwarding
-to forward external port 80 to internal port 8080. If this is not possible,
-install nginx and use it to reverse proxy port 80 or 443 to pet-monitor-app.
+Running pet-monitor-app as root is not necessary and should be avoided. It is
+intended to be used in combination with a reverse proxy such as Nginx to
+provide HTTPS support and listen on low port numbers.
 
 ## Configuration
 
-`~/.config/pet-monitor-app/config.toml`
+The configuration file is located at `~/.config/pet-monitor-app/config.toml`.
 
 ```toml
 # The argon2 hash of the password
@@ -83,8 +71,6 @@ password_hash = '$argon2id$v=19$m=32768,t=8,p=4$19nFC/J5TEtjGGePEsLX+g$KmofOFmpL
 jwt_secret = 'DkTeDKts0tinlvmfUtbnepKqYHeX1B8w7sQ5LG9KW+s='
 # The timeout for auth tokens in seconds
 jwt_timeout = 345600
-# The domain to serve from
-domain = 'localhost'
 # The IP to listen on
 host = '127.0.0.1'
 # The port to listen on
@@ -104,15 +90,6 @@ rotation = 0
 # Additional V4L2 controls
 [v4l2Controls]
 foo = 0
-
-# TLS configuration
-[tls]
-# The port to listen on for TLS
-port = 8443
-# Path to the SSL certificate
-cert = "path/to/cert.pem"
-# Path to the SSL certificate key
-key = "path/to/key.key"
 ```
 
 ## Development
