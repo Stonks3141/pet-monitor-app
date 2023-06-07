@@ -43,7 +43,7 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
     version: argon2::Version::Version13,
 };
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let cmd = cli::Cmd::parse();
