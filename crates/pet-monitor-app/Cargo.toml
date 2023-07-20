@@ -47,7 +47,7 @@ mp4-stream.workspace = true
 
 [dev-dependencies]
 ureq = "2.7"
-tempfile = "3.6"
+tempfile = "3.7"
 toml = "0.7"
 
 [[bin]]
