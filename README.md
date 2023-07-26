@@ -5,9 +5,7 @@
 [![CI][ci]](https://github.com/Stonks3141/pet-monitor-app/actions/workflows/ci.yml)
 [![License][license]](https://opensource.org/licenses/MIT)
 
-This project is dedicated to [Nyx](https://github.com/nyxkrage), who was able to obtain a copy of the H.264 standard for me.
-
-![PeepoHeart](https://cdn3.emoji.gg/emojis/2316-peepoheart.png)
+Thanks to [Nyx](https://github.com/nyxkrage), who was able to obtain a copy of the H.264 standard for me.
 
 pet-monitor-app is a simple video streaming server for Linux. It provides
 out-of-the-box support for HTTPS and password authentication.
@@ -27,7 +25,7 @@ out-of-the-box support for HTTPS and password authentication.
 Download the binary and corresponding `.sha256` file for your OS/architecture
 from the [releases](https://github.com/Stonks3141/pet-monitor-app/releases) page.
 Run `sha256sum --check pet-monitor-app-VERSION-TARGET.sha256` to verify the
-checksum. If it is correct, move the binary into `~/.local/bin`.
+checksum. If it is correct, move the binary into `/usr/local/bin`.
 
 ### Building from Source
 
@@ -47,7 +45,7 @@ If you have [just][just] installed, you can run `just install` after cloning.
 Run these commands to start the server:
 
 ```sh
-pet-monitor-app set-password MY_PASSWORD
+pet-monitor-app set-password
 pet-monitor-app start
 ```
 
