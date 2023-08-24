@@ -27,7 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-tree = "0.2"
 tracing-error = "0.2"
 include_dir = "0.7"
-clap = { version = "4.3", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 confy = "0.5"
 termion = "2.0"
 serde_with = { version = "3.3", features = ["base64"] }
