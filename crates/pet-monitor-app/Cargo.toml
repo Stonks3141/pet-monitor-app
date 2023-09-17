@@ -48,7 +48,7 @@ mp4-stream.workspace = true
 [dev-dependencies]
 ureq = "2.7"
 tempfile = "3.8"
-toml = "0.7"
+toml = "0.8"
 
 [[bin]]
 name = "pet-monitor-app"
