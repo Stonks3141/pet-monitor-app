@@ -287,6 +287,7 @@ impl MediaSegment {
                         #[allow(clippy::unwrap_used)] // infallible
                         Some(DefaultSampleFlags::from_bits(0x0101_0000).unwrap())
                     }, // not I-frame
+                    default_base_is_moof: false,
                 },
                 trun: vec![TrackFragmentRunBox {
                     data_offset: Some(0),

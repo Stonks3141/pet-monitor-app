@@ -1655,6 +1655,7 @@ pub struct TrackFragmentHeaderBox {
     pub default_sample_duration: Option<u32>,
     pub default_sample_size: Option<u32>,
     pub default_sample_flags: Option<DefaultSampleFlags>,
+    pub default_base_is_moof: bool,
 }
 
 bitflags! {
@@ -1665,6 +1666,7 @@ bitflags! {
         const DEFAULT_SAMPLE_SIZE_PRESENT = 0x00_0010;
         const DEFAULT_SAMPLE_FLAGS_PRESENT = 0x00_0020;
         const DURATION_IS_EMPTY = 0x01_0000;
+        const DEFAULT_BASE_IS_MOOF = 0x02_0000;
     }
 }
 
@@ -1725,6 +1727,9 @@ impl FullBox for TrackFragmentHeaderBox {
         }
         if self.default_sample_flags.is_some() {
             flags |= TrackFragmentHeaderFlags::DEFAULT_SAMPLE_FLAGS_PRESENT;
+        }
+        if self.default_base_is_moof {
+            flags |= TrackFragmentHeaderFlags::DEFAULT_BASE_IS_MOOF;
         }
         let flags = flags.bits().to_be_bytes();
         [flags[1], flags[2], flags[3]]
