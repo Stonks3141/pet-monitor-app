@@ -17,24 +17,28 @@ macro_rules! matrix {
     }
 }
 
+/// BMFF rotation matrix: 0 degrees of rotation
 pub const MATRIX_0: [[I16F16; 3]; 3] = matrix![
     [0x0001_0000, 0x0000_0000, 0x0000_0000],
     [0x0000_0000, 0x0001_0000, 0x0000_0000],
     [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
+/// BMFF rotation matrix: 90 degrees of rotation
 pub const MATRIX_90: [[I16F16; 3]; 3] = matrix![
     [0x0000_0000, 0x0001_0000, 0x0000_0000],
     [-0x4000_0000, 0x0000_0000, 0x0000_0000],
     [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
+/// BMFF rotation matrix: 180 degrees of rotation
 pub const MATRIX_180: [[I16F16; 3]; 3] = matrix![
     [-0x4000_0000, 0x0000_0000, 0x0000_0000],
     [0x0000_0000, 0x4000_0000, 0x0000_0000],
     [0x0000_0000, 0x0000_0000, 0x4000_0000],
 ];
 
+/// BMFF rotation matrix: 270 degrees of rotation
 pub const MATRIX_270: [[I16F16; 3]; 3] = matrix![
     [0x0000_0000, -0x4000_0000, 0x0000_0000],
     [0x0001_0000, 0x0000_0000, 0x0000_0000],
