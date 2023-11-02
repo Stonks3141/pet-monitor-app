@@ -296,6 +296,7 @@ pub struct TrackHeaderBox {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct TrackHeaderFlags: u32 {
         const TRACK_ENABLED = 0x00_0001;
         const TRACK_IN_MOVIE = 0x00_0002;
@@ -709,6 +710,7 @@ pub struct NullMediaHeaderBox {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct NullMediaHeaderFlags: u32 {}
 }
 
@@ -813,6 +815,7 @@ impl WriteTo for DataEntry {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct DataEntryFlags: u32 {
         /// Indicates that the media data is in the same file as the containing MovieBox.
         const SELF_CONTAINED = 0x00_0001;
@@ -1520,6 +1523,7 @@ pub struct TrackExtendsBox {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     pub struct DefaultSampleFlags: u32 {
         const SAMPLE_DEPENDS_ON = 0x0300_0000;
         const SAMPLE_IS_DEPENDED_ON = 0x00C0_0000;
@@ -1663,6 +1667,7 @@ pub struct TrackFragmentHeaderBox {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     struct TrackFragmentHeaderFlags: u32 {
         const BASE_DATA_OFFSET_PRESENT = 0x00_0001;
         const SAMPLE_DESCRIPTION_INDEX_PRESENT = 0x00_0002;
@@ -1751,6 +1756,7 @@ pub struct TrackFragmentRunBox {
 }
 
 bitflags! {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
     struct TrackFragmentRunFlags: u32 {
         const DATA_OFFSET_PRESENT = 0x00_0001;
         const FIRST_SAMPLE_FLAGS_PRESENT = 0x00_0004;
