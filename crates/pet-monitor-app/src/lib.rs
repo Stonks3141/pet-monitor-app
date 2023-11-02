@@ -23,7 +23,6 @@ use std::{net::SocketAddr, path::PathBuf};
 use tokio::task::spawn_blocking;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
-use tower_http::trace::TraceLayer;
 
 #[derive(Debug, Clone, FromRef)]
 struct AppState {
@@ -33,7 +32,6 @@ struct AppState {
 }
 use color_eyre::eyre;
 
-#[tracing::instrument(skip(ctx))]
 pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> eyre::Result<()> {
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
@@ -68,7 +66,6 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
         .route("/config.html", get(handlers::config))
         .route("/config.html", post(handlers::set_config))
         .layer(CookieManagerLayer::new())
-        .layer(TraceLayer::new_for_http())
         .layer(middleware::from_fn(auth::auth_error_layer));
 
     if stream {
@@ -76,10 +73,10 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
         let config = ctx.config.clone();
         spawn_blocking(move || {
             if let Err(e) = stream_media_segments(rx, config, Some(cfg_rx)) {
-                tracing::error!("Streaming error: {e}");
+                log::error!("Streaming error: {e}");
             }
         });
-        tracing::info!("Stream started");
+        log::info!("Stream started");
         app = app.route("/stream.mp4", get(handlers::stream));
         state.stream_sub_tx = Some(tx);
     }
@@ -88,7 +85,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> ey
 
     let addr = SocketAddr::new(ctx.host, ctx.port);
 
-    tracing::info!("Listening on {addr}");
+    log::info!("Listening on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;

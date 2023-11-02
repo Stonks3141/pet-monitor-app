@@ -81,12 +81,12 @@ impl Default for Context {
 pub async fn store(path: Option<PathBuf>, ctx: Context) -> eyre::Result<()> {
     spawn_blocking(move || match path {
         Some(path) => confy::store_path(&path, ctx.clone()).or_else(|e| {
-            tracing::warn!("Writing config failed: {e}, retrying in 10 ms");
+            log::warn!("Writing config failed: {e}, retrying in 10 ms");
             sleep(Duration::from_millis(10));
             confy::store_path(path, ctx).wrap_err("Failed to store configuration file")
         }),
         None => confy::store("pet-monitor-app", Some("config"), ctx.clone()).or_else(|e| {
-            tracing::warn!("Writing config failed: {e}, retrying in 10 ms");
+            log::warn!("Writing config failed: {e}, retrying in 10 ms");
             sleep(Duration::from_millis(10));
             confy::store("pet-monitor-app", Some("config"), ctx)
                 .wrap_err("Failed to write config file")
@@ -98,12 +98,12 @@ pub async fn store(path: Option<PathBuf>, ctx: Context) -> eyre::Result<()> {
 pub async fn load(path: Option<PathBuf>) -> eyre::Result<Context> {
     spawn_blocking(move || match path {
         Some(path) => confy::load_path(&path).or_else(|e| {
-            tracing::warn!("Writing config failed: {e}, retrying in 10 ms");
+            log::warn!("Writing config failed: {e}, retrying in 10 ms");
             sleep(Duration::from_millis(10));
             confy::load_path(path).wrap_err("Failed to store configuration file")
         }),
         None => confy::load("pet-monitor-app", Some("config")).or_else(|e| {
-            tracing::warn!("Writing config failed: {e}, retrying in 10 ms");
+            log::warn!("Writing config failed: {e}, retrying in 10 ms");
             sleep(Duration::from_millis(10));
             confy::load("pet-monitor-app", Some("config")).wrap_err("Failed to write config file")
         }),

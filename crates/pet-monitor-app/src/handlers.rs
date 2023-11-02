@@ -20,23 +20,21 @@ use mp4_stream::{
 use serde::Deserialize;
 use tokio::task::spawn_blocking;
 use tower_cookies::{cookie, Cookie, Cookies};
-use tracing::instrument;
 
 macro_rules! error {
     ($($args:tt)*) => {{
-        tracing::error!($($args)*);
+        log::error!($($args)*);
         StatusCode::INTERNAL_SERVER_ERROR
     }};
 }
 
 #[debug_handler(state = AppState)]
-#[instrument(skip_all)]
 pub(crate) async fn base(token: Option<Token>) -> Redirect {
     if token.is_some() {
-        tracing::debug!("Redirecting to '/stream.html'");
+        log::debug!("Redirecting to '/stream.html'");
         Redirect::to("/stream.html")
     } else {
-        tracing::debug!("Redirecting to '/login.html'");
+        log::debug!("Redirecting to '/login.html'");
         Redirect::to("/login.html")
     }
 }
@@ -57,7 +55,6 @@ async fn get_file(path: &str) -> Option<Bytes> {
 }
 
 #[debug_handler]
-#[instrument]
 pub async fn files(uri: axum::http::Uri) -> Response<Full<Bytes>> {
     let path = uri.path().trim_start_matches('/');
     #[allow(clippy::unwrap_used)]
@@ -85,7 +82,6 @@ pub(crate) struct Login {
 }
 
 #[debug_handler]
-#[instrument(skip_all)]
 pub(crate) async fn login(
     State(ctx): State<ContextManager>,
     cookies: Cookies,
@@ -120,7 +116,6 @@ pub(crate) async fn login(
 }
 
 #[debug_handler(state = AppState)]
-#[instrument(skip_all)]
 pub(crate) async fn config(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -158,7 +153,6 @@ struct ConfigForm {
 }
 
 #[debug_handler(state = AppState)]
-#[instrument(skip(_token, ctx, caps))]
 pub(crate) async fn set_config(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -191,7 +185,7 @@ pub(crate) async fn set_config(
         if let Err(e) =
             tokio::task::spawn_blocking(move || check_config(&config_clone, &caps)).await
         {
-            tracing::warn!("Config validation error: {e}");
+            log::warn!("Config validation error: {e}");
             return Err(StatusCode::BAD_REQUEST);
         }
     }
@@ -205,7 +199,6 @@ pub(crate) async fn set_config(
 }
 
 #[debug_handler(state = AppState)]
-#[instrument(skip_all)]
 pub(crate) async fn stream(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -217,7 +210,7 @@ pub(crate) async fn stream(
         .map_err(|e| error!("Error starting stream: {e}"))?;
 
     let stream = StreamExt::inspect(stream, |it| match it {
-        Err(e) => tracing::warn!("Error streaming segment: {e}"),
+        Err(e) => log::warn!("Error streaming segment: {e}"),
         Ok(_) => (),
     });
 

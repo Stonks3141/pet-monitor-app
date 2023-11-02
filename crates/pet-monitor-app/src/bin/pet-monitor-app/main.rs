@@ -13,9 +13,6 @@ use std::{
 };
 use termion::input::TermRead;
 use tokio::task::spawn_blocking;
-use tracing_error::ErrorLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
-use tracing_tree::HierarchicalLayer;
 
 #[cfg(not(test))]
 const ARGON2_CONFIG: argon2::Config = argon2::Config {
@@ -45,8 +42,6 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
-    color_eyre::install()?;
-
     xflags::xflags! {
         /// A simple and secure pet monitor for Linux
         cmd pet-monitor-app {
@@ -76,16 +71,8 @@ async fn main() -> eyre::Result<()> {
         return Ok(());
     }
 
-    Registry::default()
-        .with(EnvFilter::from_default_env())
-        .with(
-            HierarchicalLayer::new(2)
-                .with_ansi(true)
-                .with_targets(true)
-                .with_bracketed_fields(true),
-        )
-        .with(ErrorLayer::default())
-        .init();
+    color_eyre::install()?;
+    env_logger::init();
 
     let rng = SystemRandom::new();
 
