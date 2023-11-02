@@ -42,7 +42,7 @@ quick-error = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 chrono = "0.4"
 bitflags = "2.4"
-fixed = "1.23"
+fixed = "1.24"
 rscam = { version = "0.5", features = ["no_wrapper"] }
 x264 = "0.5"
 bmff = { path = "crates/bmff" }
