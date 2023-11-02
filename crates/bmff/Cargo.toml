@@ -1,6 +1,6 @@
 [package]
 name = "bmff"
-version = "0.1.1"
+version = "0.2.0"
 description = "Low-level definitions for the Base Media File Format"
 documentation = "https://docs.rs/bmff"
 readme = "README.md"
