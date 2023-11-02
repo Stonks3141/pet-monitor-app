@@ -139,23 +139,26 @@ pub enum Rotation {
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for Format {
+impl Serialize for Rotation {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        (self as u32).serialize(s)
+        (*self as u32).serialize(s)
     }
 }
 
 #[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Rotation {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        match u32::deserialize(d) {
+        Ok(match u32::deserialize(d)? {
             0 => Self::R0,
             90 => Self::R90,
             180 => Self::R180,
             270 => Self::R270,
             x => {
-                D::Error::invalid_value(Unexpected::Unsigned(x as u64), "one of 0, 90, 180, or 270")
+                return Err(D::Error::invalid_value(
+                    Unexpected::Unsigned(x as u64),
+                    &"one of 0, 90, 180, or 270",
+                ));
             }
-        }
+        })
     }
 }

@@ -4,13 +4,13 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-mod cli;
-
-use clap::Parser;
 use color_eyre::eyre;
 use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
-use std::io::{stdin, stdout};
+use std::{
+    io::{stdin, stdout},
+    path::PathBuf,
+};
 use termion::input::TermRead;
 use tokio::task::spawn_blocking;
 use tracing_error::ErrorLayer;
@@ -46,7 +46,36 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    let cmd = cli::Cmd::parse();
+
+    xflags::xflags! {
+        /// A simple and secure pet monitor for Linux
+        cmd pet-monitor-app {
+            /// Path to the configuration file to use
+            optional -c, --config path: PathBuf
+
+            /// Print the version and exit
+            cmd version {}
+            /// Set the password (reads from stdin)
+            cmd set-password {}
+            /// Regenerate the authentication secret
+            cmd regen-secret {}
+            /// Start the server
+            cmd start {
+                /// Set the port to listen on
+                optional -p, --port port: u16
+                /// Disable video streaming
+                optional --no-stream
+            }
+        }
+    }
+
+    let flags = PetMonitorApp::from_env_or_exit();
+
+    if let PetMonitorAppCmd::Version(_) = flags.subcommand {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     Registry::default()
         .with(EnvFilter::from_default_env())
         .with(
@@ -60,20 +89,21 @@ async fn main() -> eyre::Result<()> {
 
     let rng = SystemRandom::new();
 
-    let mut ctx = config::load(cmd.conf_path.clone()).await?;
+    let mut ctx = config::load(flags.config.clone()).await?;
 
     if ctx.jwt_secret == [0; 32] {
         rng.fill(&mut ctx.jwt_secret)?;
-        config::store(cmd.conf_path.clone(), ctx.clone()).await?;
+        config::store(flags.config.clone(), ctx.clone()).await?;
     }
 
-    match cmd.command {
-        cli::SubCmd::RegenSecret => {
+    match flags.subcommand {
+        PetMonitorAppCmd::Version(_) => unreachable!(),
+        PetMonitorAppCmd::RegenSecret(_) => {
             rng.fill(&mut ctx.jwt_secret)?;
-            config::store(cmd.conf_path.clone(), ctx.clone()).await?;
+            config::store(flags.config.clone(), ctx.clone()).await?;
             eprintln!("Successfully regenerated JWT signing secret.");
         }
-        cli::SubCmd::SetPassword => {
+        PetMonitorAppCmd::SetPassword(_) => {
             eprint!("Enter password: ");
             let Some(password) = stdin().read_passwd(&mut stdout())? else {
                 eprintln!("\nNo password entered.");
@@ -90,14 +120,14 @@ async fn main() -> eyre::Result<()> {
                 argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG)
             })
             .await??;
-            config::store(cmd.conf_path.clone(), ctx.clone()).await?;
+            config::store(flags.config.clone(), ctx.clone()).await?;
             eprintln!("Successfully reset password.");
         }
-        cli::SubCmd::Start { stream, port } => {
+        PetMonitorAppCmd::Start(Start { no_stream, port }) => {
             if let Some(port) = port {
                 ctx.port = port;
             }
-            pet_monitor_app::start(cmd.conf_path, ctx, stream).await?;
+            pet_monitor_app::start(flags.config, ctx, !no_stream).await?;
         }
     }
     Ok(())

@@ -1,7 +1,7 @@
 [package]
 name = "pet-monitor-app"
 version = "0.3.1"
-description = "A simple and secure pet monitor for Raspberry Pi"
+description = "A simple and secure pet monitor for Linux"
 documentation = "https://github.com/Stonks3141/pet-monitor-app"
 readme = "../../README.md"
 keywords = ["cli", "video", "server", "streaming", "media"]
@@ -27,7 +27,7 @@ tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 tracing-error.workspace = true
 include_dir.workspace = true
-clap.workspace = true
+xflags.workspace = true
 confy.workspace = true
 termion.workspace = true
 serde.workspace = true

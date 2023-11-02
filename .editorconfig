@@ -1,0 +1,19 @@
+root = true
+
+[*]
+charset = utf-8
+line_endings = lf
+insert_final_newline = true
+indent_style = tab
+indent_size = 4
+
+[*.rs]
+indent_style = space
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[*.css,*.html]
+indent_style = space
+indent_size = 2
