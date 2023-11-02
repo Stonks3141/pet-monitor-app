@@ -1223,7 +1223,7 @@ dependencies = [
  "jsonwebtoken",
  "mp4-stream",
  "percent-encoding",
- "ring 0.16.20",
+ "ring 0.17.5",
  "rust-argon2",
  "serde",
  "serde_json",
