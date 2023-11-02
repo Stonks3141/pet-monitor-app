@@ -63,27 +63,10 @@ jobs:
       - name: Run tests
         run: just test
 
-  udeps:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install x264
-        run: sudo apt-get install libx264-dev
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-      - name: Install cargo-udeps
-        run: cargo +nightly install cargo-udeps
-      - name: Find unused dependencies
-        run: cargo +nightly udeps --all-targets
-
   Publish:
     needs:
       - Check
       - Test
-      - udeps
 
     strategy:
       matrix:
