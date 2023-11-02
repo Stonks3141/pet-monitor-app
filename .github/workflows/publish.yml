@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install gojq
         run: sudo apt-get install gojq
       - name: 'Check if crate ${{ inputs.crate }} is published'
@@ -44,7 +44,7 @@ jobs:
     if: needs.check-published-version.outputs.new_version == 'yes'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - uses: dtolnay/rust-toolchain@stable
@@ -65,7 +65,7 @@ jobs:
       - check-semver
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install x264
         run: sudo apt-get install libx264-dev
       - uses: dtolnay/rust-toolchain@stable
