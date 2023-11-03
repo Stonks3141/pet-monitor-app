@@ -16,7 +16,7 @@ axum = { version = "0.6", features = ["headers"] }
 tower = "0.4"
 hyper = "0.14"
 tokio = { version = "1.30", features = ["rt", "macros", "fs", "io-util"] }
-futures-lite = "1.13"
+futures-lite = "2.0"
 flume = "0.10"
 log = "0.4"
 env_logger = "0.10"
