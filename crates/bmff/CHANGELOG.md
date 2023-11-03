@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/Stonks3141/pet-monitor-app/compare/bmff-v0.2.0...bmff-v0.3.0) (2023-11-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** updated a public dependency of "bmff" crate
+
+### Features
+
+* **deps:** Update crate bitflags to 2.4 ([fe2104b](https://github.com/Stonks3141/pet-monitor-app/commit/fe2104b40fe8231fe053998b5a2a50fc25a55898))
+
 ## [0.2.0](https://github.com/Stonks3141/pet-monitor-app/compare/bmff-v0.1.1...bmff-v0.2.0) (2023-11-02)
 
 
