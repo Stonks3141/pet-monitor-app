@@ -30,7 +30,7 @@ serde_with = { version = "3.3", features = ["base64"] }
 serde_json = "1.0"
 serde_qs = "0.12"
 percent-encoding = "2.3"
-color-eyre = "0.6"
+anyhow = "1.0"
 tower-cookies = "0.9"
 ring = "0.16"
 jsonwebtoken = "8.3"

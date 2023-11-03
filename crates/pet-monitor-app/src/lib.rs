@@ -30,9 +30,8 @@ struct AppState {
     caps: Capabilities,
     stream_sub_tx: Option<flume::Sender<StreamSubscriber>>,
 }
-use color_eyre::eyre;
 
-pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> eyre::Result<()> {
+pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> anyhow::Result<()> {
     let (ctx_manager, cfg_rx) = ContextManager::new(ctx.clone(), conf_path.clone());
 
     let caps = get_capabilities_all()?;

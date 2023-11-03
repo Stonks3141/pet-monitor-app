@@ -4,7 +4,6 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
-use color_eyre::eyre;
 use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::{
@@ -41,7 +40,7 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
 };
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> eyre::Result<()> {
+async fn main() -> anyhow::Result<()> {
     xflags::xflags! {
         /// A simple and secure pet monitor for Linux
         cmd pet-monitor-app {
@@ -71,7 +70,6 @@ async fn main() -> eyre::Result<()> {
         return Ok(());
     }
 
-    color_eyre::install()?;
     env_logger::init();
 
     let rng = SystemRandom::new();
