@@ -34,7 +34,7 @@ anyhow = "1.0"
 tower-cookies = "0.9"
 ring = "0.16"
 jsonwebtoken = "8.3"
-rust-argon2 = "1.0"
+rust-argon2 = "2.0"
 mp4-stream = { path = "crates/mp4-stream", features = ["serde", "log"] }
 quick-error = "2.0"
 serde = { version = "1.0", features = ["derive"] }
