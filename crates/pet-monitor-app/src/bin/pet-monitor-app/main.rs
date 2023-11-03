@@ -21,7 +21,6 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
     lanes: 4,
     mem_cost: 32768, // KiB
     secret: &[],
-    thread_mode: argon2::ThreadMode::Parallel,
     time_cost: 8,
     variant: argon2::Variant::Argon2id,
     version: argon2::Version::Version13,
@@ -34,7 +33,6 @@ const ARGON2_CONFIG: argon2::Config = argon2::Config {
     lanes: 1,
     mem_cost: 16, // KiB
     secret: &[],
-    thread_mode: argon2::ThreadMode::Parallel,
     time_cost: 1,
     variant: argon2::Variant::Argon2id,
     version: argon2::Version::Version13,
