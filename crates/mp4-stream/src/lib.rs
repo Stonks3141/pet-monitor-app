@@ -35,10 +35,6 @@
 //!
 //! # Cargo Features
 //!
-//! - `tokio`: provides a [`Stream`](futures_core::Stream) implementation for the [`VideoStream`](crate::VideoStream)
-//!   type using Tokio's runtime.
-//! - `quickcheck`: Provides implementations of [`Arbitrary`](quickcheck::Arbitrary) for types in the
-//!   [`config`] module.
 //! - `serde`: Add implementations of [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)
 //!   for types in the [`config`] and [`capabilities`] modules.
 
