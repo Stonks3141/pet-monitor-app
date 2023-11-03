@@ -1,5 +1,3 @@
-#[cfg(debug_assertions)]
-use super::AppState;
 use crate::auth::Token;
 use crate::config::{Context, ContextManager};
 use axum::body::{Bytes, Full};
@@ -10,7 +8,6 @@ use axum::{
     response::Redirect,
     Form,
 };
-use axum_macros::debug_handler;
 use futures_lite::{Stream, StreamExt};
 use mp4_stream::{
     capabilities::{check_config, Capabilities},
@@ -28,7 +25,6 @@ macro_rules! error {
     }};
 }
 
-#[debug_handler(state = AppState)]
 pub(crate) async fn base(token: Option<Token>) -> Redirect {
     if token.is_some() {
         log::debug!("Redirecting to '/stream.html'");
@@ -54,7 +50,6 @@ async fn get_file(path: &str) -> Option<Bytes> {
     }
 }
 
-#[debug_handler]
 pub async fn files(uri: axum::http::Uri) -> Response<Full<Bytes>> {
     let path = uri.path().trim_start_matches('/');
     #[allow(clippy::unwrap_used)]
@@ -81,7 +76,6 @@ pub(crate) struct Login {
     password: String,
 }
 
-#[debug_handler]
 pub(crate) async fn login(
     State(ctx): State<ContextManager>,
     cookies: Cookies,
@@ -115,7 +109,6 @@ pub(crate) async fn login(
     }
 }
 
-#[debug_handler(state = AppState)]
 pub(crate) async fn config(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -152,7 +145,6 @@ struct ConfigForm {
     v4l2_controls: Option<std::collections::HashMap<String, String>>,
 }
 
-#[debug_handler(state = AppState)]
 pub(crate) async fn set_config(
     _token: Token,
     State(ctx): State<ContextManager>,
@@ -198,7 +190,6 @@ pub(crate) async fn set_config(
     Ok(Redirect::to("/stream.html"))
 }
 
-#[debug_handler(state = AppState)]
 pub(crate) async fn stream(
     _token: Token,
     State(ctx): State<ContextManager>,

@@ -13,8 +13,8 @@ use axum::{
     error_handling::HandleErrorLayer,
     middleware,
     routing::{get, post},
+    extract::FromRef,
 };
-use axum_macros::FromRef;
 use mp4_stream::{
     capabilities::{check_config, get_capabilities_all, Capabilities},
     stream_media_segments, StreamSubscriber,
@@ -24,11 +24,29 @@ use tokio::task::spawn_blocking;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 
-#[derive(Debug, Clone, FromRef)]
+#[derive(Debug, Clone)]
 struct AppState {
     ctx: ContextManager,
     caps: Capabilities,
     stream_sub_tx: Option<flume::Sender<StreamSubscriber>>,
+}
+
+impl FromRef<AppState> for ContextManager {
+    fn from_ref(state: &AppState) -> Self {
+        state.ctx.clone()
+    }
+}
+
+impl FromRef<AppState> for Capabilities {
+    fn from_ref(state: &AppState) -> Self {
+        state.caps.clone()
+    }
+}
+
+impl FromRef<AppState> for Option<flume::Sender<StreamSubscriber>> {
+    fn from_ref(state: &AppState) -> Self {
+        state.stream_sub_tx.clone()
+    }
 }
 
 pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> anyhow::Result<()> {
@@ -55,10 +73,7 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
                 ServiceBuilder::new()
                     .layer(HandleErrorLayer::new(|_| async move {
                         hyper::StatusCode::SERVICE_UNAVAILABLE
-                    }))
-                    .buffer(1024)
-                    .load_shed()
-                    .rate_limit(128, std::time::Duration::from_secs(1)),
+                    })),
             ),
         )
         .route("/stream.html", get(handlers::files))
