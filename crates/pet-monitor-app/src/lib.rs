@@ -11,9 +11,9 @@ mod handlers;
 use crate::config::{Context, ContextManager};
 use axum::{
     error_handling::HandleErrorLayer,
+    extract::FromRef,
     middleware,
     routing::{get, post},
-    extract::FromRef,
 };
 use mp4_stream::{
     capabilities::{check_config, get_capabilities_all, Capabilities},
@@ -69,12 +69,9 @@ pub async fn start(conf_path: Option<PathBuf>, ctx: Context, stream: bool) -> an
         .route("/login.html", get(handlers::files))
         .route(
             "/login.html",
-            post(handlers::login).layer(
-                ServiceBuilder::new()
-                    .layer(HandleErrorLayer::new(|_| async move {
-                        hyper::StatusCode::SERVICE_UNAVAILABLE
-                    })),
-            ),
+            post(handlers::login).layer(ServiceBuilder::new().layer(HandleErrorLayer::new(
+                |_| async move { hyper::StatusCode::SERVICE_UNAVAILABLE },
+            ))),
         )
         .route("/stream.html", get(handlers::files))
         .route("/config.html", get(handlers::config))

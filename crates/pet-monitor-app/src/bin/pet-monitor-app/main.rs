@@ -4,6 +4,7 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::dbg_macro)]
 
+use anyhow::anyhow;
 use pet_monitor_app::config;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::{
@@ -12,7 +13,6 @@ use std::{
 };
 use termion::input::TermRead;
 use tokio::task::spawn_blocking;
-use anyhow::anyhow;
 
 #[cfg(not(test))]
 const ARGON2_CONFIG: argon2::Config = argon2::Config {
@@ -78,14 +78,16 @@ async fn main() -> anyhow::Result<()> {
     let mut ctx = config::load(flags.config.clone()).await?;
 
     if ctx.jwt_secret == [0; 32] {
-        rng.fill(&mut ctx.jwt_secret).map_err(|_| anyhow!("Failed to generate random bytes"))?;
+        rng.fill(&mut ctx.jwt_secret)
+            .map_err(|_| anyhow!("Failed to generate random bytes"))?;
         config::store(flags.config.clone(), ctx.clone()).await?;
     }
 
     match flags.subcommand {
         PetMonitorAppCmd::Version(_) => unreachable!(),
         PetMonitorAppCmd::RegenSecret(_) => {
-            rng.fill(&mut ctx.jwt_secret).map_err(|_| anyhow!("Failed to generate random bytes"))?;
+            rng.fill(&mut ctx.jwt_secret)
+                .map_err(|_| anyhow!("Failed to generate random bytes"))?;
             config::store(flags.config.clone(), ctx.clone()).await?;
             eprintln!("Successfully regenerated JWT signing secret.");
         }
@@ -101,7 +103,8 @@ async fn main() -> anyhow::Result<()> {
                 std::process::exit(1);
             }
             let mut buf = [0u8; 16];
-            rng.fill(&mut buf).map_err(|_| anyhow!("Failed to generate random bytes"))?;
+            rng.fill(&mut buf)
+                .map_err(|_| anyhow!("Failed to generate random bytes"))?;
             ctx.password_hash = spawn_blocking(move || {
                 argon2::hash_encoded(password.as_bytes(), &buf, &ARGON2_CONFIG)
             })
