@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0](https://github.com/Stonks3141/pet-monitor-app/compare/pet-monitor-app-v0.3.1...pet-monitor-app-v0.4.0) (2023-11-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Remove feature "tracing" from mp4-stream crate
+* HTTPS is no longer supported The "domain" config key and the "tls" config section no longer exist
+
+### Features
+
+* Remove TLS support ([7742587](https://github.com/Stonks3141/pet-monitor-app/commit/7742587e7d81fb88461f996fce7667ccbf12d463))
+* Remove tracing ([1b99dd2](https://github.com/Stonks3141/pet-monitor-app/commit/1b99dd20ca5a4b8988da310ad36d4e6678022848))
+
+
+### Bug Fixes
+
+* **pet-monitor-app:** Switch from clap to xflags ([3bd9967](https://github.com/Stonks3141/pet-monitor-app/commit/3bd9967043b90cee070d6b8e41456fd98ec2c15a))
+* Use the single-threaded tokio runtime ([b04a51d](https://github.com/Stonks3141/pet-monitor-app/commit/b04a51d764963fd0aa1623834fb47532d295df0c))
+
 ## [0.3.1](https://github.com/Stonks3141/pet-monitor-app/compare/pet-monitor-app-v0.3.0...pet-monitor-app-v0.3.1) (2023-03-12)
 
 
