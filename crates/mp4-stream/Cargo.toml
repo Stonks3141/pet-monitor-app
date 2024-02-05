@@ -1,6 +1,6 @@
 [package]
 name = "mp4-stream"
-version = "0.1.0"
+version = "0.2.0"
 description = "High-level library for fMP4 streaming"
 documentation = "https://docs.rs/mp4-stream"
 readme = "README.md"
