@@ -210,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "bmff"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bitflags 2.4.1",
  "chrono",
@@ -987,7 +987,7 @@ dependencies = [
 
 [[package]]
 name = "mp4-stream"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bitflags 2.4.1",
  "bmff",
@@ -1125,7 +1125,7 @@ checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
 
 [[package]]
 name = "pet-monitor-app"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "axum",
