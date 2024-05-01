@@ -39,7 +39,7 @@ rust-argon2.workspace = true
 mp4-stream.workspace = true
 
 [dev-dependencies]
-ureq = "2.8"
+ureq = "2.9.7"
 tempfile = "3.8"
 toml = "0.8"
 
