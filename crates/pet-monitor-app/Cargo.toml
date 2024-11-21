@@ -1,6 +1,6 @@
 [package]
 name = "pet-monitor-app"
-version = "0.3.1"
+version = "0.4.0"
 description = "A simple and secure pet monitor for Linux"
 documentation = "https://github.com/Stonks3141/pet-monitor-app"
 readme = "../../README.md"
