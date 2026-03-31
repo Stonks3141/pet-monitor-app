@@ -14,7 +14,7 @@ license = "MIT"
 [workspace.dependencies]
 axum = { version = "0.6", features = ["headers"] }
 tower = "0.4"
-hyper = "0.14"
+hyper = "1.0"
 tokio = { version = "1.33", features = ["rt", "macros", "fs", "io-util"] }
 futures-lite = "2.2"
 flume = "0.11"
